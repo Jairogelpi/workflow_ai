@@ -70,11 +70,18 @@ phases:
 
       - id: "1.2"
         title: "Manifest Templates"
-        description: "Manifest-based templates (PRD, Report, Pitch)."
-        status: "pending"
-        gate: "Templates operational and testable."
-        tasks: []
-        evidence_nodes: []
+        description: "Typed templates for Artifact generation (Code, Docs, Plans)."
+        status: "done"
+        gate: "Assembler uses typed templates instead of raw strings."
+        tasks:
+          - "Implement Template Interface"
+          - "Implement CodeManifest"
+          - "Implement DocManifest"
+          - "Refactor Assembler to use Templates"
+        evidence_nodes: 
+          - "PLAN-HITO-1.2.md"
+          - "src/compiler/templates/"
+          - "tests/templates.test.ts"
 
       - id: "1.3"
         title: "Proof-Carrying Deliverables"
