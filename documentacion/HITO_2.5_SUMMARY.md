@@ -16,7 +16,12 @@ Transitioned WorkGraph OS from a volatile prototype to a persistent "Thinking OS
 - **Automated Sync**: `addNode`, `updateNodeContent`, and `mutateNodeType` now trigger background upserts to Supabase.
 - **Hydration**: Implemented `loadProject` to recover the entire graph state on application load.
 
-### 3. Resilience & Ops
+### 3. Roadmap Perfection: Soft Delete
+- **Traceability**: Implemented logical deletion (`deleted_at`) for Nodes, Edges, and Projects.
+- **Data Safety**: Replaced `ON DELETE CASCADE` with an archiving logic in `syncService` and `useGraphStore`.
+- **Filtered Retrieval**: `fetchGraph` now automatically excludes archived nodes and edges.
+
+### 4. Resilience & Ops
 - **Environment Parity**: Created `.env.local.example` for secure credential management.
 - **Build Safety**: Hardened the Supabase client to prevent static rendering crashes when keys are missing.
 
