@@ -38,15 +38,28 @@ interface GraphState {
     updateNodeContent: (id: string, content: string) => void;
     addNode: (type: WorkNode['type'], position?: { x: number, y: number }) => void;
     mutateNodeType: (id: string, newType: WorkNode['type']) => void;
+
+    // Discovery
+    searchQuery: string;
+    setSearchQuery: (query: string) => void;
+    centerNode: (id: string) => void;
 }
 
 export const useGraphStore = create<GraphState>((set, get) => ({
     nodes: [],
     edges: [],
     selectedNodeId: null,
+    searchQuery: '',
 
     setNodes: (nodes) => set({ nodes }),
     setEdges: (edges) => set({ edges }),
+    setSearchQuery: (searchQuery) => set({ searchQuery }),
+
+    centerNode: (id) => {
+        // This will be used by the GraphCanvas to trigger a zoom/pan
+        // For now, we select the node. centering logic will be handled via a custom hook or reactive effect in the canvas.
+        set({ selectedNodeId: id });
+    },
 
     onNodesChange: (changes) => {
         set({

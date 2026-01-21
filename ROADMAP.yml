@@ -176,6 +176,7 @@ phases:
           - "Implement onConnect edge creation logic"
           - "Implement mutateNodeType action with re-hashing"
           - "Add Floating Creation UI"
+          - "Implement Double-Click to create (Polish)"
         evidence_nodes:
           - "src/store/useGraphStore.ts"
           - "src/components/graph/GraphCanvas.tsx"
@@ -183,6 +184,21 @@ phases:
           - "documentacion/HITO_2.3_SUMMARY.md"
 
       - id: "2.4"
+        title: "The Browser & Discovery"
+        description: "Sidebar navigation and real-time search for large graphs."
+        status: "done"
+        gate: "Sidebar renders node list with functional text search/filter."
+        tasks:
+          - "Implement Sidebar component"
+          - "Integrate real-time search filter"
+          - "Sync Sidebar selection with Graph and Editor"
+        evidence_nodes:
+          - "src/components/layout/Sidebar.tsx"
+          - "src/components/layout/NodeListItem.tsx"
+          - "src/store/useGraphStore.ts"
+          - "documentacion/HITO_2.4_SUMMARY.md"
+
+      - id: "2.5"
         title: "Chrome MV3 Extension"
         description: "Explicit selection capture for the web."
         status: "done"
@@ -197,7 +213,7 @@ phases:
           - "extension/src/content/index.ts"
           - "extension/src/background/index.ts"
 
-      - id: "2.5"
+      - id: "2.6"
         title: "Multi-source Ingestion"
         description: "Ingestion from URLs, Local Files, and Chat Export."
         status: "pending"
@@ -205,7 +221,7 @@ phases:
         tasks: []
         evidence_nodes: []
 
-      - id: "2.6"
+      - id: "2.7"
         title: "BYOK Secrets Management"
         description: "Vault integration for user keys."
         status: "pending"

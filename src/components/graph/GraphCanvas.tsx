@@ -1,5 +1,5 @@
 'use client';
-import React, { useEffect } from 'react';
+import React, { useEffect, useCallback } from 'react';
 import ReactFlow, {
     MiniMap,
     Controls,
@@ -46,6 +46,17 @@ export default function GraphCanvas() {
         }
     }, [nodes.length, setNodes]);
 
+    const onPaneClick = useCallback((event: React.MouseEvent) => {
+        // Simple double-click detection using event.detail (standard for browser clicks)
+        if (event.detail === 2) {
+            const position = {
+                x: event.clientX - 100, // Offset to center somewhat
+                y: event.clientY - 100,
+            };
+            addNode('note', position);
+        }
+    }, [addNode]);
+
     return (
         <div style={{ width: '100%', height: '100%' }}>
             <ReactFlow
@@ -55,7 +66,7 @@ export default function GraphCanvas() {
                 onEdgesChange={onEdgesChange}
                 onConnect={onConnect}
                 onNodeClick={(_, node) => setSelectedNode(node.id)}
-                onPaneClick={() => setSelectedNode(null)}
+                onPaneClick={onPaneClick}
                 fitView
             >
                 <Controls />
