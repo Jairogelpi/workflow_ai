@@ -90,6 +90,7 @@ export function createVersion(
         validated: node.metadata?.validated ?? false,
         pin: node.metadata?.pin ?? false,
         version_hash: '' as VersionHash, // Placeholder
+        ...(previous_hash ? { previous_version_hash: previous_hash } : {})
     };
 
     // 2. Attach partial metadata to node to calculate hash

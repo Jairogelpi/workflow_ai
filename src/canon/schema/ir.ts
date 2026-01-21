@@ -27,6 +27,7 @@ export const NodeMetadataSchema = z.object({
     created_at: TimestampSchema,
     updated_at: TimestampSchema,
     version_hash: VersionHashSchema,
+    previous_version_hash: VersionHashSchema.optional(),
     origin: OriginSchema,
     // Critical operational fields
     confidence: ConfidenceSchema.default(1.0), // 1.0 = Human certainty, <1.0 = AI estimation

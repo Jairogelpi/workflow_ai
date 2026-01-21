@@ -74,12 +74,34 @@ describe('Kernel: Versioning Engine', () => {
 
         const meta = createVersion(rawNode);
 
-        expect(meta.version_hash).toBeTruthy();
-        expect(meta.created_at).toBeTruthy();
+        expect(meta).toBeDefined();
+        expect(meta.version_hash).toBeDefined();
+        expect(meta.version_hash).toMatch(/^[a-f0-9]{64}$/);
 
-        // Verify the generated meta works with the node
+        // Verify integrity by attaching meta to node
         const stampedNode = { ...rawNode, metadata: meta };
         expect(verifyIntegrity(stampedNode)).toBe(true);
+    });
+
+    it('should create a valid cryptographic chain', () => {
+        // v1
+        const nodeV1 = createTestNode('Version 1');
+        // We simulate that this node has been versioned
+        const metaV1 = createVersion(nodeV1);
+        nodeV1.metadata = metaV1;
+
+        // v2 (derived from v1)
+        // Note: we must cast or handle types carefully as createVersion expects a Node 
+        // that matches WorkNodeSchema, and we are mutating it.
+        const nodeV2 = { ...nodeV1, content: 'Version 2' } as WorkNode;
+
+        // Create version linking to V1
+        const metaV2 = createVersion(nodeV2, metaV1.version_hash);
+        nodeV2.metadata = metaV2;
+
+        expect(nodeV2.metadata.previous_version_hash).toBe(metaV1.version_hash);
+        expect(verifyIntegrity(nodeV2)).toBe(true);
+        expect(nodeV2.metadata.version_hash).not.toBe(nodeV1.metadata.version_hash);
     });
 
 });

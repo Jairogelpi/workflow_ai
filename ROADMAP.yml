@@ -27,7 +27,8 @@ phases:
         tasks:
           - "Implement computeNodeHash (kernel)"
           - "Implement verifyIntegrity (kernel)"
-          - "Implement createVersion (kernel)" 
+          - "Implement createVersion (kernel)"
+          - "Implement previous_version_hash chaining"
         evidence_nodes: 
           - "PLAN-HITO-0.2.md"
           - "src/kernel/versioning.ts"
