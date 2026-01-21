@@ -274,4 +274,25 @@ export const useGraphStore = create<GraphState>((set, get) => ({
             await syncService.upsertNode(DEFAULT_PROJECT_ID, updatedNodeRecord);
         }
     },
+
+    deleteNode: async (id) => {
+        const { nodes, edges } = get();
+
+        // Roadmap Perfection: Soft Delete
+        set({
+            nodes: nodes.filter(n => n.id !== id),
+            edges: edges.filter(e => e.source !== id && e.target !== id)
+        });
+
+        try {
+            await syncService.archiveNode(id);
+            // Also archive related edges in DB
+            const edgesToArchive = edges.filter(e => e.source === id || e.target === id);
+            for (const edge of edgesToArchive) {
+                await syncService.archiveEdge(edge.id);
+            }
+        } catch (error) {
+            console.error('Failed to archive node:', error);
+        }
+    },
 }));

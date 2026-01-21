@@ -35,6 +35,7 @@ create table if not exists projects (
   name text not null,
   description text,
   is_public boolean default false,
+  deleted_at timestamp with time zone, -- Roadmap Requirement: Soft Delete
   created_at timestamp with time zone default now(),
   updated_at timestamp with time zone default now()
 );
@@ -52,6 +53,7 @@ create table if not exists work_nodes (
   origin node_origin default 'human',
   metadata jsonb default '{}'::jsonb,
   current_version_hash text,
+  deleted_at timestamp with time zone, -- Roadmap Requirement: Soft Delete
   created_at timestamp with time zone default now(),
   updated_at timestamp with time zone default now()
 );
@@ -63,9 +65,14 @@ create table if not exists work_edges (
   target_node_id uuid references work_nodes(id) on delete cascade not null,
   relation relation_type not null default 'relates_to',
   metadata jsonb default '{}'::jsonb,
+  deleted_at timestamp with time zone, -- Roadmap Requirement: Soft Delete
   created_at timestamp with time zone default now(),
   unique(source_node_id, target_node_id, relation)
 );
+
+-- Indexes for performance (Filtering out deleted records)
+create index if not exists idx_nodes_not_deleted on work_nodes(project_id) where deleted_at is null;
+create index if not exists idx_edges_not_deleted on work_edges(project_id) where deleted_at is null;
 
 -- 5. MOTOR DE VERSIONAT
 create table if not exists node_revisions (

@@ -11,8 +11,8 @@ export const syncService = {
      */
     async fetchGraph(projectId: string) {
         const [nodesRes, edgesRes] = await Promise.all([
-            supabase.from('work_nodes').select('*').eq('project_id', projectId),
-            supabase.from('work_edges').select('*').eq('project_id', projectId)
+            supabase.from('work_nodes').select('*').eq('project_id', projectId).is('deleted_at', null),
+            supabase.from('work_edges').select('*').eq('project_id', projectId).is('deleted_at', null)
         ]);
 
         if (nodesRes.error) throw nodesRes.error;
@@ -34,14 +34,15 @@ export const syncService = {
                 id: node.id,
                 project_id: projectId,
                 type: node.type,
-                content: node, // Storing the full node in content for now or decomposing
+                content: node,
                 confidence: node.metadata.confidence,
                 is_pinned: node.metadata.pin,
                 is_validated: node.metadata.validated,
                 origin: node.metadata.origin,
                 metadata: node.metadata,
                 current_version_hash: node.metadata.version_hash,
-                updated_at: new Date().toISOString()
+                updated_at: new Date().toISOString(),
+                deleted_at: null // Reset deleted_at if re-upserted
             });
 
         if (error) throw error;
@@ -59,8 +60,33 @@ export const syncService = {
                 source_node_id: edge.source,
                 target_node_id: edge.target,
                 relation: edge.relation,
-                metadata: edge.metadata
+                metadata: edge.metadata,
+                deleted_at: null
             });
+
+        if (error) throw error;
+    },
+
+    /**
+     * Soft Delete (Archive) for a node
+     */
+    async archiveNode(nodeId: string) {
+        const { error } = await supabase
+            .from('work_nodes')
+            .update({ deleted_at: new Date().toISOString() })
+            .eq('id', nodeId);
+
+        if (error) throw error;
+    },
+
+    /**
+     * Soft Delete (Archive) for an edge
+     */
+    async archiveEdge(edgeId: string) {
+        const { error } = await supabase
+            .from('work_edges')
+            .update({ deleted_at: new Date().toISOString() })
+            .eq('id', edgeId);
 
         if (error) throw error;
     },
