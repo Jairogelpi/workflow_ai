@@ -22,10 +22,16 @@ phases:
       - id: "0.2"
         title: "Versioning Engine"
         description: "Hash-based delta tracking (git-like for the graph)."
-        status: "pending"
+        status: "done"
         gate: "Hash-based delta verification operational."
-        tasks: []
-        evidence_nodes: []
+        tasks:
+          - "Implement computeNodeHash (kernel)"
+          - "Implement verifyIntegrity (kernel)"
+          - "Implement createVersion (kernel)" 
+        evidence_nodes: 
+          - "PLAN-HITO-0.2.md"
+          - "src/kernel/versioning.ts"
+          - "tests/versioning.test.ts"
 
       - id: "0.3"
         title: "PIN Enforcement"
