@@ -117,10 +117,24 @@ phases:
 
 
   - id: 2
-    title: "Phase 2: Capture & Extensibility (The Wedge)"
-    description: "Expanding the surface area for knowledge entry."
+    title: "Phase 2: Capture & Interface (The Wedge)"
+    description: "Expanding the surface area for knowledge entry and interaction."
     phase_gate: "Captures must pass Zod validation before entering the WorkGraph."
     hitos:
+      - id: "2.0"
+        title: "WorkGraph UI Scaffold"
+        description: "Next.js 15 + React Flow + TipTap setup."
+        status: "done"
+        gate: "UI compiles and renders Graph + Editor."
+        tasks: 
+          - "Initialize Next.js 15"
+          - "Install React Flow & TipTap"
+          - "Setup Tailwind & App Router"
+        evidence_nodes: 
+          - "PLAN-HITO-2.0.md"
+          - "src/app/page.tsx"
+          - "src/components/graph/WorkGraphCanvas.tsx"
+
       - id: "2.1"
         title: "Chrome MV3 Extension"
         description: "Explicit selection capture for the web."
