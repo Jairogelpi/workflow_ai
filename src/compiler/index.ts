@@ -3,6 +3,7 @@ import { WorkGraph, WorkNode } from '../canon/schema/ir';
 import { createPlan } from './planner';
 import { retrieveContext } from './retriever';
 import { assembleArtifact } from './assembler';
+import { verifyArtifact } from './verifier';
 
 import { v4 as uuidv4 } from 'uuid';
 import { CompilerContext } from './types';
@@ -32,7 +33,23 @@ export async function runPipeline(goal: string, graph: WorkGraph): Promise<WorkN
 
     // 3. Assemble
     // Pass the full context object to access JobID
-    const artifact = await assembleArtifact(plan, contextNodes, contextObj);
+    const artifact: any = await assembleArtifact(plan, contextNodes, contextObj);
+
+    // 4. Verify
+    console.log(`[PIPELINE] Verifying artifact...`);
+    const verificationReport = verifyArtifact(artifact, { goal, retrieved_nodes: contextNodes });
+
+    if (artifact.receipt) {
+        artifact.receipt.verification_result = verificationReport;
+    }
+
+    if (!verificationReport.passed) {
+        console.warn(`[PIPELINE] Verification FAILED for ${artifact.id}`, verificationReport.issues);
+        // We could throw here, but for now we return the artifact with the FAIL report attached.
+        // The consumer (UI/API) decides whether to show it.
+    } else {
+        console.log(`[PIPELINE] Verification PASSED (Score: ${verificationReport.score})`);
+    }
 
     console.log(`[PIPELINE] Artifact generated: ${artifact.id}`);
     return artifact;

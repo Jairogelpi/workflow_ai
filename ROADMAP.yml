@@ -100,6 +100,22 @@ phases:
           - "src/canon/schema/primitives.ts"
           - "tests/receipts.test.ts"
 
+      - id: "1.4"
+        title: "The Verifier Logic"
+        description: "Deterministic verification of artifacts (Structure, Integrity, Thresholds)."
+        status: "done"
+        gate: "The pipeline returns an Artifact containing a VerificationReport."
+        tasks:
+          - "Define VerificationReportSchema"
+          - "Implement src/compiler/verifier.ts"
+          - "Implement Filter logic"
+          - "Integrate Verifier into Pipeline"
+        evidence_nodes: 
+          - "PLAN-HITO-1.4.md"
+          - "src/compiler/verifier.ts"
+          - "tests/verifier.test.ts"
+
+
   - id: 2
     title: "Phase 2: Capture & Extensibility (The Wedge)"
     description: "Expanding the surface area for knowledge entry."
