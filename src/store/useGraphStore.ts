@@ -9,7 +9,11 @@ import {
     Connection,
     addEdge
 } from 'reactflow';
+import { v4 as uuidv4 } from 'uuid';
 import { WorkNode, WorkEdge } from '../canon/schema/ir';
+import { NodeId, EdgeId } from '../canon/schema/primitives';
+import { createVersion } from '../kernel/versioning';
+import { backendToFlow } from '../lib/adapters';
 
 // AppNode uses the Kernel WorkNode as its internal data
 export type AppNode = Node<WorkNode, string>;
@@ -32,6 +36,8 @@ interface GraphState {
     // Interaction
     setSelectedNode: (id: string | null) => void;
     updateNodeContent: (id: string, content: string) => void;
+    addNode: (type: WorkNode['type'], position?: { x: number, y: number }) => void;
+    mutateNodeType: (id: string, newType: WorkNode['type']) => void;
 }
 
 export const useGraphStore = create<GraphState>((set, get) => ({
@@ -54,9 +60,35 @@ export const useGraphStore = create<GraphState>((set, get) => ({
         });
     },
 
-    onConnect: (connection) => {
+    onConnect: (params) => {
+        const { source, target } = params;
+        if (!source || !target) return;
+
+        const newWorkEdge: WorkEdge = {
+            id: uuidv4() as EdgeId,
+            source: source as NodeId,
+            target: target as NodeId,
+            relation: 'relates_to',
+            metadata: {
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString(),
+                version_hash: '0000000000000000000000000000000000000000000000000000000000000000',
+                origin: 'human',
+                confidence: 1.0,
+                validated: false,
+                pin: false
+            }
+        };
+
+        const newEdge: AppEdge = {
+            id: newWorkEdge.id,
+            source: newWorkEdge.source,
+            target: newWorkEdge.target,
+            data: newWorkEdge,
+        };
+
         set({
-            edges: addEdge(connection, get().edges) as AppEdge[],
+            edges: addEdge(newEdge, get().edges) as AppEdge[],
         });
     },
 
@@ -70,34 +102,98 @@ export const useGraphStore = create<GraphState>((set, get) => ({
                     const nodeData = node.data;
                     const newData = { ...nodeData };
 
-                    // Discriminant-aware update using type-safe reassignment
-                    if (newData.type === 'note') {
-                        newData.content = content;
-                    } else if (newData.type === 'claim') {
-                        newData.statement = content;
-                    } else if (newData.type === 'evidence') {
-                        newData.content = content;
-                    } else if (newData.type === 'decision') {
-                        newData.rationale = content;
-                    } else if (newData.type === 'idea') {
-                        newData.details = content;
-                    } else if (newData.type === 'task') {
-                        newData.description = content;
-                    } else if (newData.type === 'artifact') {
-                        newData.name = content;
-                    } else if (newData.type === 'assumption') {
-                        newData.premise = content;
-                    } else if (newData.type === 'constraint') {
-                        newData.rule = content;
-                    }
+                    // Discriminant-aware update
+                    if (newData.type === 'note') newData.content = content;
+                    else if (newData.type === 'claim') newData.statement = content;
+                    else if (newData.type === 'evidence') newData.content = content;
+                    else if (newData.type === 'decision') newData.rationale = content;
+                    else if (newData.type === 'idea') newData.details = content;
+                    else if (newData.type === 'task') newData.description = content;
+                    else if (newData.type === 'artifact') newData.name = content;
+                    else if (newData.type === 'assumption') newData.premise = content;
+                    else if (newData.type === 'constraint') newData.rule = content;
 
-                    // Update metadata timestamp for traceability
-                    newData.metadata = {
-                        ...newData.metadata,
-                        updated_at: new Date().toISOString(),
+                    // Cryptographic update (re-hashes the node)
+                    const updatedMetadata = createVersion(newData as WorkNode, node.data.metadata.version_hash);
+
+                    return { ...node, data: { ...newData, metadata: updatedMetadata } as WorkNode };
+                }
+                return node;
+            }),
+        });
+    },
+
+    addNode: (type, position) => {
+        const id = uuidv4() as NodeId;
+        const now = new Date().toISOString();
+
+        // Base structure for initial state
+        const baseNode: any = {
+            id,
+            type,
+            metadata: {
+                created_at: now,
+                updated_at: now,
+                origin: 'human',
+                version_hash: '' as any,
+                confidence: 1.0,
+                validated: false,
+                pin: false
+            }
+        };
+
+        // Populate content placeholders
+        if (type === 'note') baseNode.content = 'New Note';
+        else if (type === 'claim') baseNode.statement = 'New Claim';
+        else if (type === 'evidence') baseNode.content = 'New Evidence';
+        else if (type === 'decision') { baseNode.rationale = 'New Decision'; baseNode.chosen_option = ''; }
+        else if (type === 'idea') baseNode.summary = 'New Idea';
+        else if (type === 'task') { baseNode.title = 'New Task'; baseNode.status = 'todo'; }
+        else if (type === 'artifact') { baseNode.name = 'New Artifact'; baseNode.uri = 'http://localhost'; }
+        else if (type === 'assumption') { baseNode.premise = 'New Assumption'; baseNode.risk_level = 'medium'; }
+        else if (type === 'constraint') { baseNode.rule = 'New Constraint'; baseNode.enforcement_level = 'strict'; }
+
+        // Sign the node
+        const signedMetadata = createVersion(baseNode as WorkNode);
+        const finalNode: WorkNode = { ...baseNode, metadata: signedMetadata };
+
+        const flowNode = backendToFlow(finalNode, position || { x: Math.random() * 400, y: Math.random() * 400 });
+
+        set({
+            nodes: [...get().nodes, flowNode],
+        });
+    },
+
+    mutateNodeType: (id, newType) => {
+        const { nodes } = get();
+        set({
+            nodes: nodes.map((node) => {
+                if (node.id === id) {
+                    const oldData = node.data;
+                    const newData: any = {
+                        id: oldData.id,
+                        type: newType,
+                        metadata: oldData.metadata
                     };
 
-                    return { ...node, data: newData as WorkNode };
+                    // Preserve content if possible or create new placeholder
+                    const oldContent = (oldData as any).content || (oldData as any).statement || (oldData as any).rationale || (oldData as any).summary || (oldData as any).description || (oldData as any).details || (oldData as any).name || (oldData as any).premise || (oldData as any).rule || '';
+
+                    if (newType === 'note') newData.content = oldContent;
+                    else if (newType === 'claim') { newData.statement = oldContent; newData.verification_status = 'pending'; }
+                    else if (newType === 'evidence') newData.content = oldContent;
+                    else if (newType === 'decision') { newData.rationale = oldContent; newData.chosen_option = ''; }
+                    else if (newType === 'idea') newData.summary = oldContent;
+                    else if (newType === 'task') { newData.title = 'Mutated Task'; newData.description = oldContent; newData.status = 'todo'; }
+                    else if (newType === 'artifact') { newData.name = oldContent; newData.uri = 'http://localhost'; }
+                    else if (newType === 'assumption') { newData.premise = oldContent; newData.risk_level = 'medium'; }
+                    else if (newType === 'constraint') { newData.rule = oldContent; newData.enforcement_level = 'strict'; }
+                    else if (newType === 'source') { newData.citation = oldContent; }
+
+                    // Re-sign node with new type
+                    const updatedMetadata = createVersion(newData as WorkNode, oldData.metadata.version_hash);
+
+                    return { ...node, data: { ...newData, metadata: updatedMetadata } as WorkNode };
                 }
                 return node;
             }),

@@ -1,8 +1,9 @@
 'use client';
-import React, { useEffect, useMemo, useCallback } from 'react';
+import React, { useEffect, useCallback } from 'react';
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import { useGraphStore } from '../../store/useGraphStore';
+import { WorkNode } from '../../canon/schema/ir';
 
 // Simple debounce hook
 function useDebouncedCallback<T extends (...args: any[]) => void>(
@@ -39,7 +40,7 @@ const NODE_TYPE_CONFIG: Record<string, { label: string; color: string }> = {
 };
 
 export default function NodeEditor() {
-    const { selectedNodeId, nodes, updateNodeContent } = useGraphStore();
+    const { selectedNodeId, nodes, updateNodeContent, mutateNodeType } = useGraphStore();
 
     // Find the current selected node data
     const selectedNode = nodes.find(n => n.id === selectedNodeId);
@@ -93,25 +94,41 @@ export default function NodeEditor() {
     if (!editor) return null;
 
     return (
-        <div className="flex flex-col h-full">
-            {/* Header with node type badge */}
-            <div className="flex items-center gap-2 p-3 border-b border-slate-700">
-                {typeConfig ? (
-                    <>
-                        <span className={`px-2 py-1 text-xs font-semibold text-white rounded ${typeConfig.color}`}>
-                            {typeConfig.label}
+        <div className="flex flex-col h-full bg-slate-900 text-slate-200 shadow-2xl">
+            {/* Header with node type selector */}
+            <div className="flex items-center justify-between gap-2 p-3 border-b border-slate-700 bg-slate-800/50">
+                <div className="flex items-center gap-2">
+                    {selectedNode ? (
+                        <select
+                            value={nodeType}
+                            onChange={(e) => mutateNodeType(selectedNodeId!, e.target.value as any)}
+                            className={`px-2 py-1 text-xs font-semibold text-white rounded cursor-pointer appearance-none outline-none ring-1 ring-white/10 ${typeConfig?.color || 'bg-slate-500'}`}
+                        >
+                            {Object.entries(NODE_TYPE_CONFIG).map(([type, cfg]) => (
+                                <option key={type} value={type} className="bg-slate-800 text-white">
+                                    {cfg.label}
+                                </option>
+                            ))}
+                        </select>
+                    ) : (
+                        <span className="text-sm text-slate-500 italic">No node selected</span>
+                    )}
+                    {selectedNodeId && (
+                        <span className="text-xs text-slate-500 font-mono">
+                            ID: {selectedNodeId.slice(0, 8)}
                         </span>
-                        <span className="text-sm text-slate-400 truncate">
-                            ID: {selectedNodeId?.slice(0, 8)}...
-                        </span>
-                    </>
-                ) : (
-                    <span className="text-sm text-slate-500 italic">No node selected</span>
+                    )}
+                </div>
+
+                {selectedNode && (
+                    <div className="text-[10px] text-slate-500 uppercase tracking-wider font-bold">
+                        {selectedNode.data.metadata.origin}
+                    </div>
                 )}
             </div>
 
             {/* Editor content */}
-            <div className="flex-1 overflow-auto p-4 prose dark:prose-invert max-w-none">
+            <div className="flex-1 overflow-auto p-6 prose dark:prose-invert max-w-none scrollbar-thin scrollbar-thumb-slate-700">
                 <EditorContent editor={editor} className="h-full outline-none" />
             </div>
         </div>

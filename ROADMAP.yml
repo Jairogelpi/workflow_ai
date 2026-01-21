@@ -167,6 +167,22 @@ phases:
           - "documentacion/HITO_2.2_SUMMARY.md"
 
       - id: "2.3"
+        title: "The Graph Topology"
+        description: "Interactivity for growing the graph (Creation, Connection, Mutation)."
+        status: "done"
+        gate: "Nodes can be created, linked, and mutated while maintaining IR integrity."
+        tasks:
+          - "Implement addNode action with versioning"
+          - "Implement onConnect edge creation logic"
+          - "Implement mutateNodeType action with re-hashing"
+          - "Add Floating Creation UI"
+        evidence_nodes:
+          - "src/store/useGraphStore.ts"
+          - "src/components/graph/GraphCanvas.tsx"
+          - "src/components/editor/NodeEditor.tsx"
+          - "documentacion/HITO_2.3_SUMMARY.md"
+
+      - id: "2.4"
         title: "Chrome MV3 Extension"
         description: "Explicit selection capture for the web."
         status: "done"
@@ -181,7 +197,7 @@ phases:
           - "extension/src/content/index.ts"
           - "extension/src/background/index.ts"
 
-      - id: "2.3"
+      - id: "2.5"
         title: "Multi-source Ingestion"
         description: "Ingestion from URLs, Local Files, and Chat Export."
         status: "pending"
@@ -189,7 +205,7 @@ phases:
         tasks: []
         evidence_nodes: []
 
-      - id: "2.3"
+      - id: "2.6"
         title: "BYOK Secrets Management"
         description: "Vault integration for user keys."
         status: "pending"
