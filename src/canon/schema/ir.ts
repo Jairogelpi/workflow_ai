@@ -1,25 +1,11 @@
-
 import { z } from 'zod';
+import {
+    NodeIdSchema, EdgeIdSchema, TimestampSchema, VersionHashSchema, OriginSchema, ConfidenceSchema
+} from './primitives';
 
-// --- Primitives & Brands ---
+export * from './primitives'; // Re-export for convenience
 
-export const NodeIdSchema = z.string().uuid().brand('NodeId');
-export type NodeId = z.infer<typeof NodeIdSchema>;
-
-export const EdgeIdSchema = z.string().uuid().brand('EdgeId');
-export type EdgeId = z.infer<typeof EdgeIdSchema>;
-
-export const TimestampSchema = z.string().datetime();
-export type Timestamp = z.infer<typeof TimestampSchema>;
-
-export const VersionHashSchema = z.string().regex(/^[a-f0-9]{64}$/); // SHA-256
-export type VersionHash = z.infer<typeof VersionHashSchema>;
-
-export const OriginSchema = z.enum(['human', 'ai', 'hybrid']);
-export type Origin = z.infer<typeof OriginSchema>;
-
-export const ConfidenceSchema = z.number().min(0).max(1);
-export type Confidence = z.infer<typeof ConfidenceSchema>;
+// --- Metadata ---
 
 // --- Metadata ---
 
@@ -96,11 +82,14 @@ export const NoteNodeSchema = BaseNodeSchema.extend({
     content: z.string(),
 });
 
+import { CompilationReceiptSchema } from './receipt';
+
 export const ArtifactNodeSchema = BaseNodeSchema.extend({
     type: z.literal('artifact'),
     name: z.string(),
     uri: z.string().url(), // Link to the actual file/deliverable
     mime_type: z.string().optional(),
+    receipt: CompilationReceiptSchema.optional(), // Proof-Carrying extension
 });
 
 export const SourceNodeSchema = BaseNodeSchema.extend({

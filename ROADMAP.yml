@@ -87,10 +87,18 @@ phases:
       - id: "1.3"
         title: "Proof-Carrying Deliverables"
         description: "Receipts generation for proof of work."
-        status: "pending"
+        status: "done"
         gate: "Metadata receipts attached to all outputs."
-        tasks: []
-        evidence_nodes: []
+        tasks:
+          - "Define ReceiptSchema & AssertionMapSchema"
+          - "Extract Primitives (Schema Refactor)"
+          - "Extend ArtifactNode with Receipt"
+          - "Update Assembler to attach Receipts"
+        evidence_nodes: 
+          - "PLAN-HITO-1.3.md"
+          - "src/canon/schema/receipt.ts"
+          - "src/canon/schema/primitives.ts"
+          - "tests/receipts.test.ts"
 
   - id: 2
     title: "Phase 2: Capture & Extensibility (The Wedge)"

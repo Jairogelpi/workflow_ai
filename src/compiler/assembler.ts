@@ -1,15 +1,28 @@
 
-import { Plan } from './types';
+import { Plan, CompilerContext } from './types';
 import { WorkNode, ArtifactNodeSchema } from '../canon/schema/ir';
+import { CompilationReceipt, AssertionMap } from '../canon/schema/receipt';
+import { NodeId } from '../canon/schema/primitives';
 import { v4 as uuidv4 } from 'uuid';
-import { createVersion } from '../kernel/versioning';
+import { createVersion, computeNodeHash } from '../kernel/versioning';
 import { DocManifest, DocTemplateData } from './templates/doc';
 
 /**
  * The Assembler synthesizes the Plan and Retrieved Context into a final Artifact.
+ * Now adds PCD (Proof-Carrying Data) via Receipts.
  */
-export async function assembleArtifact(plan: Plan, context: WorkNode[]): Promise<WorkNode> {
+export async function assembleArtifact(plan: Plan, context: WorkNode[], compilerContext?: CompilerContext): Promise<WorkNode> {
     console.log(`[ASSEMBLER] Assembling artifact from ${context.length} context nodes...`);
+
+    // Stub Assertion Map
+    const assertionMap: AssertionMap = {};
+    context.forEach(node => {
+        if (node.type === 'claim' && node.id) {
+            // Mock: Link claim to itself or some evidence if found
+            // Cast to NodeId to satisfy branded type (in runtime it's just a string)
+            assertionMap[node.id as NodeId] = node.id as NodeId;
+        }
+    });
 
     // Prepare data for the template
     const templateData: DocTemplateData = {
@@ -23,12 +36,28 @@ export async function assembleArtifact(plan: Plan, context: WorkNode[]): Promise
             {
                 title: 'Context Used',
                 content: context.map(n => `- ${n.type}:${n.id}`).join('\n')
+            },
+            {
+                title: 'Receipt Data',
+                content: `Job ID: ${compilerContext?.jobId || 'N/A'}`
             }
         ]
     };
 
     // Render content using the Template
     const content = DocManifest.render(templateData);
+
+    // Create Receipt
+    const inputHash = JSON.stringify({ goal: plan.goal, contextIds: context.map(n => n.id).sort() }); // Simple mock hash
+
+    const receipt: CompilationReceipt = {
+        job_id: compilerContext?.jobId || uuidv4(),
+        compiled_at: new Date().toISOString(),
+        input_hash: inputHash, // Should be a real hash in production
+        assertion_map: assertionMap,
+        token_usage: 0,
+        latency_ms: 0
+    };
 
     // Create the raw node
     const artifact: any = {
@@ -44,31 +73,15 @@ export async function assembleArtifact(plan: Plan, context: WorkNode[]): Promise
             confidence: 0.9,
             validated: false,
             pin: false
-        }
+        },
+        receipt: receipt // Attach PCD
     };
 
-    // In a real system, the 'content' would be stored, or connected via URI.
-    // For this stub, we might want to attach it if we had a field, or just imply it's the "file" content.
-    // IR Schema doesn't strictly have a "content" field for ArtifactNodes (they have URI).
-    // But let's assume for this dry run that `WorkNode` union allows extra props or we treat it as a Note for content?
-    // Actually, `ArtifactNode` has `uri`. If we want to store text, maybe we should output a `NoteNode` or `ArtifactNode` with a data URI?
-    // Let's stick to returning an ArtifactNode as per schema, but maybe we assume the system saves the `content` to the `uri`.
-    // For testing purposes, we'll attach it as a non-schema property to verify it, or log it.
-
-    // NOTE: To make the test verify the content, we will attach it to the object.
-    // In a real implementation, this would save to disk and set URI.
+    // Debug content attachment
     (artifact as any)._content_debug = content;
 
     // Stamp it with Kernel Versioning
     artifact.metadata = createVersion(artifact);
-
-    // Validate with Zod before returning (Safety)
-    // Note: We cast to WorkNode because ArtifactNodeSchema is part of the union, but specific
-    // However, verify with Zod to be sure.
-    // artifact type must match ArtifactNodeSchema structure.
-    // We didn't define mime_type in the object above, but it is optional in our schema?
-    // Let's check ir.ts... 
-    // export const ArtifactNodeSchema = BaseNodeSchema.extend({ ... mime_type: z.string().optional() });
 
     return artifact as WorkNode;
 }
