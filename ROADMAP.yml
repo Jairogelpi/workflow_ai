@@ -1,0 +1,158 @@
+phases:
+  - id: 0
+    title: "Phase 0: The IR Kernel (Execution Core)"
+    description: "Foundational layer for structured knowledge."
+    phase_gate: "A node cannot be deleted if it is a PIN or has active dependents."
+    hitos:
+      - id: "0.1"
+        title: "IR Schema Definition"
+        description: "Schema definition for WorkGraph IR (Nodes/Edges/Metadata)."
+        status: "done"
+        gate: "Zod schema for all node types defined and validated."
+        tasks: 
+          - "Define PREFLIGHT_TEMPLATE.md (Process)"
+          - "Define WorkNodeSchema (Nodes)"
+          - "Define WorkEdgeSchema (Edges)"
+          - "Define NodeMetadataSchema (Metadata)"
+        evidence_nodes: 
+          - "PLAN-HITO-0.1.md"
+          - "src/canon/schema/ir.ts"
+          - "tests/schema.test.ts"
+
+      - id: "0.2"
+        title: "Versioning Engine"
+        description: "Hash-based delta tracking (git-like for the graph)."
+        status: "pending"
+        gate: "Hash-based delta verification operational."
+        tasks: []
+        evidence_nodes: []
+
+      - id: "0.3"
+        title: "PIN Enforcement"
+        description: "PIN/Invariant enforcement logic in the DB layer."
+        status: "pending"
+        gate: "DB constraints preventing contradiction of PIN nodes."
+        tasks: []
+        evidence_nodes: []
+
+  - id: 1
+    title: "Phase 1: RLM Compiler v1 (Deliverable Engine)"
+    description: "The primary execution engine for generating deliverables."
+    phase_gate: "Deliverables must include an Assertion Map to be marked as 'Done'."
+    hitos:
+      - id: "1.1"
+        title: "Compiler Pipeline"
+        description: "Pipeline architecture (Planner -> Retriever -> Assembler)."
+        status: "pending"
+        gate: "Successful flow from Plan to Assembly (Dry run)."
+        tasks: []
+        evidence_nodes: []
+
+      - id: "1.2"
+        title: "Manifest Templates"
+        description: "Manifest-based templates (PRD, Report, Pitch)."
+        status: "pending"
+        gate: "Templates operational and testable."
+        tasks: []
+        evidence_nodes: []
+
+      - id: "1.3"
+        title: "Proof-Carrying Deliverables"
+        description: "Receipts generation for proof of work."
+        status: "pending"
+        gate: "Metadata receipts attached to all outputs."
+        tasks: []
+        evidence_nodes: []
+
+  - id: 2
+    title: "Phase 2: Capture & Extensibility (The Wedge)"
+    description: "Expanding the surface area for knowledge entry."
+    phase_gate: "Captures must pass Zod validation before entering the WorkGraph."
+    hitos:
+      - id: "2.1"
+        title: "Chrome MV3 Extension"
+        description: "Explicit selection capture for the web."
+        status: "pending"
+        gate: "MV3 extension communicating with the kernel."
+        tasks: []
+        evidence_nodes: []
+
+      - id: "2.2"
+        title: "Multi-source Ingestion"
+        description: "Ingestion from URLs, Local Files, and Chat Export."
+        status: "pending"
+        gate: "Multi-format parser operational."
+        tasks: []
+        evidence_nodes: []
+
+      - id: "2.3"
+        title: "BYOK Secrets Management"
+        description: "Vault integration for user keys."
+        status: "pending"
+        gate: "Encryption at rest for all third-party keys."
+        tasks: []
+        evidence_nodes: []
+
+  - id: 3
+    title: "Phase 3: Scaling & Verification (Operational Excellence)"
+    description: "Hardening the system for high-volume data."
+    phase_gate: "RLM Compiler identifies contradictions with the Canon automatically."
+    hitos:
+      - id: "3.1"
+        title: "Hierarchical Digests"
+        description: "Branch/Project summarization logic."
+        status: "pending"
+        gate: "Automatic summary generation for nested nodes."
+        tasks: []
+        evidence_nodes: []
+
+      - id: "3.2"
+        title: "Staleness Detection"
+        description: "Evidence expiration and invalidation warnings."
+        status: "pending"
+        gate: "Evidence age tracking active."
+        tasks: []
+        evidence_nodes: []
+
+      - id: "3.3"
+        title: "Collaborative Governance"
+        description: "Propose/Approve workflows (Human-led)."
+        status: "pending"
+        gate: "Human assignment for node validation."
+        tasks: []
+        evidence_nodes: []
+
+  - id: 4
+    title: "Phase 4: Enterprise Hardening"
+    description: "Readying the platform for professional organizations."
+    phase_gate: "SOC2 Type II compliance readiness."
+    hitos:
+      - id: "4.1"
+        title: "SSO/SAML & RBAC"
+        description: "Enterprise identity and access control."
+        status: "pending"
+        gate: "RBAC policies enforced per sub-graph."
+        tasks: []
+        evidence_nodes: []
+
+      - id: "4.2"
+        title: "Local Compiler"
+        description: "Disconnected mode for ultimate privacy."
+        status: "pending"
+        gate: "Local LLM fallback functional."
+        tasks: []
+        evidence_nodes: []
+
+      - id: "4.3"
+        title: "SIEM Audit"
+        description: "Complete traceability for external auditors."
+        status: "pending"
+        gate: "Audit log export active."
+        tasks: []
+        evidence_nodes: []
+
+operational_rules:
+  sequential_execution: true # Mandatory: Hito N requires Hito N-1 as Done.
+  gate_enforcement: "Strict - Phase Gates must be satisfied for milestone closure."
+  documentation_level: "Structured node-by-node according to canon/04_definition_of_done.md."
+  traceability: "Mandatory population of evidence_nodes list for each hito."
