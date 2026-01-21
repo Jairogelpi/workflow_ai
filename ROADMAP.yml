@@ -138,16 +138,35 @@ phases:
       - id: "2.1"
         title: "The Wiring (Type Integration)"
         description: "Strict typing for the Frontend Store using IR Schemas."
-        status: "pending"
+        status: "done"
         gate: "Zero 'any' in useGraphStore.ts and validated sync with IR schema."
         tasks:
           - "Import WorkNode/WorkEdge into Store"
           - "Define AppNode/AppEdge interfaces"
           - "Implement Backend/Flow Adapters"
           - "Connect NodeEditor to Store"
-        evidence_nodes: []
+        evidence_nodes:
+          - "src/store/useGraphStore.ts"
+          - "src/lib/adapters.ts"
+          - "src/components/graph/GraphCanvas.tsx"
+          - "src/components/editor/NodeEditor.tsx"
+          - "documentacion/HITO_2.1_SUMMARY.md"
 
       - id: "2.2"
+        title: "The Deep Editor"
+        description: "Bidirectional synchronization, debouncing, and automated traceability."
+        status: "done"
+        gate: "Real-time sync with debounce and metadata.updated_at tracking."
+        tasks:
+          - "Implement debounce in NodeEditor"
+          - "Auto-update updated_at metadata"
+          - "Add node type badge to editor header"
+        evidence_nodes:
+          - "PLAN-HITO-2.2.md"
+          - "src/components/editor/NodeEditor.tsx"
+          - "documentacion/HITO_2.2_SUMMARY.md"
+
+      - id: "2.3"
         title: "Chrome MV3 Extension"
         description: "Explicit selection capture for the web."
         status: "done"
@@ -158,11 +177,9 @@ phases:
           - "Implement Content Script (Selection logic)"
           - "Implement Background Worker (API bridge)"
         evidence_nodes: 
-          - "PLAN-HITO-2.1.md (Legacy)"
           - "extension/manifest.json"
           - "extension/src/content/index.ts"
           - "extension/src/background/index.ts"
-          - "documentacion/HITO_2.1_SUMMARY.md (Legacy)"
 
       - id: "2.3"
         title: "Multi-source Ingestion"

@@ -91,6 +91,12 @@ export const useGraphStore = create<GraphState>((set, get) => ({
                         newData.rule = content;
                     }
 
+                    // Update metadata timestamp for traceability
+                    newData.metadata = {
+                        ...newData.metadata,
+                        updated_at: new Date().toISOString(),
+                    };
+
                     return { ...node, data: newData as WorkNode };
                 }
                 return node;
