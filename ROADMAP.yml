@@ -54,12 +54,19 @@ phases:
     phase_gate: "Deliverables must include an Assertion Map to be marked as 'Done'."
     hitos:
       - id: "1.1"
-        title: "Compiler Pipeline"
-        description: "Pipeline architecture (Planner -> Retriever -> Assembler)."
-        status: "pending"
-        gate: "Successful flow from Plan to Assembly (Dry run)."
-        tasks: []
-        evidence_nodes: []
+        title: "Compiler Pipeline (Dry Run)"
+        description: "Scaffolding of the RLM compiler (Planner -> Retriever -> Assembler) with deterministic stubs."
+        status: "done"
+        gate: "Dry run of the pipeline (Input -> Artifact) passes."
+        tasks:
+          - "Implement Planner (Stub)"
+          - "Implement Retriever (Stub)"
+          - "Implement Assembler (Stub)"
+          - "Implement Pipeline Orchestrator"
+        evidence_nodes: 
+          - "PLAN-HITO-1.1.md"
+          - "src/compiler/index.ts"
+          - "tests/compiler.test.ts"
 
       - id: "1.2"
         title: "Manifest Templates"
