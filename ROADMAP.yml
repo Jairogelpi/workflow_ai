@@ -199,22 +199,22 @@ phases:
           - "documentacion/HITO_2.4_SUMMARY.md"
 
       - id: "2.5"
-        title: "Chrome MV3 Extension"
-        description: "Explicit selection capture for the web."
+        title: "The Persistence Layer (Supabase)"
+        description: "Moving from RAM to SQL with bidirectional sync."
         status: "done"
-        gate: "MV3 extension communicating with the kernel."
-        tasks: 
-          - "Initialize extension scaffold (Vite + TS)"
-          - "Implement manifest.json"
-          - "Implement Content Script (Selection logic)"
-          - "Implement Background Worker (API bridge)"
-        evidence_nodes: 
-          - "extension/manifest.json"
-          - "extension/src/content/index.ts"
-          - "extension/src/background/index.ts"
+        gate: "Graph survives page refresh via Supabase SQL persistence."
+        tasks:
+          - "Setup Supabase SQL Schema (init.sql)"
+          - "Implement syncService (src/lib/sync.ts)"
+          - "Integrate persistence into useGraphStore"
+        evidence_nodes:
+          - "supabase/migrations/init.sql"
+          - "src/lib/sync.ts"
+          - "src/store/useGraphStore.ts"
+          - "documentacion/HITO_2.5_SUMMARY.md"
 
       - id: "2.6"
-        title: "Multi-source Ingestion"
+        title: "Chrome MV3 Extension"
         description: "Ingestion from URLs, Local Files, and Chat Export."
         status: "pending"
         gate: "Multi-format parser operational."

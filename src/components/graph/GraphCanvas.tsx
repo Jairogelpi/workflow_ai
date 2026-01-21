@@ -12,6 +12,20 @@ import { backendToFlow } from '../../lib/adapters';
 import { NodeId } from '../../canon/schema/primitives';
 import { WorkNode } from '../../canon/schema/ir';
 import { Plus } from 'lucide-react';
+import { WorkNodeComponent } from './WorkNode';
+
+const nodeTypes = {
+    note: WorkNodeComponent,
+    claim: WorkNodeComponent,
+    evidence: WorkNodeComponent,
+    decision: WorkNodeComponent,
+    idea: WorkNodeComponent,
+    task: WorkNodeComponent,
+    artifact: WorkNodeComponent,
+    assumption: WorkNodeComponent,
+    constraint: WorkNodeComponent,
+    source: WorkNodeComponent,
+};
 
 export default function GraphCanvas() {
     const {
@@ -62,6 +76,7 @@ export default function GraphCanvas() {
             <ReactFlow
                 nodes={nodes}
                 edges={edges}
+                nodeTypes={nodeTypes}
                 onNodesChange={onNodesChange}
                 onEdgesChange={onEdgesChange}
                 onConnect={onConnect}
