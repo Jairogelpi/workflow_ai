@@ -36,11 +36,17 @@ phases:
 
       - id: "0.3"
         title: "PIN Enforcement"
-        description: "PIN/Invariant enforcement logic in the DB layer."
-        status: "pending"
-        gate: "DB constraints preventing contradiction of PIN nodes."
-        tasks: []
-        evidence_nodes: []
+        description: "PIN/Invariant enforcement logic in the DB layer (Kernel for now)."
+        status: "done"
+        gate: "Kernel guards preventing contradiction of PIN nodes."
+        tasks:
+          - "Implement canModifyNode (Guard)"
+          - "Implement canDeleteNode (Guard/Dependency Check)"
+          - "Implement KernelLogger (Observability)"
+        evidence_nodes: 
+          - "PLAN-HITO-0.3.md"
+          - "src/kernel/guards.ts"
+          - "tests/guards.test.ts"
 
   - id: 1
     title: "Phase 1: RLM Compiler v1 (Deliverable Engine)"
