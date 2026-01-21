@@ -2,6 +2,7 @@
 import { describe, it, expect } from 'vitest';
 import { CodeManifest } from '../src/compiler/templates/code';
 import { DocManifest } from '../src/compiler/templates/doc';
+import { PlanManifest } from '../src/compiler/templates/plan';
 
 describe('RLM Templates (Hito 1.2)', () => {
 
@@ -37,6 +38,21 @@ describe('RLM Templates (Hito 1.2)', () => {
         expect(output).toContain('> Weekly status');
         expect(output).toContain('## Progress');
         expect(output).toContain('Everything is fine.');
+    });
+
+    it('should render a PlanManifest correctly', () => {
+        const data = {
+            title: 'Hito 1.2',
+            goal: 'Implement Templates',
+            steps: ['Create Types', 'Create Code Template', 'Create Plan Template']
+        };
+
+        const output = PlanManifest.render(data);
+
+        expect(output).toContain('# PLAN: Hito 1.2');
+        expect(output).toContain('**Goal**: Implement Templates');
+        expect(output).toContain('1. [ ] Create Types');
+        expect(output).toContain('3. [ ] Create Plan Template');
     });
 
 });

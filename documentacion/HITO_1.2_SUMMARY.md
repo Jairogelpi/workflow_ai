@@ -2,30 +2,30 @@
 
 > **Fecha**: 2026-01-21
 > **Estado**: COMPLETADO (Verified & Pushed)
-> **Versión**: 1.2.0 (Templated Output)
+> **Versión**: 1.2.1 (Full Template Suite)
 
 ## 1. Resumen Ejecutivo
-Se ha estandarizado la salida del RLM Compiler mediante la introducción de **Templates Tipados**. El Assembler ya no concatena cadenas arbitrarias, sino que utiliza estructuras definidas (`CodeManifest`, `DocManifest`) para garantizar consistencia y formato en todos los entregables generados por la IA.
+Se ha estandarizado la salida del RLM Compiler mediante **Templates Tipados**. El Assembler utiliza estructuras definidas para generar código, documentación y planes de proyecto, eliminando la generación de texto sin estructura.
 
 ## 2. Componentes (Templates)
 
 ### A. Core (`src/compiler/templates/types.ts`)
 *   Interfaz genérica `ManifestTemplate<TData>`.
-*   Garantiza que cada template tenga nombre y método `render`.
 
 ### B. Implementaciones
 1.  **CodeManifest** (`src/compiler/templates/code.ts`):
-    *   Genera bloques de código con cabeceras de metadatos (Source/Description).
+    *   Genera bloques de código fuente con metadatos.
 2.  **DocManifest** (`src/compiler/templates/doc.ts`):
-    *   Genera documentos Markdown estructurados con Frontmatter pseudo-YAML y secciones claras.
+    *   Genera reportes Markdown estructurados.
+3.  **PlanManifest** (`src/compiler/templates/plan.ts`):
+    *   Genera planes de proyecto estandarizados (Goal + Steps).
 
 ### C. Integración (`src/compiler/assembler.ts`)
-*   Se refactorizó el Assembler para instanciar `DocManifest` dinámicamente.
-*   El contenido de los artefactos ahora es predecible y parseable.
+*   El Assembler integra dinámicamente los templates (e.g., `DocManifest`) para formatear la salida.
 
 ## 3. Verificación
-*   **Unit Tests (`tests/templates.test.ts`)**: Validan que los templates renderizan correctamente el Markdown esperado.
-*   **Regression Test (`tests/compiler.test.ts`)**: Confirma que el Pipeline sigue funcionando end-to-end con el nuevo Assembler.
+*   **Unit Tests (`tests/templates.test.ts`)**: 3/3 Tests pasando (Code, Doc, Plan).
+*   **Regression Test**: Pipeline validado.
 
 ## 4. Próximos Pasos
-Con la estructura de salida definida, el sistema está listo para el **Hito 1.3 (LLM Brain)**, donde conectaremos un modelo real para llenar estos templates con inteligencia genuina.
+Listo para **Hito 1.3 (LLM Brain)**.
