@@ -45,6 +45,7 @@ interface GraphState {
     updateNodeContent: (id: string, content: string) => void;
     addNode: (type: WorkNode['type'], position?: { x: number, y: number }) => void;
     mutateNodeType: (id: string, newType: WorkNode['type']) => void;
+    deleteNode: (id: string) => Promise<void>;
 
     // Discovery
     searchQuery: string;
@@ -275,7 +276,7 @@ export const useGraphStore = create<GraphState>((set, get) => ({
         }
     },
 
-    deleteNode: async (id) => {
+    deleteNode: async (id: string) => {
         const { nodes, edges } = get();
 
         // Roadmap Perfection: Soft Delete
