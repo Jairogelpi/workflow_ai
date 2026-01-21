@@ -14,21 +14,23 @@
 **Goal**: Define the foundational **WorkGraph Intermediate Representation (IR)** using strict Zod schemas. This includes the structure for Nodes, Edges, and Metadata, ensuring all data entering the system is strictly typed and validated, fulfilling the "IR First" invariant.
 
 **Scope**:
-- [x] **Nodes**: Define generic `WorkNode` and specific types (`Note`, `Task`, `Idea`, `Source`).
+- [x] **Nodes**: Define specific reasoning types: `Claim`, `Evidence`, `Decision`, `Constraint`, `Assumption`, `Artifact` + `Note`, `Task`, `Idea`.
 - [x] **Edges**: Define `WorkEdge` and relation types (`relates_to`, `blocks`, `evidence_for`).
-- [x] **Metadata**: Define `NodeMetadata` (timestamps, hashes, origin).
+- [x] **Metadata**: add mandatory operational fields: `confidence`, `validated` (human check), `pin` (invariant).
 - [x] **Validation**: Complete Zod schema export for the Kernel.
 
 ## 3. Implementation Plan
 ### 3.1 Proposed Changes
-#### [NEW] `src/canon/schema/ir.ts`
-- **Purpose**: Central definition of the WorkGraph IR.
-- **Content**:
-    - `NodeId`, `EdgeId` (Branded types).
-    - `NodeMetadataSchema`: Zod schema for common metadata (created_at, updated_at, version_hash, origin).
-    - `WorkNodeSchema`: Discriminated union of node types.
-    - `WorkEdgeSchema`: Definition of directional edges.
-    - `WorkGraphSchema`: The container for the entire graph state.
+#### [MODIFY] `src/canon/schema/ir.ts`
+- **Refactor**: Expand `NodeMetadata` and `WorkNode` union.
+- **New Types**:
+    - `ClaimNode`: Verified statements.
+    - `EvidenceNode`: Support for claims.
+    - `DecisionNode`: Choice justification.
+    - `ConstraintNode`: Explicit restrictions.
+    - `AssumptionNode`: Unverified premises.
+    - `ArtifactNode`: Deliverable outputs.
+
 
 #### [NEW] `src/canon/schema/index.ts`
 - **Purpose**: Barrel file for exporting schemas.

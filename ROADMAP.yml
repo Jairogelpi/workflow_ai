@@ -11,9 +11,9 @@ phases:
         gate: "Zod schema for all node types defined and validated."
         tasks: 
           - "Define PREFLIGHT_TEMPLATE.md (Process)"
-          - "Define WorkNodeSchema (Nodes)"
+          - "Define WorkNodeSchema V2 (Claims, Evidence, Decisions)"
+          - "Define NodeMetadataSchema V2 (Confidence, Pin, Validated)"
           - "Define WorkEdgeSchema (Edges)"
-          - "Define NodeMetadataSchema (Metadata)"
         evidence_nodes: 
           - "PLAN-HITO-0.1.md"
           - "src/canon/schema/ir.ts"

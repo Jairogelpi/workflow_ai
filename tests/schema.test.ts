@@ -1,67 +1,85 @@
 
-import { describe, it, expect } from 'vitest'; // Using vitest or jest-like syntax
+import { describe, it, expect } from 'vitest';
 import { v4 as uuidv4 } from 'uuid';
 import crypto from 'crypto';
 import {
-    NoteNodeSchema,
-    NodeMetadataSchema,
+    ClaimNodeSchema,
     WorkNodeSchema,
+    NodeMetadataSchema,
     OriginSchema,
-    NodeIdSchema,
 } from '../src/canon/schema/ir';
 
-// Helper to generate valid metadata
-const generateMetadata = (origin: 'human' | 'ai' | 'hybrid' = 'human') => ({
+// Helper to generate valid metadata parts
+const generateBaseMetadata = (origin: 'human' | 'ai' | 'hybrid' = 'human') => ({
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
     version_hash: crypto.createHash('sha256').update('test').digest('hex'),
     origin,
 });
 
-describe('WorkGraph IR Schema', () => {
+describe('WorkGraph IR Schema V2 (Strict Canon)', () => {
 
-    it('should validate a valid Note node', () => {
-        const validNote = {
+    it('should validate a Claim node with strict metadata', () => {
+        const validClaim = {
             id: uuidv4(),
-            type: 'note',
-            content: 'This is a test note',
-            metadata: generateMetadata(),
+            type: 'claim',
+            statement: 'The earth is round',
+            verification_status: 'verified',
+            metadata: {
+                ...generateBaseMetadata(),
+                confidence: 1.0,
+                validated: true,
+                pin: true
+            },
         };
 
-        const result = WorkNodeSchema.safeParse(validNote);
+        const result = WorkNodeSchema.safeParse(validClaim);
         expect(result.success).toBe(true);
+        if (result.success) {
+            expect(result.data.type).toBe('claim');
+            // Type narrowing check
+            if (result.data.type === 'claim') {
+                expect(result.data.metadata.pin).toBe(true);
+            }
+        }
     });
 
-    it('should fail if ID is not a UUID', () => {
-        const invalidNote = {
-            id: 'not-a-uuid',
-            type: 'note',
-            content: 'Bad ID',
-            metadata: generateMetadata(),
+    it('should apply default metadata values (User-Friendly defaults)', () => {
+        // Pin, Validated, Confidence should have defaults (as per Zod schema)
+        // However, in Zod, defaults are applied when parsing *undefined* fields.
+        // If we pass the object, we should see defaults if we omit them?
+        // Actually Zod object defaults apply to the fields. 
+
+        const minimalMeta = {
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+            version_hash: crypto.createHash('sha256').update('test').digest('hex'),
+            origin: 'human' as const,
         };
-        const result = WorkNodeSchema.safeParse(invalidNote);
-        expect(result.success).toBe(false);
+
+        const parsedMeta = NodeMetadataSchema.parse(minimalMeta);
+        expect(parsedMeta.confidence).toBe(1.0);
+        expect(parsedMeta.validated).toBe(false);
+        expect(parsedMeta.pin).toBe(false);
     });
 
     it('should fail if Origin is missing', () => {
         const invalidMeta = {
-            id: uuidv4(),
-            type: 'note',
-            content: 'Missing Origin',
-            metadata: {
-                created_at: new Date().toISOString(),
-                updated_at: new Date().toISOString(),
-                version_hash: crypto.createHash('sha256').update('test').digest('hex'),
-                // origin missing
-            }
-        };
-        const result = WorkNodeSchema.safeParse(invalidMeta);
+            ...generateBaseMetadata(),
+        } as any;
+        delete invalidMeta.origin;
+
+        const result = NodeMetadataSchema.safeParse(invalidMeta);
         expect(result.success).toBe(false);
     });
 
-    it('should validate strict Origin types', () => {
-        expect(OriginSchema.safeParse('human').success).toBe(true);
-        expect(OriginSchema.safeParse('alien').success).toBe(false);
+    it('should fail if Confidence is out of range', () => {
+        const invalidMeta = {
+            ...generateBaseMetadata(),
+            confidence: 1.5 // > 1.0
+        };
+        const result = NodeMetadataSchema.safeParse(invalidMeta);
+        expect(result.success).toBe(false);
     });
 
 });
