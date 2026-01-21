@@ -1,15 +1,15 @@
 
 import { describe, it, expect } from 'vitest';
-import { verifyArtifact, VerificationContext } from '../src/compiler/verifier';
+import { verifyArtifact } from '../src/compiler/verifier';
 import { WorkNode } from '../src/canon/schema/ir';
-import { createVersion } from '../src/kernel/versioning';
+import { NodeId } from '../src/canon/schema/primitives';
 import { v4 as uuidv4 } from 'uuid';
 
 describe('Hito 1.4: The Verifier Logic', () => {
 
     const createMockContext = (confidence = 0.9): WorkNode[] => {
-        const claim: any = {
-            id: uuidv4(),
+        const claim: WorkNode = {
+            id: uuidv4() as NodeId,
             type: 'claim',
             statement: 'Test Claim',
             verification_status: 'verified',
@@ -17,11 +17,12 @@ describe('Hito 1.4: The Verifier Logic', () => {
                 origin: 'human',
                 created_at: new Date().toISOString(),
                 updated_at: new Date().toISOString(),
-                version_hash: '',
-                confidence: confidence
+                version_hash: '0000000000000000000000000000000000000000000000000000000000000000',
+                confidence: confidence,
+                validated: true,
+                pin: false
             }
         };
-        claim.metadata = createVersion(claim);
         return [claim];
     };
 
@@ -33,10 +34,16 @@ describe('Hito 1.4: The Verifier Logic', () => {
 
         return {
             id: uuidv4(),
-            type: 'artifact',
+            type: 'artifact' as const,
             name: 'Test Artifact',
             uri: 'mem://test',
-            metadata: { confidence: 1.0 },
+            metadata: {
+                confidence: 1.0,
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString(),
+                version_hash: '0000000000000000000000000000000000000000000000000000000000000000',
+                origin: 'human' as const
+            },
             receipt: {
                 job_id: uuidv4(),
                 compiled_at: new Date().toISOString(),
@@ -51,7 +58,7 @@ describe('Hito 1.4: The Verifier Logic', () => {
         const context = createMockContext(0.9);
         const artifact = createArtifactWithReceipt(goal, context);
 
-        const report = verifyArtifact(artifact, { goal, retrieved_nodes: context });
+        const report = verifyArtifact(artifact as any, { goal, retrieved_nodes: context });
 
         expect(report.passed).toBe(true);
         expect(report.score).toBe(1.0);
@@ -75,13 +82,12 @@ describe('Hito 1.4: The Verifier Logic', () => {
 
     it('should WARN if context has low confidence', () => {
         const goal = 'Test Goal';
-        // Low confidence node (0.2)
         const context = createMockContext(0.2);
         const artifact = createArtifactWithReceipt(goal, context);
 
-        const report = verifyArtifact(artifact, { goal, retrieved_nodes: context });
+        const report = verifyArtifact(artifact as any, { goal, retrieved_nodes: context });
 
-        expect(report.passed).toBe(true); // Still passes but with warnings
+        expect(report.passed).toBe(true);
         expect(report.score).toBeLessThan(1.0);
         expect(report.issues![0]!.code).toBe('LOW_CONFIDENCE');
     });

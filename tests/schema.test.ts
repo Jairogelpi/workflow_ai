@@ -8,6 +8,7 @@ import {
     NodeMetadataSchema,
     OriginSchema,
 } from '../src/canon/schema/ir';
+import { NodeId } from '../src/canon/schema/primitives';
 
 // Helper to generate valid metadata parts
 const generateBaseMetadata = (origin: 'human' | 'ai' | 'hybrid' = 'human') => ({
@@ -21,7 +22,7 @@ describe('WorkGraph IR Schema V2 (Strict Canon)', () => {
 
     it('should validate a Claim node with strict metadata', () => {
         const validClaim = {
-            id: uuidv4(),
+            id: uuidv4() as NodeId,
             type: 'claim',
             statement: 'The earth is round',
             verification_status: 'verified',
@@ -45,11 +46,6 @@ describe('WorkGraph IR Schema V2 (Strict Canon)', () => {
     });
 
     it('should apply default metadata values (User-Friendly defaults)', () => {
-        // Pin, Validated, Confidence should have defaults (as per Zod schema)
-        // However, in Zod, defaults are applied when parsing *undefined* fields.
-        // If we pass the object, we should see defaults if we omit them?
-        // Actually Zod object defaults apply to the fields. 
-
         const minimalMeta = {
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString(),
