@@ -10,6 +10,7 @@ export interface ModelConfig {
 export interface DualModelConfig {
     reasoningModel: ModelConfig;
     efficiencyModel: ModelConfig;
+    qualityMode: 'hybrid' | 'high-fidelity';
 }
 
 interface SettingsState {
@@ -18,6 +19,7 @@ interface SettingsState {
     availableModels: Array<{ id: string; name: string; provider: string }>;
     updateReasoning: (update: Partial<ModelConfig>) => void;
     updateEfficiency: (update: Partial<ModelConfig>) => void;
+    setQualityMode: (mode: 'hybrid' | 'high-fidelity') => void;
 }
 
 export const useSettingsStore = create<SettingsState>()(
@@ -25,7 +27,8 @@ export const useSettingsStore = create<SettingsState>()(
         (set) => ({
             modelConfig: {
                 reasoningModel: { provider: 'openai', modelId: 'gpt-4o', apiKey: '' },
-                efficiencyModel: { provider: 'gemini', modelId: 'gemini-1.5-flash', apiKey: '' }
+                efficiencyModel: { provider: 'gemini', modelId: 'gemini-1.5-flash', apiKey: '' },
+                qualityMode: 'hybrid'
             },
             availableModels: [
                 { id: 'gpt-4o', name: 'GPT-4o (Omni)', provider: 'openai' },
@@ -40,6 +43,9 @@ export const useSettingsStore = create<SettingsState>()(
             })),
             updateEfficiency: (update) => set((state) => ({
                 modelConfig: { ...state.modelConfig, efficiencyModel: { ...state.modelConfig.efficiencyModel, ...update } }
+            })),
+            setQualityMode: (mode) => set((state) => ({
+                modelConfig: { ...state.modelConfig, qualityMode: mode }
             })),
         }),
         { name: 'workgraph-settings' }

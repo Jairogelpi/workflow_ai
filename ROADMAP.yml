@@ -334,12 +334,48 @@ phases:
           - "documentacion/HITO_3.4_LINK_OS_EXTENSION.md"
 
       - id: "3.5"
-        title: "Collaborative Governance"
-        description: "Propose/Approve workflows (Human-led)."
-        status: "pending"
-        gate: "Human assignment for node validation."
-        tasks: []
-        evidence_nodes: []
+        title: "Identity & Security (Gate 8)"
+        description: "Supabase Auth and RLS enforcement for multi-tenant graph nodes."
+        status: "done"
+        gate: "Secure access to private projects via JWT/RLS."
+        tasks: 
+          - "Setup Supabase Auth (Sign-in/Sign-up)"
+          - "Implement project_id column and RLS policies"
+          - "Implement user_id ownership tracking"
+        evidence_nodes: 
+          - "supabase/migrations/gate8_auth_rls.sql"
+          - "documentacion/HITO_3.5_GATE8_IDENTITY.md"
+
+      - id: "3.6"
+        title: "Collaborative Governance (Gate 9)"
+        description: "AI-Mediated Consensus and Change Request workflows."
+        status: "done"
+        gate: "Change requests can be visualized with Visual Diff and approved."
+        tasks:
+          - "Implement project_members and change_requests tables"
+          - "Implement RLM Mediator for consensus"
+          - "Build Visual Diff Engine (UI)"
+          - "Add Native View Transitions API support"
+        evidence_nodes:
+          - "supabase/migrations/gate9_collaboration.sql"
+          - "src/components/collaboration/VisualDiffView.tsx"
+          - "documentacion/HITO_3.6_GATE9_COLLABORATION.md"
+
+      - id: "3.7"
+        title: "The Brain Transplant (RLM Extension)"
+        description: "Real LLM connection, Smart Routing, and Recursive Context Optimization."
+        status: "done"
+        gate: "System generates infinite-length documents with enforced observability."
+        tasks:
+          - "Implement Dual-Engine Settings (Reasoning/Efficiency)"
+          - "Implement Smart Routing Gateway (traceSpan + measureCost)"
+          - "Implement Recursive Language Modeling (RLM Loop)"
+          - "Implement TOON Topology-based context filtering"
+          - "Add Quality/Fidelity Mode toggle (preventing drift)"
+        evidence_nodes:
+          - "src/kernel/llm/gateway.ts"
+          - "src/compiler/assembler.ts"
+          - "documentacion/HITO_3.7_GATE9_EXTENSION_BRAIN.md"
 
   - id: 4
     title: "Phase 4: Enterprise Hardening"

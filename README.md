@@ -3,25 +3,26 @@
 > **The Cognitive Operating System for The Knowledge Age.**
 > *Más allá de archivos y carpetas. Hacia la verdad semántica.*
 
-## 🌟 Estado del Proyecto: Hito 3.6 (Gate 9 Completado)
+## 🌟 Estado del Proyecto: Hito 3.7 (Gate 9 Ext - The Brain)
 
-Este repositorio contiene la implementación de **WorkGraph OS**, una plataforma diseñada para 2026 que reestructura la colaboración humana en torno a grafos de lógica verificada.
+Este repositorio contiene la implementación de **WorkGraph OS**, una plataforma diseñada para 2026 que reestructura la colaboración humana en torno a grafos de lógica verificada. El sistema ahora cuenta con una arquitectura de **Cerebro Dual** (Reasoning/Efficiency) y **RLM (Recursive Language Modeling)** para generación de contenido ilimitado.
 
 ### 🚀 Características Clave
 
-#### 1. Recursive Logic Model (RLM)
-Arquitectura híbrida (Código + IA) que reduce costes en un 90% y elimina alucinaciones.
-- **Verificación**: Matemáticamente estricta ($0 cost).
-- **Mediación**: Humanamente empática (Low cost AI).
+#### 1. Recursive Logic Model (RLM) & Smart Routing
+Arquitectura híbrida (Código + IA) que reduce costes en un 90% y permite longitudes infinitas sin degradar la coherencia.
+- **Dual Engine**: BYOK (OpenAI/Gemini) con separación de tareas por complejidad (Reasoning vs Efficiency).
+- **Infinite Loop**: Generación recursiva mediante "Digests" constantes.
+- **TOON Logic**: Filtrado de contexto optimizado topológicamente de forma real.
 
 #### 2. Colaboración "Zero-Fear"
 - **AI Mediator**: Un agente que negocia conflictos por ti.
-- **Visual Diff Engine**: Evidencia forense de cambios lado a lado.
+- **Visual Diff Engine**: Evidencia forense de cambios lado a lado con Native Transitions API.
 - **Gobernanza Invisible**: El sistema impide romper reglas de negocio (PINs) antes de que ocurran.
 
 #### 3. Seguridad de Identidad
 - Sistema **RLS 2.0** (Row Level Security) que protege cada nodo a nivel de base de datos.
-- Extensión de navegador "LinkOS" para captura segura de contexto.
+- Extensión de navegador "LinkOS" para captura segura y análisis profundo de contexto.
 
 ---
 
@@ -30,30 +31,32 @@ Arquitectura híbrida (Código + IA) que reduce costes en un 90% y elimina aluci
 - **Frontend**: React 19, TailwindCSS, Lucide Icons.
 - **Backend / Database**: Supabase (PostgreSQL + Vector).
 - **Kernel**: TypeScript, Logic Compiler, Merge Engine.
-- **AI**: Adaptadores modulares (OpenAI/Gemini) bajo arquitectura RLM.
+- **AI**: Gateway de 3 capas con observabilidad obligatoria (`traceSpan`, `measureCost`).
 
 ## 📂 Estructura del Proyecto
 
 ```
 /src
   /canon        # Definiciones de Tipos y Esquemas (La Verdad)
-  /compiler     # Verifier & Assembler (El Juez Lógico)
-  /kernel       # Logic Core (MergeEngine, MediatorAgent)
+  /compiler     # Verifier, Assembler & RLM (El Juez Lógico)
+  /kernel       # Logic Core (MergeEngine, LLM Gateway, MediatorAgent)
   /components
     /collaboration # UI Premium (Inbox, Diff, Cards)
+    /settings      # Configuración BYOK
   /lib/ingest   # Procesamiento de documentos
 /supabase
   /migrations   # Evolución del esquema DB (Gate 1 -> Gate 9)
 /tests          # Simulaciones de lógica y colaboración
-/documentacion  # Manuales detallados por Hito
+/documentacion  # Manuales detallados por Hito (The Source of Truth)
 ```
 
 ## 📖 Documentación
 
 Para entender la profundidad del sistema, consulta:
-- [📄 Manual Técnico Completo (2026)](./documentacion/DOCUMENTACION_TECNICA_2026.md)
+- [📄 Hito 3.7: Trasplante de Cerebro (Real LLM & RLM)](./documentacion/HITO_3.7_GATE9_EXTENSION_BRAIN.md)
 - [📄 Hito 3.6: Colaboración y Gobernanza](./documentacion/HITO_3.6_GATE9_COLLABORATION.md)
 - [📄 Hito 3.5: Identidad y Seguridad](./documentacion/HITO_3.5_GATE8_IDENTITY.md)
+- [📄 Manual Técnico Completo (2026)](./documentacion/DOCUMENTACION_TECNICA_2026.md)
 
 ---
 

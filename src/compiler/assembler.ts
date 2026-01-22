@@ -1,5 +1,6 @@
 import { traceSpan } from '../kernel/observability';
 import { Plan, CompilerContext } from './types';
+import { useSettingsStore } from '../store/useSettingsStore';
 import { WorkNode, ArtifactNodeSchema } from '../canon/schema/ir';
 import { CompilationReceipt, AssertionMap } from '../canon/schema/receipt';
 import { NodeId } from '../canon/schema/primitives';
@@ -46,13 +47,31 @@ export async function assembleRecursiveArtifact(plan: Plan, contextNodes: any[])
     for (const step of plan.steps) {
         console.log(`[RLM] Generando sección: ${step.id}...`);
 
+        // TOON: Real Topology-Based Context Filtering
+        const filteredNodes = contextNodes.filter(node => {
+            if (step.required_context_keys.length === 0) return true; // Fallback to all if no keys
+
+            // Search keywords in node's primary text content
+            const searchSource = [
+                (node as any).statement,
+                (node as any).content,
+                (node as any).rationale,
+                (node as any).rule,
+                (node as any).premise,
+                (node as any).title,
+                (node as any).summary,
+                (node as any).name
+            ].filter(Boolean).join(' ').toLowerCase();
+
+            return step.required_context_keys.some(k => searchSource.includes(k.toLowerCase()));
+        }).slice(0, 10); // Cap to 10 nodes for context safety
+
         // 1. GENERAR (Tier: REASONING - Usamos el modelo listo)
         const sectionContent = await generateText(
             RLM_PROMPT
                 .replace('{goal}', plan.goal)
                 .replace('{currentStep}', step.description)
-                // TOON: En realidad deberíamos filtrar, por ahora pasamos todo (mock)
-                .replace('{contextData}', JSON.stringify(contextNodes.map(n => n.content).slice(0, 3)))
+                .replace('{contextData}', JSON.stringify(filteredNodes.map(n => ({ id: n.id, type: n.type, data: (n as any).content || (n as any).statement || (n as any).summary }))))
                 .replace('{previousSectionDigest}', previousDigest),
             "Genera esta sección.",
             'REASONING' // <--- Gasto alto aquí para calidad
@@ -61,12 +80,15 @@ export async function assembleRecursiveArtifact(plan: Plan, contextNodes: any[])
         // 2. ACUMULAR
         fullDocument += `\n\n## ${step.description}\n\n${sectionContent}`;
 
-        // 3. COMPRIMIR MEMORIA (Tier: EFFICIENCY - Usamos el modelo barato)
-        // Esto es lo que permite longitud infinita. Nunca pasamos el texto completo al siguiente paso.
+        // 3. COMPRIMIR MEMORIA (Tier: EFFICIENCY or REASONING based on qualityMode)
+        // Esto es lo que permite longitud infinita.
+        const { modelConfig } = useSettingsStore.getState();
+        const digestionTier = modelConfig.qualityMode === 'high-fidelity' ? 'REASONING' : 'EFFICIENCY';
+
         const newDigest = await generateText(
             DIGEST_PROMPT,
             sectionContent,
-            'EFFICIENCY' // <--- Ahorro masivo aquí
+            digestionTier
         );
 
         // Actualizamos la memoria rodante

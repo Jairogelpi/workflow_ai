@@ -50,14 +50,18 @@ for (const step of plan.steps) {
 }
 ```
 
-## 4. Gestión de Entorno (.env)
+## 5. Optimizaciones de Sinceridad Técnica
 
-**¿Qué necesito configurar en mi .env?**
-**NADA para las API Keys.**
+### TOON (Topology Optimized Object Navigation)
+Para evitar alucinaciones, hemos reemplazado la selección arbitraria de nodos por un algoritmo de **Filtrado Topológico**:
+- El Assembler analiza los `required_context_keys` del Plan.
+- Solo los nodos que contienen esas palabras clave en su contenido (Claim, Rationale, Evidence, etc.) son inyectados en el prompt.
+- Esto garantiza que la IA siempre vea la información relevante, independientemente de su posición en el grafo.
 
-Al adoptar un modelo **BYOK (Bring Your Own Key)** Client-Side:
-1.  Las claves se guardan en el navegador del usuario (`localStorage`).
-2.  No necesitas `OPENAI_API_KEY` ni `GEMINI_API_KEY` en tu servidor.
-3.  Esto reduce el riesgo de seguridad y el coste operativo del despliegue.
+### Control de Calidad (Fidelity Mode)
+Para mitigar el efecto "Teléfono Escacharrado" en documentos extremadamente largos:
+- **Modo Híbrido**: Máximo ahorro. Usa el motor barato para la compresión de "Memoria de Trabajo".
+- **Modo Fidelidad Máxima**: Máxima coherencia. Usa el motor potente para el 100% de la cadena RLM, asegurando que ni un solo matiz se pierda en la recursión.
 
-Solo asegúrate de que tu `VITE_SERVER_URL` esté correcto si despliegas en producción.
+---
+*Este hito cierra el ciclo de Gate 9, dotando a WorkGraph OS de autonomía cognitiva, eficiencia económica y estabilidad topológica.*

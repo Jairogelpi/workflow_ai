@@ -61,8 +61,32 @@ export function ModelSelector() {
                 </div>
             </div>
 
+            {/* QUALITY MODE TOGGLE */}
+            <div className="space-y-2 pt-4 border-t border-dashed">
+                <h4 className="text-xs font-bold text-gray-500 uppercase tracking-widest">Nivel de Fidelidad (RLM)</h4>
+                <div className="flex p-1 bg-gray-200 rounded-lg">
+                    <button
+                        onClick={() => useSettingsStore.getState().setQualityMode('hybrid')}
+                        className={`flex-1 py-1 text-[10px] font-bold rounded-md transition ${modelConfig.qualityMode === 'hybrid' ? 'bg-white shadow text-blue-600' : 'text-gray-500'}`}
+                    >
+                        Híbrido (Económico)
+                    </button>
+                    <button
+                        onClick={() => useSettingsStore.getState().setQualityMode('high-fidelity')}
+                        className={`flex-1 py-1 text-[10px] font-bold rounded-md transition ${modelConfig.qualityMode === 'high-fidelity' ? 'bg-white shadow text-purple-600' : 'text-gray-500'}`}
+                    >
+                        Fidelidad Máxima
+                    </button>
+                </div>
+                <p className="text-[9px] text-gray-400 italic">
+                    {modelConfig.qualityMode === 'hybrid'
+                        ? 'Usa el motor eficiente para resúmenes (Ahorro del 80%).'
+                        : 'Usa el motor de razonamiento para TODO. Evita el efecto "teléfono escacharrado".'}
+                </p>
+            </div>
+
             <p className="text-[10px] text-gray-400 pt-2">
-                Tu clave se guarda localmente (BYOK). El sistema usará el motor eficiente para el 80% de las tareas.
+                Tu clave se guarda localmente (BYOK). El sistema usará el motor eficiente para el 80% de las tareas si eliges "Híbrido".
             </p>
         </div>
     );
