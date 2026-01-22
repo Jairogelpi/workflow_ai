@@ -185,8 +185,7 @@ export default function NodeEditor() {
 
                             {selectedNode.data.type === 'source' && (
                                 <SourceNodeView
-                                    nodeId={selectedNodeId!}
-                                    metadata={selectedNode.data.metadata}
+                                    node={selectedNode.data}
                                 />
                             )}
                         </div>

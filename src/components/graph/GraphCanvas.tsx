@@ -36,7 +36,8 @@ export default function GraphCanvas() {
         onConnect,
         setNodes,
         setSelectedNode,
-        addNode
+        addNode,
+        openWindow
     } = useGraphStore();
 
     // Initial dummy data if store is empty
@@ -80,7 +81,16 @@ export default function GraphCanvas() {
                 onNodesChange={onNodesChange}
                 onEdgesChange={onEdgesChange}
                 onConnect={onConnect}
-                onNodeClick={(_, node) => setSelectedNode(node.id)}
+                onNodeClick={(_, node) => {
+                    setSelectedNode(node.id);
+                    openWindow({
+                        id: node.id,
+                        title: `EDIT // ${(node.data as any).label || (node.data as any).content || 'UNTITLED'}`,
+                        contentType: 'editor',
+                        nodeData: node,
+                        contentUrl: `/editor?nodeId=${node.id}`
+                    });
+                }}
                 onPaneClick={onPaneClick}
                 fitView
             >

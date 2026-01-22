@@ -51,19 +51,37 @@ interface GraphState {
     searchQuery: string;
     setSearchQuery: (query: string) => void;
     centerNode: (id: string) => void;
+
+    // WINDOW MANAGER
+    activeWindow: {
+        id: string;
+        title: string;
+        contentUrl?: string;
+        contentType: 'pdf' | 'web' | 'text' | 'editor';
+        nodeData?: any;
+        mimeType?: string;
+        textContent?: string;
+    } | null;
+
+    openWindow: (window: GraphState['activeWindow']) => void;
+    closeWindow: () => void;
 }
 
 export const useGraphStore = create<GraphState>((set, get) => ({
     nodes: [],
     edges: [],
     selectedNodeId: null,
+    selectedNodeId: null,
     searchQuery: '',
+    activeWindow: null,
     isLoading: false,
     isSyncing: false,
 
     setNodes: (nodes) => set({ nodes }),
     setEdges: (edges) => set({ edges }),
     setSearchQuery: (searchQuery) => set({ searchQuery }),
+    openWindow: (window) => set({ activeWindow: window }),
+    closeWindow: () => set({ activeWindow: null }),
 
     loadProject: async (projectId) => {
         set({ isLoading: true });

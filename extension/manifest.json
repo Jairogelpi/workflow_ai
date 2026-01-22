@@ -10,7 +10,29 @@
         "notifications"
     ],
     "host_permissions": [
-        "https://*.supabase.co/"
+        "<all_urls>"
+    ],
+    "content_scripts": [
+        {
+            "matches": [
+                "<all_urls>"
+            ],
+            "js": [
+                "content.js"
+            ],
+            "run_at": "document_end"
+        }
+    ],
+    "web_accessible_resources": [
+        {
+            "resources": [
+                "assets/*",
+                "icon*.png"
+            ],
+            "matches": [
+                "<all_urls>"
+            ]
+        }
     ],
     "background": {
         "service_worker": "background.js",

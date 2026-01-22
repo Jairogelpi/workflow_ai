@@ -1,40 +1,34 @@
 'use client';
 
-import { useEffect } from 'react';
-import GraphCanvas from '../../components/graph/GraphCanvas';
-import NodeEditor from '../../components/editor/NodeEditor';
-import Sidebar from '../../components/layout/Sidebar';
-import { useGraphStore } from '../../store/useGraphStore';
-import GlobalDropzone from '../../components/graph/GlobalDropzone';
+import { useSearchParams } from 'next/navigation';
+import NodeEditor from '@/components/editor/NodeEditor';
+import { Suspense } from 'react';
 
-const DEFAULT_PROJECT_ID = '00000000-0000-0000-0000-000000000000';
+function EditorPageContent() {
+    const searchParams = useSearchParams();
+    const nodeId = searchParams.get('nodeId');
 
-export default function EditorPage() {
-    const loadProject = useGraphStore((state) => state.loadProject);
-
-    useEffect(() => {
-        loadProject(DEFAULT_PROJECT_ID);
-    }, [loadProject]);
+    if (!nodeId) return <div className="p-10 text-slate-500">No node selected</div>;
 
     return (
-        <GlobalDropzone>
-            <main className="flex h-screen w-screen overflow-hidden bg-slate-950 text-slate-200 font-sans">
-                {/* Sidebar - Browser & Discovery */}
-                <Sidebar />
+        <div className="h-screen w-screen bg-slate-950 flex flex-col">
+            {/* Barra superior simple para indicar que estás en modo Focus */}
+            <div className="h-12 border-b border-slate-800 flex items-center px-4 bg-slate-900">
+                <span className="font-mono text-xs text-emerald-500">FOCUS MODE // NODE {nodeId}</span>
+            </div>
 
-                {/* Main Content Area */}
-                <div className="flex-1 flex flex-col relative min-w-0">
-                    {/* Graph Area */}
-                    <div className="flex-1 border-r border-slate-800 relative group">
-                        <GraphCanvas />
-                    </div>
-                </div>
+            <div className="flex-1 overflow-hidden relative">
+                {/* Reutilizamos el MISMO componente de edición */}
+                <NodeEditor />
+            </div>
+        </div>
+    );
+}
 
-                {/* Editor Panel - Knowledge Refinement */}
-                <aside className="w-96 border-l border-slate-800 flex flex-col shadow-2xl z-20">
-                    <NodeEditor />
-                </aside>
-            </main>
-        </GlobalDropzone>
+export default function EditorPage() {
+    return (
+        <Suspense fallback={<div>Loading editor...</div>}>
+            <EditorPageContent />
+        </Suspense>
     );
 }

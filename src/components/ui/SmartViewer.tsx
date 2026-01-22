@@ -1,0 +1,69 @@
+'use client';
+
+import { FileText, Code, Image as ImageIcon, Download } from 'lucide-react';
+
+interface SmartViewerProps {
+    url: string;
+    type: string;
+    textContent?: string; // El texto que extrajo el Hito 2.7
+}
+
+export function SmartViewer({ url, type, textContent }: SmartViewerProps) {
+    // 1. Visor Nativo (PDFs y Webs)
+    if (type === 'application/pdf' || type === 'text/html') {
+        return <iframe src={url} className="w-full h-full border-none bg-white" title="Preview" />;
+    }
+
+    // 2. Visor de Imágenes
+    if (type.startsWith('image/')) {
+        return (
+            <div className="flex items-center justify-center h-full bg-black/50">
+                <img src={url} alt="Preview" className="max-w-full max-h-full object-contain" />
+            </div>
+        );
+    }
+
+    // 3. Visor de Código / Texto Plano
+    if (type.startsWith('text/') || type.includes('json') || type.includes('javascript')) {
+        return (
+            <div className="h-full bg-[#1e1e1e] p-4 overflow-auto font-mono text-sm text-gray-300">
+                <pre>{textContent || "Loading content..."}</pre>
+            </div>
+        );
+    }
+
+    // 4. Fallback Inteligente (Word, Excel, etc.)
+    // En lugar de fallar, mostramos el conocimiento extraído (Intelligence First)
+    return (
+        <div className="flex flex-col h-full bg-slate-900">
+            <div className="flex-1 p-8 text-center flex flex-col items-center justify-center text-slate-400">
+                <FileText size={48} className="mb-4 text-slate-600" />
+                <h3 className="text-lg font-medium text-slate-200">Preview not available for this format</h3>
+                <p className="text-sm max-w-md mt-2">
+                    But don't worry, the <strong>WorkGraph Compiler</strong> has already read and indexed the content of this file.
+                </p>
+
+                {/* Mostramos el texto digerido si existe */}
+                {textContent && (
+                    <div className="mt-6 w-full max-w-2xl bg-slate-800/50 p-4 rounded text-left h-64 overflow-auto border border-slate-700">
+                        <p className="text-xs text-indigo-400 mb-2 uppercase font-bold tracking-wider">Extracted Knowledge:</p>
+                        <p className="whitespace-pre-wrap font-serif text-slate-300 leading-relaxed">
+                            {textContent.substring(0, 1000)}...
+                        </p>
+                    </div>
+                )}
+            </div>
+
+            <div className="p-4 border-t border-slate-800 bg-slate-950 flex justify-center">
+                <a
+                    href={url}
+                    download
+                    className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg transition-colors font-medium text-sm"
+                >
+                    <Download size={16} />
+                    Download Original File
+                </a>
+            </div>
+        </div>
+    );
+}

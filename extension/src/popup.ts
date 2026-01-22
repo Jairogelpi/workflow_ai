@@ -8,16 +8,9 @@ const projectInput = document.getElementById('project') as HTMLInputElement;
 const saveBtn = document.getElementById('save') as HTMLButtonElement;
 const statusDiv = document.getElementById('status') as HTMLDivElement;
 
-declare const process: {
-    env: {
-        SUPABASE_URL: string;
-        SUPABASE_KEY: string;
-    }
-};
-
 // Show defaults as placeholders
-const defaultUrl = process.env.SUPABASE_URL || '';
-const defaultKey = process.env.SUPABASE_KEY || '';
+const defaultUrl = '';
+const defaultKey = '';
 
 urlInput.placeholder = defaultUrl || 'https://your-project.supabase.co';
 keyInput.placeholder = 'Pre-configured (from .env)';

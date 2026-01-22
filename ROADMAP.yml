@@ -253,6 +253,19 @@ phases:
           - "documentacion/HITO_2.7_SUMMARY.md"
 
       - id: "2.8"
+        title: "The Window Manager (UX Futurista)"
+        description: "Minority Report-style floating windows with glassmorphism for multitasking over the graph."
+        status: "done"
+        gate: "FloatingPanel component functional and integrated."
+        tasks:
+          - "Implement FloatingPanel.tsx"
+          - "Integrate Window Manager in useGraphStore"
+          - "Mount Floating Window in page.tsx"
+        evidence_nodes:
+          - "src/components/ui/FloatingPanel.tsx"
+          - "documentacion/DESIGN_SYSTEM_2.0.md"
+
+      - id: "2.9"
         title: "BYOK Secrets Management"
         description: "Vault integration for user keys."
         status: "pending"
