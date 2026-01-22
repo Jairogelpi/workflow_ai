@@ -1,169 +1,122 @@
 # WorkGraph OS
 
-> **Sistema de Razonamiento y Captura Universal**  
-> Transforma cualquier fuente de conocimiento en un grafo navegable y consultable.
+**Sistema Operativo de Pensamiento de Alto Rendimiento**
 
-[![Phase](https://img.shields.io/badge/Phase-2%20Complete-green)]()
-[![License](https://img.shields.io/badge/License-MIT-blue)]()
+Una arquitectura híbrida TypeScript + Rust diseñada para transformar conocimiento desestructurado en **Estructura Ejecutable** con integridad verificable.
 
 ---
 
-## 🌟 Características Principales
+## 🏗️ Arquitectura del Sistema
 
-### 🎯 Captura Universal
-- **Desde LLMs**: Captura archivos de ChatGPT, Claude, Gemini con un click
-- **Drag & Drop**: Arrastra texto desde cualquier web → Nodo creado automáticamente
-- **Archivos Locales**: Arrastra PDFs, documentos, imágenes desde tu PC
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                    WORKGRAPH OS ECOSYSTEM                       │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│  ┌──────────────┐    ┌──────────────┐    ┌──────────────┐      │
+│  │   Extension  │    │   Next.js    │    │   Supabase   │      │
+│  │  (X-Ray HUD) │◄──►│   Frontend   │◄──►│  (SQL+pgvec) │      │
+│  └──────────────┘    └──────────────┘    └──────────────┘      │
+│         │                   │                   │               │
+│         ▼                   ▼                   ▼               │
+│  ┌─────────────────────────────────────────────────────────┐   │
+│  │                    KERNEL (TypeScript)                   │   │
+│  │  ┌─────────┐  ┌──────────┐  ┌──────────┐  ┌──────────┐  │   │
+│  │  │ Guards  │  │ Digest   │  │ LLM      │  │ Observa- │  │   │
+│  │  │         │  │ Engine   │  │ Gateway  │  │ bility   │  │   │
+│  │  └─────────┘  └──────────┘  └──────────┘  └──────────┘  │   │
+│  └─────────────────────────────────────────────────────────┘   │
+│                            │                                    │
+│                            ▼                                    │
+│  ┌─────────────────────────────────────────────────────────┐   │
+│  │               RUST CORE MODULES (WASM/Native)            │   │
+│  │  ┌───────────┐ ┌───────────┐ ┌────────┐ ┌────────────┐  │   │
+│  │  │ Antigrav  │ │ Signer    │ │ Logic  │ │ CRDT Sync  │  │   │
+│  │  │ Engine    │ │ Core      │ │ SAT    │ │ Engine     │  │   │
+│  │  │ (physics) │ │ (Ed25519) │ │ Solver │ │ (Yrs)      │  │   │
+│  │  └───────────┘ └───────────┘ └────────┘ └────────────┘  │   │
+│  │          ┌────────────────┐  ┌────────────────┐          │   │
+│  │          │ Ingestor Rust  │  │ Stream Assemb. │          │   │
+│  │          │ (PDF/HTML)     │  │ (Doc Export)   │          │   │
+│  │          └────────────────┘  └────────────────┘          │   │
+│  └─────────────────────────────────────────────────────────┘   │
+│                                                                 │
+└─────────────────────────────────────────────────────────────────┘
+```
 
-### 🧠 Razonamiento Avanzado
-- **Compilación Recursiva**: Subdivide tareas complejas automáticamente
-- **Retrieval Selectivo**: Usa digests para contexto, raw para precisión
-- **Grafo Visual**: Navega dependencias y relaciones
+---
 
-### 🔐 Seguridad BYOK
-- **Tus Claves**: Cifrado cliente-side (AES-256-GCM)
-- **Zero Trust**: Las claves nunca salen del navegador
-- **Rate Limiting**: Control de costos por usuario
+## 🦀 Módulos Rust
 
-### 🛡️ Canon Enforcement
-- **PIN Nodes**: Protección de verdades fundamentales
-- **Guards**: Evita contradicciones y borrados accidentales
-- **Staleness Detection**: Identifica conocimiento obsoleto
+| Módulo | Propósito | Tecnología |
+|--------|-----------|------------|
+| **antigravity-engine** | Física del grafo 60 FPS | wasm-bindgen, glam |
+| **signer-core** | Firmas Ed25519 | ed25519-dalek |
+| **logic-engine** | SAT Solver para PINs | varisat |
+| **crdt-sync** | Colaboración sin conflictos | yrs (Yjs Rust) |
+| **ingestor-rust** | Parsing PDF/HTML | lopdf, scraper |
+| **stream-assembler** | Exportación streaming | axum, tokio |
 
 ---
 
 ## 🚀 Quick Start
 
-### Instalación
-
 ```bash
-# Clone
-git clone https://github.com/yourorg/workgraph-os.git
-cd workgraph-os
-
-# Install
+# 1. Instalar dependencias
 npm install
 
-# Setup Supabase
+# 2. Configurar variables de entorno
 cp .env.example .env.local
-# Añade tus credenciales de Supabase
 
-# Run
+# 3. Iniciar en desarrollo
 npm run dev
-```
 
-### Instalar Extensión
-
-```bash
-cd extension
-npm install
-npm run build
-
-# Chrome: chrome://extensions
-# Load unpacked → extension/dist
+# 4. (Opcional) Docker Compose para todo el stack
+docker compose up
 ```
 
 ---
 
-## 📖 Documentación
-
-- [**Sistema de Captura Universal**](./documentacion/SISTEMA_CAPTURA_UNIVERSAL.md) - Guía técnica completa
-- [**Guía de Captura**](./documentacion/GUIA_CAPTURA.md) - Quick reference para usuarios
-- [**ROADMAP**](./ROADMAP.yml) - Hitos y evidencia
-
----
-
-## 🎬 Demo
-
-### Captura desde ChatGPT
-1. Sube PDF a ChatGPT
-2. Click "📥 Send to WorkGraph"
-3. Nodo creado con chunks vectorizados
-
-### Drag & Drop Texto
-1. Selecciona texto en Wikipedia
-2. Arrastra a ventana flotante
-3. Nodo con texto + URL origen
-
----
-
-## 🏗️ Arquitectura
+## 📁 Estructura del Proyecto
 
 ```
-┌─────────────┐
-│  Browser    │
-│  Extension  │ ─────┐
-└─────────────┘      │
-                     ▼
-┌─────────────────────────┐
-│   Next.js Frontend      │
-│   (React + ReactFlow)   │
-└─────────────────────────┘
-           │
-           ▼
-┌─────────────────────────┐
-│   API Routes (Backend)  │
-│   - /ingest/file        │
-│   - /ingest/link        │
-│   - /nodes/quick        │
-└─────────────────────────┘
-           │
-           ▼
-┌─────────────────────────┐
-│   Supabase              │
-│   (PostgreSQL+pgvector) │
-└─────────────────────────┘
+workgraph/
+├── src/
+│   ├── app/              # Next.js App Router
+│   ├── canon/schema/     # IR Zod Schemas
+│   ├── compiler/         # RLM Pipeline
+│   ├── kernel/           # Core Logic
+│   ├── components/       # React UI
+│   └── store/            # Zustand State
+├── extension/            # Chrome MV3 Extension
+├── antigravity-engine/   # Rust/WASM Physics
+├── signer-core/          # Rust Ed25519 Signing
+├── logic-engine/         # Rust SAT Solver
+├── crdt-sync/            # Rust CRDT Engine
+├── ingestor-rust/        # Rust Heavy Parsing
+├── stream-assembler/     # Rust Doc Export
+└── documentacion/        # Technical Docs
 ```
 
 ---
 
-## 🛠️ Stack Tecnológico
+## 🔐 Seguridad
 
-- **Frontend**: Next.js 15, React 19, ReactFlow, TipTap
-- **Backend**: Next.js API Routes, Supabase
-- **Extension**: Chrome MV3, Vite, TypeScript
-- **Security**: Web Crypto API, Supabase RLS
-- **Vector DB**: pgvector (OpenAI embeddings)
-
----
-
-## 📋 Roadmap
-
-- [x] Phase 0: IR Kernel
-- [x] Phase 1: RLM Compiler
-- [x] Phase 2: Capture & Interface
-- [x] Phase 3: Scaling & Verification
-- [x] Phase 4: Enterprise Hardening
-- [x] Phase 5: Universal Capture System
-- [ ] Phase 6: Multi-Agent Collaboration
-
-Ver [ROADMAP.yml](./ROADMAP.yml) para detalles.
+- **BYOK (Bring Your Own Key)**: Las claves API se cifran con AES-GCM.
+- **Ed25519 Signatures**: Cada nodo firmado tiene una prueba criptográfica inmutable.
+- **JIT Decryption**: Las claves solo se descifran en memoria durante la llamada.
+- **Log Sanitization**: Todas las claves se redactan automáticamente en logs.
 
 ---
 
-## 🤝 Contribuir
+## 📊 Observabilidad
 
-Las contribuciones son bienvenidas. Por favor:
-1. Fork el repo
-2. Crea feature branch (`git checkout -b feature/AmazingFeature`)
-3. Commit cambios (`git commit -m 'Add AmazingFeature'`)
-4. Push (`git push origin feature/AmazingFeature`)
-5. Abre Pull Request
+- **OpenTelemetry**: Todas las operaciones emiten trazas.
+- **Audit Store**: Cada llamada LLM registra tokens, coste y latencia.
+- **Forensic IDs**: Cada párrafo generado es trazable a su evidencia.
 
 ---
 
-## 📄 Licencia
+## 📜 Licencia
 
-MIT License - Ver [LICENSE](./LICENSE)
-
----
-
-## 💬 Soporte
-
-- **Issues**: [GitHub Issues](https://github.com/yourorg/workgraph-os/issues)
-- **Docs**: [/documentacion](./documentacion)
-- **Email**: support@workgraph.io
-
----
-
-**Built with ❤️ by the WorkGraph Team**
+MIT © 2026 WorkGraph OS

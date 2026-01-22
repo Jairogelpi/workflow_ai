@@ -8,11 +8,13 @@ services:
       - "3000:3000"
     environment:
       - RUST_WORKER_URL=http://ingestor:8080
+      - RLM_CORE_URL=http://rlm-core:8082
       - DATABASE_URL=${DATABASE_URL}
       - NEXT_PUBLIC_SUPABASE_URL=${NEXT_PUBLIC_SUPABASE_URL}
       - NEXT_PUBLIC_SUPABASE_ANON_KEY=${NEXT_PUBLIC_SUPABASE_ANON_KEY}
     depends_on:
       - ingestor
+      - rlm-core
 
   # El "Músculo" (Ingestor en Rust)
   ingestor:
@@ -24,9 +26,33 @@ services:
       - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4317
     restart: always
 
+  # El "Criterio" (RLM Core en Python)
+  rlm-core:
+    build: ./rlm-core
+    ports:
+      - "8082:8082"
+    environment:
+      - OLLAMA_BASE_URL=http://ollama:11434
+      - DEFAULT_LOCAL_MODEL=phi3:mini
+    depends_on:
+      - ollama
+    restart: always
+
+  # Motor de IA Local (Ollama)
+  ollama:
+    image: ollama/ollama:latest
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    restart: always
+
   # Sistema Nervioso (Observabilidad)
   otel-collector:
     image: otel/opentelemetry-collector:latest
     volumes:
       - ./otel-config.yaml:/etc/otel-config.yaml
     command: ["--config=/etc/otel-config.yaml"]
+
+volumes:
+  ollama_data:
