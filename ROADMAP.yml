@@ -234,6 +234,25 @@ phases:
           - "documentacion/HITO_2.6_SUMMARY.md"
 
       - id: "2.7"
+        title: "The Omni-Ingestor"
+        description: "Universal Smart & Lossless Ingestion (PDF, Word, Excel, Code) with Semantic Chunking and Instant Vectorization."
+        status: "done"
+        gate: "Lossless binary storage + Recursive Chunking + pgvector Indexing operational."
+        tasks:
+          - "Setup Supabase Storage (Bucket: artifacts) with RLS"
+          - "Implement Two-Phase Ingest (Upload & Digest)"
+          - "Implement SHA-256 Deduplication & Gzip Compression"
+          - "Implement Recursive Semantic Chunking"
+          - "Implement Instant Vectorization (pgvector)"
+          - "Implement SourceNodeView & Fragment Navigation"
+        evidence_nodes:
+          - "src/lib/ingest/index.ts"
+          - "src/lib/ingest/chunking.ts"
+          - "src/lib/ingest/vectorizer.ts"
+          - "src/components/editor/SourceNodeView.tsx"
+          - "documentacion/HITO_2.7_SUMMARY.md"
+
+      - id: "2.8"
         title: "BYOK Secrets Management"
         description: "Vault integration for user keys."
         status: "pending"

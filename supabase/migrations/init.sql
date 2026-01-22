@@ -7,14 +7,14 @@ begin
   if not exists (select 1 from pg_type where typname = 'node_type') then
     create type node_type as enum (
       'claim', 'evidence', 'decision', 'constraint', 'assumption', 
-      'plan', 'task', 'artifact', 'note', 'source', 'idea'
+      'plan', 'task', 'artifact', 'note', 'source', 'idea', 'excerpt'
     );
   end if;
 
   if not exists (select 1 from pg_type where typname = 'relation_type') then
     create type relation_type as enum (
       'supports', 'refutes', 'depends_on', 'contradicts', 
-      'refines', 'supersedes', 'relates_to', 'blocks'
+      'refines', 'supersedes', 'relates_to', 'blocks', 'part_of'
     );
   end if;
 
@@ -159,4 +159,27 @@ create policy "Users can see edges of default or own projects" on work_edges
   for all using (
     project_id = '00000000-0000-0000-0000-000000000000' or 
     exists (select 1 from projects where id = work_edges.project_id and owner_id = auth.uid())
+  );
+
+-- 8. STORAGE BUCKETS (The Artifacts Vault)
+-- Note: Buckets creation is usually done via Dashboard or API, but we can register it in the storage.buckets table safely.
+insert into storage.buckets (id, name, public) 
+values ('artifacts', 'artifacts', false)
+on conflict (id) do nothing;
+
+-- Storage RLS Policies
+-- Allow authenticated users to upload and view their own files.
+-- We use prefix logic or owner for multi-project isolation.
+create policy "Authenticated users can upload artifacts"
+  on storage.objects for insert
+  with check (
+    bucket_id = 'artifacts' AND
+    auth.role() = 'authenticated'
+  );
+
+create policy "Users can view their own artifacts"
+  on storage.objects for select
+  using (
+    bucket_id = 'artifacts' AND
+    (auth.uid() = owner or owner is null)
   );

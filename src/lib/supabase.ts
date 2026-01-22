@@ -10,4 +10,8 @@ if (supabaseUrl === 'https://placeholder.supabase.co' || supabaseAnonKey === 'pl
     }
 }
 
+export const createClientFactory = () => createClient(supabaseUrl, supabaseAnonKey);
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+
+// Alias for convenience in server actions
+export { createClientFactory as createClient };

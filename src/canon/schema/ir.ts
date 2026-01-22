@@ -87,6 +87,13 @@ export const NoteNodeSchema = BaseNodeSchema.extend({
     content: z.string(),
 });
 
+export const ExcerptNodeSchema = BaseNodeSchema.extend({
+    type: z.literal('excerpt'),
+    content: z.string(),
+    parent_id: NodeIdSchema, // Reference to the ArtifactNode
+    index: z.number(),      // Order within the document
+});
+
 import { CompilationReceiptSchema } from './receipt';
 
 export const ArtifactNodeSchema = BaseNodeSchema.extend({
@@ -119,13 +126,21 @@ export const WorkNodeSchema = z.discriminatedUnion('type', [
     // Structure
     IdeaNodeSchema,
     NoteNodeSchema,
-    SourceNodeSchema
+    SourceNodeSchema,
+    ExcerptNodeSchema
 ]);
 export type WorkNode = z.infer<typeof WorkNodeSchema>;
 
 // --- Edges ---
 
-export const RelationTypeSchema = z.enum(['relates_to', 'blocks', 'evidence_for', 'validates', 'contradicts']);
+export const RelationTypeSchema = z.enum([
+    'relates_to',
+    'blocks',
+    'evidence_for',
+    'validates',
+    'contradicts',
+    'part_of' // Structural hierarchy (Excerpt -> Artifact)
+]);
 export type RelationType = z.infer<typeof RelationTypeSchema>;
 
 export const WorkEdgeSchema = z.object({

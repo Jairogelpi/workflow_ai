@@ -4,6 +4,7 @@ import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import { useGraphStore } from '../../store/useGraphStore';
 import { WorkNode } from '../../canon/schema/ir';
+import SourceNodeView from './SourceNodeView';
 
 // Simple debounce hook
 function useDebouncedCallback<T extends (...args: any[]) => void>(
@@ -81,6 +82,7 @@ export default function NodeEditor() {
             else if ('premise' in d) content = d.premise;
             else if ('rule' in d) content = d.rule;
             else if ('name' in d) content = d.name;
+            else if ('citation' in d) content = d.citation;
 
             // Only update if content is actually different
             if (editor.getHTML() !== content) {
@@ -179,6 +181,13 @@ export default function NodeEditor() {
                                         "...{selectedNode.data.metadata.snippet_context}..."
                                     </div>
                                 </div>
+                            )}
+
+                            {selectedNode.data.type === 'source' && (
+                                <SourceNodeView
+                                    nodeId={selectedNodeId!}
+                                    metadata={selectedNode.data.metadata}
+                                />
                             )}
                         </div>
                     </div>
