@@ -207,7 +207,7 @@ export async function markStale(branchId: string): Promise<void> {
 
 // --- Private Helpers (The Serializer) ---
 
-function serializeBranchForLLM(nodes: WorkNode[], edges: WorkEdge[]) {
+export function serializeBranchForLLM(nodes: WorkNode[], edges: WorkEdge[]) {
     const serializedNodes = nodes.map(node => {
         let coreText = "";
 

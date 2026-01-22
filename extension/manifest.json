@@ -1,25 +1,33 @@
 {
     "manifest_version": 3,
-    "name": "WorkGraph OS Layer",
-    "version": "1.0.0",
-    "description": "Inject WorkGraph OS directly into any webpage.",
+    "name": "WorkGraph OS Extension",
+    "version": "1.1.0",
+    "description": "Inject WorkGraph OS directly into any webpage with Side Panel & AI Integration.",
     "permissions": [
+        "sidePanel",
+        "offscreen",
         "activeTab",
+        "scripting",
         "contextMenus",
-        "storage",
-        "notifications",
-        "scripting"
+        "storage"
     ],
     "host_permissions": [
         "<all_urls>"
     ],
+    "background": {
+        "service_worker": "src/background/index.ts",
+        "type": "module"
+    },
+    "side_panel": {
+        "default_path": "sidepanel.html"
+    },
     "content_scripts": [
         {
             "matches": [
                 "<all_urls>"
             ],
             "js": [
-                "content.js"
+                "src/content/index.tsx"
             ],
             "run_at": "document_end"
         }
@@ -35,12 +43,8 @@
             ]
         }
     ],
-    "background": {
-        "service_worker": "background.js",
-        "type": "module"
-    },
     "action": {
-        "default_title": "Toggle WorkGraph OS Overlay"
+        "default_title": "Open WorkGraph Side Panel"
     },
     "icons": {
         "16": "icon16.png",

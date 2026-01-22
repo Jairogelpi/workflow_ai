@@ -52,17 +52,106 @@ export async function traceSpan<T>(
     }
 }
 
-/**
- * Calculates generic cost based on token counts (Approximation)
- */
-export function measureCost(inputTokens: number, outputTokens: number, model: string = 'gpt-4o'): number {
-    // Standard pricing rates (Example)
-    const PRICING: Record<string, { in: number, out: number }> = {
-        'gpt-4o': { in: 5.00 / 1e6, out: 15.00 / 1e6 },
-        'gpt-3.5-turbo': { in: 0.50 / 1e6, out: 1.50 / 1e6 },
+
+// --- Dynamic Pricing Engine (OpenRouter) ---
+
+interface ModelPrice {
+    prompt: number;
+    completion: number;
+}
+
+class PriceRegistry {
+    private static instance: PriceRegistry;
+    private prices: Map<string, ModelPrice> = new Map();
+    private lastSync: number = 0;
+    private readonly SYNC_INTERVAL = 24 * 60 * 60 * 1000; // 24 hours
+
+    // Fallback Pricing (Static)
+    private readonly FALLBACKS: Record<string, ModelPrice> = {
+        'gpt-4o': { prompt: 5.00 / 1e6, completion: 15.00 / 1e6 },
+        'gpt-3.5-turbo': { prompt: 0.50 / 1e6, completion: 1.50 / 1e6 },
+        'claude-3-5-sonnet': { prompt: 3.00 / 1e6, completion: 15.00 / 1e6 },
     };
 
-    const rates = PRICING[model] || PRICING['gpt-4o'];
-    if (!rates) return 0; // Fallback safety
-    return (inputTokens * rates.in) + (outputTokens * rates.out);
+    private constructor() {
+        // Hydrate with fallbacks initially
+        Object.entries(this.FALLBACKS).forEach(([k, v]) => this.prices.set(k, v));
+    }
+
+    public static getInstance(): PriceRegistry {
+        if (!PriceRegistry.instance) {
+            PriceRegistry.instance = new PriceRegistry();
+        }
+        return PriceRegistry.instance;
+    }
+
+    /**
+     * Non-blocking sync with OpenRouter API to get real-time market rates.
+     */
+    public async syncWithMarket(): Promise<void> {
+        if (Date.now() - this.lastSync < this.SYNC_INTERVAL) return;
+
+        try {
+            console.log('[PriceRegistry] Syncing with OpenRouter API...');
+            const response = await fetch('https://openrouter.ai/api/v1/models');
+            if (!response.ok) throw new Error('Failed to fetch prices');
+
+            const data = await response.json();
+            // Expected format: { data: [ { id: 'openai/gpt-4o', pricing: { prompt: '0.00..', completion: '...' } } ] }
+
+            let count = 0;
+            if (data && Array.isArray(data.data)) {
+                data.data.forEach((model: any) => {
+                    const price: ModelPrice = {
+                        prompt: parseFloat(model.pricing.prompt) || 0,
+                        completion: parseFloat(model.pricing.completion) || 0
+                    };
+                    // Normalize ID: remove 'openai/' prefix if user just asks for 'gpt-4o'
+                    const shortId = model.id.split('/').pop();
+
+                    if (model.id) this.prices.set(model.id, price);
+                    if (shortId) this.prices.set(shortId, price);
+
+                    count++;
+                });
+            }
+
+            this.lastSync = Date.now();
+            console.log(`[PriceRegistry] Synced ${count} models successfully.`);
+
+        } catch (err) {
+            console.warn('[PriceRegistry] Sync failed, using cached/fallback rates.', err);
+        }
+    }
+
+    public getPrice(model: string): ModelPrice {
+        // Try strict match
+        const exact = this.prices.get(model);
+        if (exact) return exact;
+
+        // Try loose match (case insensitive)
+        const lower = model.toLowerCase();
+        for (const [key, val] of this.prices.entries()) {
+            if (key.toLowerCase() === lower) return val;
+        }
+
+        // Return GPT-4o pricing as safe default (high estimate)
+        return this.FALLBACKS['gpt-4o']!;
+    }
+}
+
+/**
+ * Calculates generic cost based on token counts.
+ * Uses PriceRegistry for real-time rates.
+ */
+export async function measureCost(inputTokens: number, outputTokens: number, model: string = 'gpt-4o'): Promise<number> {
+    const registry = PriceRegistry.getInstance();
+
+    // Trigger non-blocking sync if needed (lazy load)
+    // We don't await this to avoid latency hits on simple calcs, 
+    // but the first run might use fallbacks. Ideally, sync is called at app bootstrap.
+    registry.syncWithMarket().catch(e => console.error(e));
+
+    const rates = registry.getPrice(model);
+    return (inputTokens * rates.prompt) + (outputTokens * rates.completion);
 }

@@ -1,107 +1,64 @@
-/// <reference types="chrome" />
-import { createRoot, Root } from 'react-dom/client';
-import ExtensionOverlay from './ExtensionOverlay';
-
-console.log('[WorkGraph] Content script loaded (dormant).');
-
 /**
- * WorkGraph OS - Smart Overlay Injection
- * 
- * Strategy: "On-Demand Injection"
- * - NO automatic injection on page load (no resource waste)
- * - Click extension icon → TOGGLE_OVERLAY message → inject/show/hide
- * - Shadow DOM isolates styles from host page
- * - Position persists via chrome.storage
+ * Content Script
+ * Injected into webpages (ChatGPT, Gemini, Claude) to enhance links.
  */
 
-let root: Root | null = null;
-let overlayContainer: HTMLElement | null = null;
+// Simple Icon SVG
+const BRAIN_ICON = `
+<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-brain"><path d="M12 5a3 3 0 1 0-5.997.125 4 4 0 0 0-2.526 5.77 4 4 0 0 0 .556 6.588A4 4 0 1 0 12 18Z"/><path d="M12 5a3 3 0 1 1 5.997.125 4 4 0 0 1 2.526 5.77 4 4 0 0 1-.556 6.588A4 4 0 1 1 12 18Z"/><path d="M15 13a4.5 4.5 0 0 1-3-4 4.5 4.5 0 0 1-3 4"/></svg>
+`;
 
-// Listen for TOGGLE_OVERLAY from background script
-chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
-    if (message.type === 'TOGGLE_OVERLAY') {
-        toggleOverlay();
-        sendResponse({ success: true });
-    }
-    
-    if (message.type === 'GET_SELECTION_CONTEXT') {
-        const selection = window.getSelection();
-        if (selection && selection.rangeCount > 0) {
-            const range = selection.getRangeAt(0);
-            const container = range.commonAncestorContainer;
-            const parentElement = container.nodeType === 1 ? (container as HTMLElement) : container.parentElement;
-            sendResponse({
-                context: parentElement?.innerText || null,
-                title: document.title
-            });
-        } else {
-            sendResponse({ context: null, title: document.title });
+// Helper to check if a link is already processed
+const MARKER_ATTR = 'data-wg-processed';
+
+function injectBrainIcons() {
+    const links = document.querySelectorAll('a');
+    links.forEach(link => {
+        // Skip processed, internal anchors, or tiny links
+        if (link.hasAttribute(MARKER_ATTR) || link.href.startsWith('javascript') || link.href.includes(window.location.host)) return;
+
+        // Skip links that wrap images entirely (usually logos)
+        if (link.querySelector('img') && link.innerText.trim() === '') return;
+
+        // Create Trigger Button
+        const btn = document.createElement('span');
+        btn.innerHTML = BRAIN_ICON;
+        btn.style.display = 'inline-flex';
+        btn.style.marginLeft = '4px';
+        btn.style.cursor = 'pointer';
+        btn.style.color = '#8E51FF'; // WorkGraph Purple
+        btn.style.verticalAlign = 'middle';
+        btn.title = "Parse with WorkGraph OS";
+
+        btn.onclick = (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+
+            // Visual Feedback
+            btn.style.opacity = '0.5';
+
+            console.log('[WorkGraph] Requesting parse for:', link.href);
+            chrome.runtime.sendMessage({ type: 'PROCESS_LINK_CLICK', url: link.href });
+        };
+
+        link.parentNode?.insertBefore(btn, link.nextSibling);
+        link.setAttribute(MARKER_ATTR, 'true');
+    });
+}
+
+// 1. Initial Injection
+injectBrainIcons();
+
+// 2. Observe Mutations (SPA navigation / Infinite Scroll in Chat)
+const observer = new MutationObserver((mutations) => {
+    let shouldScan = false;
+    for (const mutation of mutations) {
+        if (mutation.addedNodes.length > 0) {
+            shouldScan = true;
+            break;
         }
     }
-    return true;
+    if (shouldScan) injectBrainIcons();
 });
 
-function toggleOverlay() {
-    // If already mounted, toggle visibility
-    if (overlayContainer) {
-        const isHidden = overlayContainer.style.display === 'none';
-        overlayContainer.style.display = isHidden ? 'block' : 'none';
-        console.log(`[WorkGraph] Overlay ${isHidden ? 'shown' : 'hidden'}`);
-        return;
-    }
-
-    // First time: mount the overlay
-    mountOverlay();
-}
-
-function mountOverlay() {
-    console.log('[WorkGraph] Mounting overlay...');
-
-    // 1. Create Host Container (fixed, full viewport, click-through)
-    overlayContainer = document.createElement('div');
-    overlayContainer.id = 'workgraph-os-host';
-    overlayContainer.style.cssText = `
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100vw;
-        height: 100vh;
-        z-index: 2147483647;
-        pointer-events: none;
-    `;
-    document.body.appendChild(overlayContainer);
-
-    // 2. Attach Shadow DOM (style isolation)
-    const shadow = overlayContainer.attachShadow({ mode: 'open' });
-
-    // 3. Inject base styles into Shadow
-    const style = document.createElement('style');
-    style.textContent = `
-        :host {
-            all: initial;
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-        }
-        *, *::before, *::after {
-            box-sizing: border-box;
-        }
-        .overlay-panel {
-            pointer-events: auto;
-        }
-    `;
-    shadow.appendChild(style);
-
-    // 4. Mount React
-    const rootDiv = document.createElement('div');
-    shadow.appendChild(rootDiv);
-
-    root = createRoot(rootDiv);
-    root.render(
-        <ExtensionOverlay 
-            onClose={() => {
-                if (overlayContainer) overlayContainer.style.display = 'none';
-            }} 
-        />
-    );
-
-    console.log('[WorkGraph] Overlay mounted successfully.');
-}
+observer.observe(document.body, { childList: true, subtree: true });

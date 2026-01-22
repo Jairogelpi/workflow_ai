@@ -33,6 +33,8 @@ export default defineConfig(({ mode }) => {
                     content: resolve(__dirname, 'src/content/index.tsx'),
                     background: resolve(__dirname, 'src/background/index.ts'),
                     popup: resolve(__dirname, 'index.html'),
+                    sidepanel: resolve(__dirname, 'sidepanel.html'),
+                    offscreen: resolve(__dirname, 'offscreen.html'),
                 },
                 output: {
                     entryFileNames: '[name].js',
