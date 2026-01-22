@@ -81,56 +81,55 @@ export function FloatingPanel({
 
   const panelStyle = isMaximized
     ? "fixed inset-4 z-50 w-[calc(100%-2rem)] h-[calc(100%-2rem)]"
-    : "fixed z-50 w-[600px] h-[500px]";
+    : "fixed z-50 w-[480px] h-[520px]";
 
   const dragStyle = isMaximized ? {} : { left: position.x, top: position.y };
 
   return (
     <div
-      className={`${panelStyle} flex flex-col bg-slate-900/90 backdrop-blur-md border border-white/10 rounded-xl shadow-2xl overflow-hidden transition-all duration-200 ease-out animate-in fade-in zoom-in-95`}
+      className={`${panelStyle} flex flex-col glass-panel rounded-3xl overflow-hidden transition-all duration-300 ease-out animate-scale-in`}
       style={dragStyle}
     >
       {/* Header Bar */}
       <div
-        className={`h-10 bg-white/5 flex items-center justify-between px-3 select-none border-b border-white/5 ${!isMaximized ? 'cursor-move' : ''}`}
+        className={`h-12 flex items-center justify-between px-4 select-none border-b border-outline-variant/20 dark:border-white/5 bg-surface-container/50 dark:bg-surface-dark-container-high/50 ${!isMaximized ? 'cursor-move' : ''}`}
         onMouseDown={handleMouseDown}
       >
-        <div className="flex items-center gap-2 text-slate-300 font-mono text-xs tracking-wide group">
-          <GripHorizontal size={14} className="opacity-50 group-hover:text-white transition-colors" />
-          <span className="truncate max-w-[250px] uppercase">{title}</span>
+        <div className="flex items-center gap-3 text-on-surface dark:text-white">
+          <GripHorizontal size={16} className="opacity-40" />
+          <span className="font-medium text-sm truncate max-w-[200px]">{title}</span>
         </div>
 
         {/* Window Controls */}
         <div className="flex items-center gap-1">
-          {/* BOTÓN POP-OUT (NUEVO) */}
           {onPopOut && contentUrl && (
             <button
               onClick={onPopOut}
-              title="Open in new Tab (Pop Out)"
-              className="p-1.5 hover:bg-indigo-500/20 rounded-md text-slate-400 hover:text-indigo-400 transition-colors mr-2 border-r border-white/10 pr-2"
+              title="Open in new Tab"
+              className="p-2 hover:bg-primary/10 rounded-xl text-outline dark:text-outline-variant hover:text-primary transition-all"
             >
-              <ExternalLink size={14} />
+              <ExternalLink size={16} />
             </button>
           )}
 
           <button
             onClick={() => setIsMaximized(!isMaximized)}
-            className="p-1.5 hover:bg-white/10 rounded-md text-slate-400 hover:text-cyan-400 transition-colors"
+            className="p-2 hover:bg-primary/10 rounded-xl text-outline dark:text-outline-variant hover:text-primary transition-all"
           >
-            {isMaximized ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
+            {isMaximized ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
           </button>
 
           <button
             onClick={onClose}
-            className="p-1.5 hover:bg-red-500/20 rounded-md text-slate-400 hover:text-red-400 transition-colors"
+            className="p-2 hover:bg-red-500/10 rounded-xl text-outline dark:text-outline-variant hover:text-red-500 transition-all"
           >
-            <X size={14} />
+            <X size={16} />
           </button>
         </div>
       </div>
 
       {/* Content */}
-      <div className="flex-1 overflow-hidden relative bg-slate-950/50">
+      <div className="flex-1 overflow-hidden relative bg-surface dark:bg-surface-dark-container">
         {children}
       </div>
     </div>

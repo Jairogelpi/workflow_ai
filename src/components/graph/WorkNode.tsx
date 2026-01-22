@@ -16,39 +16,96 @@ import {
     Link
 } from 'lucide-react';
 
-const NODE_TYPE_CONFIG: Record<string, { label: string; color: string; icon: any }> = {
-    note: { label: 'Note', color: 'bg-slate-500', icon: MessageSquare },
-    claim: { label: 'Claim', color: 'bg-blue-600', icon: ShieldAlert },
-    evidence: { label: 'Evidence', color: 'bg-green-600', icon: CheckCircle2 },
-    decision: { label: 'Decision', color: 'bg-purple-600', icon: Brain },
-    idea: { label: 'Idea', color: 'bg-yellow-600', icon: Lightbulb },
-    task: { label: 'Task', color: 'bg-orange-600', icon: CheckSquare },
-    artifact: { label: 'Artifact', color: 'bg-pink-600', icon: FileText },
-    assumption: { label: 'Assumption', color: 'bg-red-400', icon: HelpCircle },
-    constraint: { label: 'Constraint', color: 'bg-red-700', icon: Lock },
-    source: { label: 'Source', color: 'bg-cyan-600', icon: Link },
+const NODE_TYPE_CONFIG: Record<string, { 
+    label: string; 
+    icon: any;
+    light: { bg: string; text: string; border: string };
+    dark: { bg: string; text: string; border: string };
+}> = {
+    note: { 
+        label: 'Note', 
+        icon: MessageSquare,
+        light: { bg: '#F3EDF7', text: '#4A4458', border: '#CAC4D0' },
+        dark: { bg: '#4A4458', text: '#E8DEF8', border: '#938F99' }
+    },
+    claim: { 
+        label: 'Claim', 
+        icon: ShieldAlert,
+        light: { bg: '#D3E3FD', text: '#041E49', border: '#A8C7FA' },
+        dark: { bg: '#004A77', text: '#C2E7FF', border: '#0077B6' }
+    },
+    evidence: { 
+        label: 'Evidence', 
+        icon: CheckCircle2,
+        light: { bg: '#C4EED0', text: '#0D5D2C', border: '#6DD58C' },
+        dark: { bg: '#0D5D2C', text: '#C4EED0', border: '#1B8A45' }
+    },
+    decision: { 
+        label: 'Decision', 
+        icon: Brain,
+        light: { bg: '#FEF7C3', text: '#594F05', border: '#FDD663' },
+        dark: { bg: '#594F05', text: '#FEF7C3', border: '#8D7E0A' }
+    },
+    idea: { 
+        label: 'Idea', 
+        icon: Lightbulb,
+        light: { bg: '#E7F8ED', text: '#0D5D2C', border: '#A8DAB5' },
+        dark: { bg: '#0D5D2C', text: '#E7F8ED', border: '#2E7D32' }
+    },
+    task: { 
+        label: 'Task', 
+        icon: CheckSquare,
+        light: { bg: '#E8DEF8', text: '#4A4458', border: '#CAC4D0' },
+        dark: { bg: '#4A4458', text: '#E8DEF8', border: '#7E57C2' }
+    },
+    artifact: { 
+        label: 'Artifact', 
+        icon: FileText,
+        light: { bg: '#FFE0B2', text: '#5D4037', border: '#FFCC80' },
+        dark: { bg: '#5D4037', text: '#FFE0B2', border: '#8D6E63' }
+    },
+    assumption: { 
+        label: 'Assumption', 
+        icon: HelpCircle,
+        light: { bg: '#FCE4EC', text: '#880E4F', border: '#F48FB1' },
+        dark: { bg: '#880E4F', text: '#FCE4EC', border: '#AD1457' }
+    },
+    constraint: { 
+        label: 'Constraint', 
+        icon: Lock,
+        light: { bg: '#F9DEDC', text: '#8C1D18', border: '#F2B8B5' },
+        dark: { bg: '#8C1D18', text: '#F9DEDC', border: '#C62828' }
+    },
+    source: { 
+        label: 'Source', 
+        icon: Link,
+        light: { bg: '#E3F2FD', text: '#0D47A1', border: '#90CAF9' },
+        dark: { bg: '#0D47A1', text: '#E3F2FD', border: '#1976D2' }
+    },
 };
 
 export function WorkNodeComponent({ data, selected, id }: NodeProps<WorkNodeIR>) {
     const { mutateNodeType } = useGraphStore();
-    const config = (NODE_TYPE_CONFIG[data.type] || NODE_TYPE_CONFIG.note)!;
-    const Icon = config.icon;
+    const config = NODE_TYPE_CONFIG[data.type] ?? NODE_TYPE_CONFIG.note!;
+    const Icon = config!.icon;
+    const isDark = typeof document !== 'undefined' && document.documentElement.classList.contains('dark');
+    const colors = isDark ? config.dark : config.light;
 
-    // Content preview logic - handle both string and object content
     const rawContent = (data as any).content || (data as any).statement || (data as any).rationale || (data as any).summary || (data as any).description || (data as any).name || (data as any).rule || '';
     const content = typeof rawContent === 'object' ? (rawContent.name || rawContent.content || JSON.stringify(rawContent)) : String(rawContent);
-    const preview = content.replace(/<[^>]*>?/gm, '').slice(0, 50) + (content.length > 50 ? '...' : '');
+    const preview = content.replace(/<[^>]*>?/gm, '').slice(0, 60) + (content.length > 60 ? '...' : '');
 
     return (
         <>
-            {/* React Flow Toolbar - Visible on Selection */}
             <NodeToolbar
                 isVisible={selected}
                 position={Position.Top}
-                className="flex gap-1 p-1 bg-slate-900/90 backdrop-blur-md rounded-lg border border-slate-700 shadow-2xl translate-y-[-8px]"
+                className="flex gap-1 p-1.5 glass-panel rounded-2xl shadow-elevation-4 -translate-y-2"
             >
                 {Object.entries(NODE_TYPE_CONFIG).slice(0, 6).map(([type, cfg]) => {
                     const TypeIcon = cfg.icon;
+                    const isActive = data.type === type;
+                    const typeColors = isDark ? cfg.dark : cfg.light;
                     return (
                         <button
                             key={type}
@@ -56,46 +113,73 @@ export function WorkNodeComponent({ data, selected, id }: NodeProps<WorkNodeIR>)
                                 e.stopPropagation();
                                 mutateNodeType(id, type as any);
                             }}
-                            className={`p-1.5 rounded-md transition-all hover:scale-110 active:scale-95 ${data.type === type ? 'bg-slate-700 text-white shadow-inner' : 'text-slate-400 hover:text-white hover:bg-slate-800'
-                                }`}
+                            className="p-2 rounded-xl transition-all duration-200 hover:scale-110 active:scale-95"
+                            style={{
+                                backgroundColor: isActive ? typeColors.bg : 'transparent',
+                                color: isActive ? typeColors.text : (isDark ? '#CAC4D0' : '#79747E'),
+                            }}
                             title={`Convert to ${cfg.label}`}
                         >
-                            <TypeIcon size={14} />
+                            <TypeIcon size={16} />
                         </button>
                     );
                 })}
             </NodeToolbar>
 
-            {/* Node UI */}
-            <div className={`min-w-[180px] max-w-[240px] rounded-lg border-2 bg-slate-900 shadow-xl transition-all ${selected ? 'border-blue-500 ring-4 ring-blue-500/20' : 'border-slate-800'
-                }`}>
-                {/* Header */}
-                <div className={`px-3 py-1.5 rounded-t-lg flex items-center justify-between gap-2 ${config.color}`}>
-                    <div className="flex items-center gap-1.5 overflow-hidden">
-                        <Icon size={12} className="text-white shrink-0" />
-                        <span className="text-[10px] font-bold text-white uppercase tracking-wider truncate">
+            <div 
+                className={`
+                    min-w-[200px] max-w-[280px] rounded-3xl 
+                    transition-all duration-200 ease-out
+                    ${selected ? 'scale-105 shadow-elevation-5' : 'shadow-elevation-3 hover:shadow-elevation-4 hover:-translate-y-0.5'}
+                `}
+                style={{
+                    backgroundColor: colors.bg,
+                    border: `2px solid ${selected ? colors.text : colors.border}`,
+                }}
+            >
+                <div className="px-4 py-3 flex items-start gap-3">
+                    <div 
+                        className="p-2 rounded-xl shrink-0"
+                        style={{ 
+                            backgroundColor: `${colors.text}15`,
+                        }}
+                    >
+                        <Icon size={18} style={{ color: colors.text }} />
+                    </div>
+                    
+                    <div className="flex-1 min-w-0 pt-0.5">
+                        <span 
+                            className="text-[10px] font-bold uppercase tracking-widest opacity-70"
+                            style={{ color: colors.text }}
+                        >
                             {config.label}
                         </span>
+                        <p 
+                            className="text-sm font-medium leading-snug mt-1 line-clamp-2"
+                            style={{ color: colors.text }}
+                        >
+                            {preview || <span className="opacity-50 italic">Empty {data.type}</span>}
+                        </p>
                     </div>
                 </div>
 
-                {/* Body */}
-                <div className="p-3">
-                    <p className="text-xs text-slate-300 leading-normal line-clamp-3">
-                        {preview || <span className="text-slate-600 italic">Empty {data.type}</span>}
-                    </p>
-                </div>
-
-                {/* Handles */}
                 <Handle
                     type="target"
                     position={Position.Top}
-                    className="w-3 h-3 border-2 border-slate-900 bg-slate-700"
+                    className="!w-3 !h-3 !border-2 !rounded-full !-top-1.5"
+                    style={{ 
+                        backgroundColor: colors.bg,
+                        borderColor: colors.border,
+                    }}
                 />
                 <Handle
                     type="source"
                     position={Position.Bottom}
-                    className="w-3 h-3 border-2 border-slate-900 bg-slate-700"
+                    className="!w-3 !h-3 !border-2 !rounded-full !-bottom-1.5"
+                    style={{ 
+                        backgroundColor: colors.bg,
+                        borderColor: colors.border,
+                    }}
                 />
             </div>
         </>

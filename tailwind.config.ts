@@ -1,6 +1,7 @@
 import type { Config } from "tailwindcss";
 
 const config: Config = {
+    darkMode: 'class',
     content: [
         "./src/pages/**/*.{js,ts,jsx,tsx,mdx}",
         "./src/components/**/*.{js,ts,jsx,tsx,mdx}",
@@ -9,27 +10,127 @@ const config: Config = {
     theme: {
         extend: {
             colors: {
-                // Colores semánticos para WorkGraph OS
-                os: {
-                    bg: '#020617',       // Fondo profundo
-                    panel: '#0f172a',    // Paneles
-                    border: '#1e293b',   // Bordes sutiles
-                    accent: '#38bdf8',   // Azul eléctrico (Acción principal)
-                    success: '#10b981',  // Verde (Verificado)
-                    warning: '#f59e0b',  // Naranja (Pendiente)
+                // Material Design 3 Surface System
+                surface: {
+                    DEFAULT: '#FFFFFF',
+                    dim: '#DED8E1',
+                    bright: '#FDF7FF',
+                    container: {
+                        lowest: '#FFFFFF',
+                        low: '#F7F2FA',
+                        DEFAULT: '#F3EDF7',
+                        high: '#ECE6F0',
+                        highest: '#E6E0E9',
+                    }
+                },
+                // Dark mode surfaces
+                'surface-dark': {
+                    DEFAULT: '#141218',
+                    dim: '#141218',
+                    bright: '#3B383E',
+                    container: {
+                        lowest: '#0F0D13',
+                        low: '#1D1B20',
+                        DEFAULT: '#211F26',
+                        high: '#2B2930',
+                        highest: '#36343B',
+                    }
+                },
+                // Google Primary Blue
+                primary: {
+                    DEFAULT: '#0B57D0',
+                    light: '#D3E3FD',
+                    dark: '#A8C7FA',
+                    container: '#D3E3FD',
+                    'on-container': '#041E49',
+                },
+                // Secondary Teal
+                secondary: {
+                    DEFAULT: '#00639B',
+                    light: '#C2E7FF',
+                    container: '#C2E7FF',
+                    'on-container': '#001D35',
+                },
+                // Semantic Node Colors (Pastel)
+                node: {
+                    note: { bg: '#F3EDF7', text: '#4A4458', border: '#CAC4D0' },
+                    claim: { bg: '#D3E3FD', text: '#041E49', border: '#A8C7FA' },
+                    evidence: { bg: '#C4EED0', text: '#0D5D2C', border: '#6DD58C' },
+                    decision: { bg: '#FEF7C3', text: '#594F05', border: '#FDD663' },
+                    problem: { bg: '#F9DEDC', text: '#8C1D18', border: '#F2B8B5' },
+                    idea: { bg: '#E7F8ED', text: '#0D5D2C', border: '#A8DAB5' },
+                    task: { bg: '#E8DEF8', text: '#4A4458', border: '#CAC4D0' },
+                    artifact: { bg: '#FFE0B2', text: '#5D4037', border: '#FFCC80' },
+                    assumption: { bg: '#FCE4EC', text: '#880E4F', border: '#F48FB1' },
+                    constraint: { bg: '#EFEBE9', text: '#4E342E', border: '#BCAAA4' },
+                    source: { bg: '#E3F2FD', text: '#0D47A1', border: '#90CAF9' },
+                },
+                // Dark mode node colors
+                'node-dark': {
+                    note: { bg: '#4A4458', text: '#E8DEF8', border: '#938F99' },
+                    claim: { bg: '#004A77', text: '#C2E7FF', border: '#0077B6' },
+                    evidence: { bg: '#0D5D2C', text: '#C4EED0', border: '#1B8A45' },
+                    decision: { bg: '#594F05', text: '#FEF7C3', border: '#8D7E0A' },
+                    problem: { bg: '#8C1D18', text: '#F9DEDC', border: '#C62828' },
+                    idea: { bg: '#0D5D2C', text: '#E7F8ED', border: '#2E7D32' },
+                    task: { bg: '#4A4458', text: '#E8DEF8', border: '#7E57C2' },
+                    artifact: { bg: '#5D4037', text: '#FFE0B2', border: '#8D6E63' },
+                    assumption: { bg: '#880E4F', text: '#FCE4EC', border: '#AD1457' },
+                    constraint: { bg: '#4E342E', text: '#EFEBE9', border: '#795548' },
+                    source: { bg: '#0D47A1', text: '#E3F2FD', border: '#1976D2' },
+                },
+                // Outline colors
+                outline: {
+                    DEFAULT: '#79747E',
+                    variant: '#CAC4D0',
                 }
             },
             backdropBlur: {
-                xs: '2px', // Desenfoque sutil
+                xs: '2px',
+                '3xl': '64px',
             },
             fontFamily: {
-                // Prioridad a fuentes de sistema limpias
-                sans: ['var(--font-inter)', 'ui-sans-serif', 'system-ui'],
-                mono: ['var(--font-jetbrains)', 'ui-monospace', 'monospace'],
+                sans: ['var(--font-inter)', 'Inter', 'ui-sans-serif', 'system-ui'],
+                mono: ['var(--font-jetbrains)', 'JetBrains Mono', 'ui-monospace', 'monospace'],
+            },
+            borderRadius: {
+                '4xl': '2rem',
+                '5xl': '2.5rem',
+            },
+            boxShadow: {
+                'elevation-1': '0 1px 2px 0 rgb(0 0 0 / 0.05)',
+                'elevation-2': '0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1)',
+                'elevation-3': '0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)',
+                'elevation-4': '0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1)',
+                'elevation-5': '0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1)',
+                'glass': '0 8px 32px 0 rgba(31, 38, 135, 0.15)',
+                'glass-dark': '0 8px 32px 0 rgba(0, 0, 0, 0.4)',
             },
             animation: {
                 'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
-            }
+                'scale-in': 'scale-in 0.2s ease-out',
+                'slide-up': 'slide-up 0.3s ease-out',
+                'fade-in': 'fade-in 0.2s ease-out',
+                'float': 'float 3s ease-in-out infinite',
+            },
+            keyframes: {
+                'scale-in': {
+                    '0%': { transform: 'scale(0.9)', opacity: '0' },
+                    '100%': { transform: 'scale(1)', opacity: '1' },
+                },
+                'slide-up': {
+                    '0%': { transform: 'translateY(10px)', opacity: '0' },
+                    '100%': { transform: 'translateY(0)', opacity: '1' },
+                },
+                'fade-in': {
+                    '0%': { opacity: '0' },
+                    '100%': { opacity: '1' },
+                },
+                'float': {
+                    '0%, 100%': { transform: 'translateY(0)' },
+                    '50%': { transform: 'translateY(-5px)' },
+                },
+            },
         },
     },
     plugins: [],

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { Upload, FileText, Check, AlertCircle, Loader2 } from 'lucide-react';
 import { uploadFile, digestFile } from '../../lib/ingest';
 
@@ -14,17 +14,35 @@ export default function GlobalDropzone({ children }: GlobalDropzoneProps) {
     const [status, setStatus] = useState<'idle' | 'uploading' | 'digesting' | 'success' | 'error'>('idle');
     const [lastFile, setLastFile] = useState('');
 
-    const onDragOver = useCallback((e: React.DragEvent) => {
+    // Global drag/drop block - prevents browser from opening PDFs if drop misses target
+    useEffect(() => {
+        const preventDefault = (e: Event) => {
+            e.preventDefault();
+            e.stopPropagation();
+        };
+        window.addEventListener('dragover', preventDefault);
+        window.addEventListener('drop', preventDefault);
+        return () => {
+            window.removeEventListener('dragover', preventDefault);
+            window.removeEventListener('drop', preventDefault);
+        };
+    }, []);
+
+    const onDragEnter = useCallback((e: React.DragEvent) => {
         e.preventDefault();
         e.stopPropagation();
         setIsDragging(true);
     }, []);
 
+    const onDragOver = useCallback((e: React.DragEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+    }, []);
+
     const onDragLeave = useCallback((e: React.DragEvent) => {
         e.preventDefault();
         e.stopPropagation();
-        // Only trigger if we actually left the window or the main overlay
-        if (e.relatedTarget === null) {
+        if (!e.relatedTarget || (e.relatedTarget as HTMLElement).id === 'app-root') {
             setIsDragging(false);
         }
     }, []);
@@ -71,71 +89,54 @@ export default function GlobalDropzone({ children }: GlobalDropzoneProps) {
 
     return (
         <div
-            className="relative w-full h-full"
+            id="app-root"
+            className="relative w-screen h-screen overflow-hidden"
+            onDragEnter={onDragEnter}
             onDragOver={onDragOver}
+            onDragLeave={onDragLeave}
+            onDrop={onDrop}
         >
             {children}
 
             {/* Dropzone Overlay */}
             {isDragging && !isUploading && (
-                <div
-                    className="absolute inset-0 z-[100] bg-blue-600/20 backdrop-blur-sm flex items-center justify-center border-4 border-dashed border-blue-500 animate-pulse"
-                    onDragLeave={onDragLeave}
-                    onDrop={onDrop}
-                >
-                    <div className="bg-slate-900 p-8 rounded-2xl shadow-2xl flex flex-col items-center gap-4 text-center">
-                        <div className="w-16 h-16 bg-blue-500 rounded-full flex items-center justify-center animate-bounce">
-                            <Upload className="text-white" size={32} />
-                        </div>
-                        <div>
-                            <h2 className="text-xl font-bold text-white">Drop to Ingest</h2>
-                            <p className="text-slate-400 text-sm">Release to aggregate these files into your WorkGraph</p>
-                        </div>
+                <div className="absolute inset-4 z-[9999] bg-primary/5 dark:bg-primary-dark/10 backdrop-blur-sm flex flex-col items-center justify-center border-2 border-dashed border-primary dark:border-primary-dark rounded-4xl pointer-events-none animate-scale-in">
+                    <div className="w-20 h-20 rounded-full bg-primary/10 dark:bg-primary-dark/20 flex items-center justify-center mb-6 animate-float">
+                        <Upload className="w-10 h-10 text-primary dark:text-primary-dark" />
                     </div>
+                    <h2 className="text-2xl font-bold text-on-surface dark:text-white tracking-tight">Drop to Ingest</h2>
+                    <p className="text-outline dark:text-outline-variant mt-2">Add to WorkGraph Knowledge Base</p>
                 </div>
             )}
 
-            {/* Uploading / Status Modal */}
+            {/* Uploading / Status Toast */}
             {(isUploading || status !== 'idle') && (
-                <div className="absolute top-8 left-1/2 -translate-x-1/2 z-[110] animate-in fade-in slide-in-from-top-4">
-                    <div className="bg-slate-900 border border-slate-800 rounded-lg shadow-2xl p-4 min-w-[300px] flex items-center gap-4">
+                <div className="absolute top-6 left-1/2 -translate-x-1/2 z-[110] animate-slide-up">
+                    <div className="glass-panel rounded-2xl px-5 py-4 min-w-[280px] flex items-center gap-4">
                         {isUploading ? (
-                            <Loader2 className="text-blue-500 animate-spin" size={20} />
+                            <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+                                <Loader2 className="text-primary animate-spin" size={20} />
+                            </div>
                         ) : status === 'success' ? (
-                            <div className="flex flex-col items-center gap-1 text-white text-center">
-                                <div className="relative">
-                                    <Upload className="w-10 h-10" />
-                                    <div className="absolute -right-2 -bottom-2 bg-green-500 rounded-full p-1">
-                                        <FileText className="w-5 h-5" />
-                                    </div>
-                                </div>
-                                <h2 className="text-lg font-bold">Knowledge Digested!</h2>
-                                <p className="text-xs text-slate-400 max-w-[200px] truncate">
-                                    {lastFile}
-                                </p>
+                            <div className="w-10 h-10 rounded-xl bg-green-500/10 flex items-center justify-center">
+                                <Check className="text-green-600 dark:text-green-400" size={20} />
                             </div>
                         ) : (
-                            <AlertCircle className="text-red-500" size={20} />
+                            <div className="w-10 h-10 rounded-xl bg-red-500/10 flex items-center justify-center">
+                                <AlertCircle className="text-red-500" size={20} />
+                            </div>
                         )}
 
-                        {(isUploading || status === 'uploading' || status === 'digesting') && (
-                            <div className="flex-1">
-                                <p className="text-sm font-bold text-slate-200">
-                                    {status === 'digesting' ? 'Digesting Knowledge...' : 'Ingesting...'}
-                                </p>
-                                <p className="text-[10px] text-slate-500 font-mono truncate max-w-[200px]">
-                                    {lastFile}
-                                </p>
-                            </div>
-                        )}
-                        {status === 'error' && (
-                            <div className="flex-1">
-                                <p className="text-sm font-bold text-slate-200">Failed</p>
-                                <p className="text-[10px] text-slate-500 font-mono truncate max-w-[200px]">
-                                    {lastFile}
-                                </p>
-                            </div>
-                        )}
+                        <div className="flex-1 min-w-0">
+                            <p className="text-sm font-semibold text-on-surface dark:text-white">
+                                {status === 'success' ? 'Knowledge Digested!' : 
+                                 status === 'error' ? 'Import Failed' :
+                                 status === 'digesting' ? 'Digesting...' : 'Ingesting...'}
+                            </p>
+                            <p className="text-xs text-outline dark:text-outline-variant truncate mt-0.5">
+                                {lastFile}
+                            </p>
+                        </div>
                     </div>
                 </div>
             )}

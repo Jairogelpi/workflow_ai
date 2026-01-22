@@ -1,49 +1,82 @@
 'use client';
 
 import GraphCanvas from '../components/graph/GraphCanvas';
-import Sidebar from '../components/layout/Sidebar';
+import GlobalDropzone from '../components/graph/GlobalDropzone';
 import { FloatingPanel } from '../components/ui/FloatingPanel';
 import { SmartViewer } from '../components/ui/SmartViewer';
 import NodeEditor from '../components/editor/NodeEditor';
 import { useGraphStore } from '../store/useGraphStore';
+import { useTheme } from '../components/providers/ThemeProvider';
 
 export default function Home() {
     const { activeWindow, closeWindow } = useGraphStore();
+    const { theme, toggleTheme } = useTheme();
 
-    // Función mágica de Pop-Out
     const handlePopOut = () => {
         if (!activeWindow?.contentUrl) return;
-
-        // 1. Abre la nueva pestaña y le da foco automáticamente
         window.open(activeWindow.contentUrl, '_blank');
-
-        // 2. Cierra la ventana flotante en la app para "transferirla"
-        // (Esto da la sensación de que la ventana se ha movido allí)
         closeWindow();
     };
 
     return (
-        <main className="flex h-screen w-screen overflow-hidden bg-black text-white relative">
-            <Sidebar />
+        <GlobalDropzone>
+            <main className="relative h-screen w-screen overflow-hidden bg-surface dark:bg-surface-dark transition-colors duration-300">
+                {/* Theme Toggle - Floating Top Right */}
+                <div className="absolute top-4 right-4 z-50">
+                    <button
+                        onClick={toggleTheme}
+                        className="floating-island p-3 transition-all hover:scale-105 active:scale-95"
+                        title={`Switch to ${theme === 'light' ? 'dark' : 'light'} mode`}
+                    >
+                        {theme === 'light' ? (
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-outline">
+                                <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+                            </svg>
+                        ) : (
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-outline-variant">
+                                <circle cx="12" cy="12" r="5" />
+                                <line x1="12" y1="1" x2="12" y2="3" />
+                                <line x1="12" y1="21" x2="12" y2="23" />
+                                <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" />
+                                <line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
+                                <line x1="1" y1="12" x2="3" y2="12" />
+                                <line x1="21" y1="12" x2="23" y2="12" />
+                                <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" />
+                                <line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
+                            </svg>
+                        )}
+                    </button>
+                </div>
 
-            <div className="flex-1 relative z-0">
-                <GraphCanvas />
+                {/* Logo - Top Left */}
+                <div className="absolute top-4 left-4 z-50">
+                    <div className="floating-island px-4 py-2 flex items-center gap-2">
+                        <div className="w-8 h-8 rounded-xl bg-primary flex items-center justify-center">
+                            <span className="text-white font-bold text-sm">W</span>
+                        </div>
+                        <span className="font-semibold text-on-surface dark:text-white hidden sm:block">
+                            WorkGraph
+                        </span>
+                    </div>
+                </div>
 
-                {/* SYSTEM OVERLAY */}
+                {/* Graph Canvas */}
+                <div className="w-full h-full">
+                    <GraphCanvas />
+                </div>
+
+                {/* Floating Editor Panel */}
                 {activeWindow && (
                     <FloatingPanel
                         title={activeWindow.title}
                         isOpen={true}
                         onClose={closeWindow}
-                        contentUrl={activeWindow.contentUrl} // Pasamos la URL
-                        onPopOut={handlePopOut}              // Pasamos la acción
-                        // Posición inicial inteligente (un poco a la derecha para no tapar el grafo central)
-                        initialPos={{ x: window.innerWidth - 650, y: 100 }}
+                        contentUrl={activeWindow.contentUrl}
+                        onPopOut={handlePopOut}
+                        initialPos={{ x: typeof window !== 'undefined' ? window.innerWidth - 500 : 400, y: 80 }}
                     >
-                        {/* LÓGICA DE RENDERIZADO */}
                         {activeWindow.contentType === 'editor' ? (
-                            // AQUI RENDERIZAMOS TU EDITOR DENTRO DE LA VENTANA
-                            <div className="h-full bg-slate-900 overflow-y-auto">
+                            <div className="h-full bg-surface dark:bg-surface-dark-container overflow-y-auto">
                                 <NodeEditor />
                             </div>
                         ) : (
@@ -55,7 +88,7 @@ export default function Home() {
                         )}
                     </FloatingPanel>
                 )}
-            </div>
-        </main>
+            </main>
+        </GlobalDropzone>
     );
 }

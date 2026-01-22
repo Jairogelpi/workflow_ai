@@ -1,68 +1,159 @@
 @import "tailwindcss";
 
 :root {
-  /* BASE DEL SISTEMA: Oscuridad Profunda (Slate 950) */
-  --background: 2 6 23; 
-  --foreground: 226 232 240; 
-  
-  /* PALETA DE NEÓN (Acentos) */
-  --neon-cyan: 34 211 238;
-  --neon-violet: 139 92 246;
+  /* Material Design 3 Light Theme */
+  --surface: 255 255 255;
+  --surface-container: 243 237 247;
+  --on-surface: 29 27 32;
+  --on-surface-variant: 73 69 79;
+  --outline: 121 116 126;
+  --outline-variant: 202 196 208;
+  --primary: 11 87 208;
+  --primary-container: 211 227 253;
+  --on-primary-container: 4 30 73;
+}
+
+.dark {
+  --surface: 20 18 24;
+  --surface-container: 33 31 38;
+  --on-surface: 230 224 233;
+  --on-surface-variant: 202 196 208;
+  --outline: 147 143 153;
+  --outline-variant: 73 69 79;
+  --primary: 168 199 250;
+  --primary-container: 0 74 119;
+  --on-primary-container: 211 227 253;
 }
 
 body {
-  background-color: rgb(var(--background));
-  color: rgb(var(--foreground));
-  /* Tipografía técnica para que parezca una interfaz de nave */
-  font-feature-settings: "cv02", "cv03", "cv04", "ss01", "ss03"; 
+  background-color: rgb(var(--surface));
+  color: rgb(var(--on-surface));
+  font-feature-settings: "cv02", "cv03", "cv04", "ss01", "ss03";
   -webkit-font-smoothing: antialiased;
-  overflow: hidden; /* App-like feel: sin scroll en el body, solo en ventanas */
+  overflow: hidden;
+  transition: background-color 0.3s ease, color 0.3s ease;
 }
 
-/* SCROLLBARS INVISIBLES (Minimalismo) */
+/* Elegant Scrollbars */
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 8px;
+  height: 8px;
 }
 ::-webkit-scrollbar-track {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.1);
-  border-radius: 3px;
+  background: rgb(var(--outline-variant) / 0.5);
+  border-radius: 4px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.2);
+  background: rgb(var(--outline) / 0.7);
 }
 
-/* CAPA DE UTILIDADES: La Magia del Cristal */
+/* Glass Panel - Light Mode */
 @utility glass-panel {
-  background-color: rgb(15 23 42 / 0.8);
+  background-color: rgb(255 255 255 / 0.85);
   backdrop-filter: blur(24px);
-  border: 1px solid rgb(255 255 255 / 0.1);
-  box-shadow: 0 25px 50px -12px rgb(0 0 0 / 0.25);
+  border: 1px solid rgb(var(--outline-variant) / 0.3);
+  box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.1);
 }
 
+.dark .glass-panel {
+  background-color: rgb(33 31 38 / 0.9);
+  border: 1px solid rgb(255 255 255 / 0.08);
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.4);
+}
+
+/* Glass Button */
 @utility glass-button {
-  background-color: rgb(255 255 255 / 0.05);
-  border: 1px solid rgb(255 255 255 / 0.05);
-  transition: all 0.2s;
+  background-color: rgb(var(--primary) / 0.08);
+  border: 1px solid rgb(var(--primary) / 0.15);
+  color: rgb(var(--primary));
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   &:hover {
-    background-color: rgb(255 255 255 / 0.1);
-    border-color: rgb(255 255 255 / 0.2);
+    background-color: rgb(var(--primary) / 0.15);
+    border-color: rgb(var(--primary) / 0.25);
+    transform: translateY(-1px);
+  }
+  &:active {
+    transform: translateY(0);
   }
 }
 
-@utility neon-text {
-  text-shadow: 0 0 10px rgba(34, 211, 238, 0.5);
+/* Floating Island */
+@utility floating-island {
+  background-color: rgb(255 255 255 / 0.95);
+  backdrop-filter: blur(20px);
+  border-radius: 9999px;
+  box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.1), 0 2px 8px -2px rgba(0, 0, 0, 0.06);
+  border: 1px solid rgb(var(--outline-variant) / 0.2);
 }
 
-/* Animación de entrada suave para las ventanas flotantes */
-@keyframes float-in {
-  from { opacity: 0; transform: scale(0.95) translateY(10px); }
-  to { opacity: 1; transform: scale(1) translateY(0); }
+.dark .floating-island {
+  background-color: rgb(43 41 48 / 0.95);
+  box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.4);
+  border: 1px solid rgb(255 255 255 / 0.08);
 }
 
-.animate-in {
-  animation: float-in 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+/* Node Card Base */
+@utility node-card {
+  border-radius: 1.25rem;
+  padding: 0.875rem 1rem;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  cursor: pointer;
+  &:hover {
+    transform: translateY(-2px) scale(1.02);
+  }
+  &:active {
+    transform: scale(0.98);
+  }
+}
+
+/* Animations */
+@keyframes scale-in-center {
+  from { opacity: 0; transform: scale(0.85); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes slide-up-fade {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes expand-from-point {
+  from { opacity: 0; transform: scale(0.5); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+.animate-scale-in {
+  animation: scale-in-center 0.25s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+.animate-slide-up {
+  animation: slide-up-fade 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-expand {
+  animation: expand-from-point 0.2s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+/* Focus Ring */
+*:focus-visible {
+  outline: 2px solid rgb(var(--primary));
+  outline-offset: 2px;
+}
+
+/* Selection */
+::selection {
+  background-color: rgb(var(--primary) / 0.2);
+}
+
+/* Dot Grid Pattern for Canvas */
+.dot-grid {
+  background-image: radial-gradient(circle, rgb(var(--outline-variant) / 0.4) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+
+.dark .dot-grid {
+  background-image: radial-gradient(circle, rgb(255 255 255 / 0.08) 1px, transparent 1px);
 }
