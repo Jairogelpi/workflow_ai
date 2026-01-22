@@ -106,3 +106,23 @@ Interfaz basada en grafos (Nodes) y texto rico, donde cada párrafo es un nodo d
 ---
 
 *Documentación actualizada para el despliegue Hito 4.8 - Rust Engine, Smart Routing & Vault.*
+
+---
+
+## 🦀 Phase 6: Advanced Rust Core (Enterprise Grade)
+
+Para alcanzar la "perfección técnica", el sistema incluye cuatro módulos nativos en Rust:
+
+### A. Authority Signer (Ed25519)
+Firmas criptográficas para autoría humana verificable. Cada nodo PIN puede ser firmado con la clave privada del usuario, garantizando trazabilidad inmutable.
+
+### B. Logic SAT Solver
+Motor de resolución de restricciones SAT (varisat) para verificar consistencia de PINs en grafos masivos. Detecta contradicciones y dependencias rotas en milisegundos.
+
+### C. CRDT Sync Engine
+Colaboración en tiempo real sin conflictos usando Yrs (Yjs para Rust). Permite que múltiples usuarios editen el mismo nodo simultáneamente.
+
+### D. Stream Assembler
+Generador de documentos de 500+ páginas mediante streaming HTTP. No carga todo el documento en RAM, permitiendo exportaciones masivas.
+
+**Evidencia**: `signer-core/`, `logic-engine/`, `crdt-sync/`, `stream-assembler/`

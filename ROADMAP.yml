@@ -464,6 +464,111 @@ phases:
           - "src/kernel/observability.ts"
           - "documentacion/HITO_4.5_AUDIT_LOGS.md"
 
+      - id: "4.6"
+        title: "Mediator Agent & Pulse"
+        description: "AI-driven structural heartbeat for logic gap detection and recursive abstraction proposals."
+        status: "done"
+        gate: "Mediator proposes automatic hierarchical digests and contradiction tensions."
+        tasks:
+          - "Implement MediatorAgent v3.0 (Kernel)"
+          - "Implement Structural Pulse (analyzeStructure)"
+          - "Implement Recursive Abstraction Proposal"
+          - "Implement Visual Tension Detection (PIN contradictions)"
+        evidence_nodes:
+          - "src/kernel/collaboration/MediatorAgent.ts"
+          - "documentacion/HITO_4.6_MEDIATOR_AND_FORENSICS.md"
+
+      - id: "4.7"
+        title: "Antigravity Engine (Rust/WASM)"
+        description: "High-performance physics engine in Rust compiled to WebAssembly for native 60 FPS graph layout."
+        status: "done"
+        gate: "Graph forces computed in WASM without blocking the UI thread."
+        tasks:
+          - "Create antigravity-engine Rust project"
+          - "Implement apply_forces in Rust"
+          - "Create useAntigravityEngine bridge hook"
+          - "Add type shims for TypeScript"
+        evidence_nodes:
+          - "antigravity-engine/src/lib.rs"
+          - "src/hooks/useAntigravityEngine.ts"
+          - "src/types/antigravity-engine.d.ts"
+
+      - id: "4.8"
+        title: "High-Ceiling Rust Ingestor"
+        description: "Rust microservice for heavy file parsing (PDF, HTML) and semantic chunking, eliminating Node.js memory limits."
+        status: "done"
+        gate: "processHeavyFile in TypeScript delegates to the Rust worker."
+        tasks:
+          - "Create ingestor-rust project and Cargo.toml"
+          - "Implement PDF and HTML parsing in Rust"
+          - "Implement Semantic Chunking in Rust"
+          - "Create Axum server for ingestion API"
+          - "Integrate with TypeScript processHeavyFile"
+        evidence_nodes:
+          - "ingestor-rust/src/main.rs"
+          - "ingestor-rust/src/parsers.rs"
+          - "ingestor-rust/src/chunking.rs"
+          - "src/lib/ingest/parsers.ts"
+
+      - id: "4.9"
+        title: "Smart Routing & Price Registry 2026"
+        description: "Automatic model selection based on task complexity and a 2026-projected price registry for budget optimization."
+        status: "done"
+        gate: "SmartRouter selects optimal model and Gateway estimates cost before calls."
+        tasks:
+          - "Implement PRICE_REGISTRY_2026 in observability.ts"
+          - "Create SmartRouter in gateway.ts"
+          - "Integrate Smart Routing into MediatorAgent inference"
+          - "Add cost estimation and circuit breaker logic"
+        evidence_nodes:
+          - "src/kernel/observability.ts"
+          - "src/kernel/llm/gateway.ts"
+
+      - id: "4.10"
+        title: "Vault Security (E2E BYOK)"
+        description: "AES-GCM encryption for BYOK API keys with JIT decryption and log sanitization."
+        status: "done"
+        gate: "API keys are stored encrypted and only decrypted in memory for the duration of a call."
+        tasks:
+          - "Create Vault encryption utility (AES-GCM)"
+          - "Update useSettingsStore for encrypted persistence"
+          - "Implement JIT decryption in LLM Gateway"
+          - "Create Guards for log sanitization ([REDACTED])"
+        evidence_nodes:
+          - "src/lib/security/vault.ts"
+          - "src/kernel/guards.ts"
+          - "src/store/useSettingsStore.ts"
+
+      - id: "4.11"
+        title: "Forensic Audit View"
+        description: "Real-time live audit console in extension SidePanel exposing latency, cost, and engine per operation."
+        status: "done"
+        gate: "User can see every traceSpan in the Forensic Audit tab."
+        tasks:
+          - "Refine otel-config.yaml with memory limiters"
+          - "Create useAuditStream hook in extension"
+          - "Implement SidePanelAuditView in extension"
+          - "Connect traceSpan to live audit stream via GraphStore"
+        evidence_nodes:
+          - "otel-config.yaml"
+          - "extension/src/hooks/useAuditStream.ts"
+          - "extension/src/components/SidePanelAuditView.tsx"
+          - "src/kernel/observability.ts"
+
+      - id: "4.12"
+        title: "Professional Deployment (Docker & Chef)"
+        description: "Multi-stage Dockerfile with Cargo Chef for optimized Rust builds and Distroless for security."
+        status: "done"
+        gate: "docker compose up brings up the entire system (Next.js, Rust Ingestor, OTel Collector)."
+        tasks:
+          - "Create ingestor-rust/Dockerfile (Cargo Chef)"
+          - "Create main docker-compose.yml"
+          - "Create otel-config.yaml for observability"
+        evidence_nodes:
+          - "ingestor-rust/Dockerfile"
+          - "docker-compose.yml"
+          - "otel-config.yaml"
+
   - id: 5
     title: "Phase 5: Universal Capture System"
     description: "Frictionless knowledge capture from any source."
@@ -553,3 +658,59 @@ operational_rules:
   gate_enforcement: "Strict - Phase Gates must be satisfied for milestone closure."
   documentation_level: "Structured node-by-node according to canon/04_definition_of_done.md."
   traceability: "Mandatory population of evidence_nodes list for each hito."
+
+  - id: 6
+    title: "Phase 6: Advanced Rust Core (Enterprise Grade)"
+    description: "Native Rust modules for cryptographic authority, logic verification, real-time collaboration, and massive document generation."
+    phase_gate: "All four Rust modules compile to WASM and pass integration tests."
+    hitos:
+      - id: "6.1"
+        title: "Authority Signer (Ed25519)"
+        description: "Cryptographic signatures for verifiable human authorship of nodes."
+        status: "done"
+        gate: "sign_node and verify_signature functions work with round-trip test vectors."
+        tasks:
+          - "Create signer-core Rust project"
+          - "Implement Ed25519 signing with ed25519-dalek"
+          - "Add TypeScript type declarations"
+        evidence_nodes:
+          - "signer-core/src/lib.rs"
+          - "src/types/signer-core.d.ts"
+
+      - id: "6.2"
+        title: "Logic SAT Solver"
+        description: "SAT-based constraint solver for PIN verification in massive graphs."
+        status: "done"
+        gate: "check_pin_consistency detects known contradictions."
+        tasks:
+          - "Create logic-engine Rust project"
+          - "Implement SAT clauses for graph edges (supports, contradicts, blocks)"
+          - "Force PIN nodes as invariants in SAT formula"
+        evidence_nodes:
+          - "logic-engine/src/lib.rs"
+          - "src/types/logic-engine.d.ts"
+
+      - id: "6.3"
+        title: "CRDT Sync Engine"
+        description: "Conflict-free Replicated Data Types for real-time collaboration."
+        status: "done"
+        gate: "Concurrent edits merge correctly without conflicts."
+        tasks:
+          - "Create crdt-sync Rust project"
+          - "Implement Yrs-based document sync"
+          - "Add merge_remote_update and compute_diff functions"
+        evidence_nodes:
+          - "crdt-sync/src/lib.rs"
+          - "src/types/crdt-sync.d.ts"
+
+      - id: "6.4"
+        title: "Stream Assembler"
+        description: "Streaming document generator for 500+ page exports without RAM limits."
+        status: "done"
+        gate: "Axum streaming endpoint generates documents incrementally."
+        tasks:
+          - "Create stream-assembler Rust project"
+          - "Implement /assemble and /stream endpoints"
+          - "Support Markdown and PDF (stub) output"
+        evidence_nodes:
+          - "stream-assembler/src/main.rs"
