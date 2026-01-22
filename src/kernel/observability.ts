@@ -20,7 +20,9 @@ export type TraceSpan<T> = (name: string, attributes: SpanAttributes, fn: () => 
 
 /**
  * Mocks the OpenTelemetry tracer for now, but enforces the interface.
- * In a real implementation, this would import @opentelemetry/api
+ * In a real implementation, this would import @opentelemetry/api.
+ * 
+ * [Hito 4.3] Now also pushes to the GraphStore for real-time UI observation.
  */
 export async function traceSpan<T>(
     name: string,
@@ -31,13 +33,31 @@ export async function traceSpan<T>(
     try {
         const result = await fn();
         const end = performance.now();
+        const duration_ms = Math.round(end - start);
+        const cost_usd = attributes.cost_usd || 0;
 
         // Log to console for dev visibility (Mocking the Span export)
         console.log(`[OTel] Span: ${name}`, {
             ...attributes,
-            latency_ms: Math.round(end - start),
+            latency_ms: duration_ms,
             status: 'OK'
         });
+
+        // [Hito 4.3] Push to the GraphStore for the Forensic Audit View
+        try {
+            // Dynamic import to avoid circular dependencies in SSR/build
+            const { useGraphStore } = await import('../store/useGraphStore');
+            useGraphStore.getState().recordAudit({
+                operation: name,
+                timestamp: new Date().toISOString(),
+                duration_ms,
+                cost_usd,
+                engine: attributes.model || attributes.engine || 'kernel',
+                metadata: attributes
+            });
+        } catch (e) {
+            // Silently fail if store is not available (e.g., during SSR)
+        }
 
         return result;
     } catch (error) {

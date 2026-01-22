@@ -58,6 +58,17 @@ interface GraphState {
         iterations: number;
     };
 
+    // Forensic Observability (Hito 4.3)
+    lastAuditRecord: {
+        operation: string;
+        timestamp: string;
+        duration_ms: number;
+        cost_usd: number;
+        engine: string;
+        metadata?: any;
+    } | null;
+    recordAudit: (record: GraphState['lastAuditRecord']) => void;
+
     // Core Actions
     setNodes: (nodes: AppNode[]) => void;
     setEdges: (edges: AppEdge[]) => void;
@@ -133,6 +144,9 @@ export const useGraphStore = create<GraphState>((set, get) => ({
         cost_usd: 0,
         iterations: 0
     },
+
+    lastAuditRecord: null,
+    recordAudit: (record) => set({ lastAuditRecord: record }),
 
     setNodes: (nodes) => set({ nodes }),
     setEdges: (edges) => set({ edges }),

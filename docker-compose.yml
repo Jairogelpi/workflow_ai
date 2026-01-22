@@ -1,0 +1,32 @@
+version: '3.8'
+
+services:
+  # El "Cerebro" (App Next.js)
+  main-app:
+    build: .
+    ports:
+      - "3000:3000"
+    environment:
+      - RUST_WORKER_URL=http://ingestor:8080
+      - DATABASE_URL=${DATABASE_URL}
+      - NEXT_PUBLIC_SUPABASE_URL=${NEXT_PUBLIC_SUPABASE_URL}
+      - NEXT_PUBLIC_SUPABASE_ANON_KEY=${NEXT_PUBLIC_SUPABASE_ANON_KEY}
+    depends_on:
+      - ingestor
+
+  # El "Músculo" (Ingestor en Rust)
+  ingestor:
+    build: ./ingestor-rust
+    ports:
+      - "8080:8080"
+    environment:
+      - PORT=8080
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4317
+    restart: always
+
+  # Sistema Nervioso (Observabilidad)
+  otel-collector:
+    image: otel/opentelemetry-collector:latest
+    volumes:
+      - ./otel-config.yaml:/etc/otel-config.yaml
+    command: ["--config=/etc/otel-config.yaml"]
