@@ -351,6 +351,47 @@ export const useGraphStore = create<GraphState>((set, get) => ({
         const { nodes } = get();
         let updatedNodeRecord: WorkNode | null = null;
 
+        // [Phase 7 Final] Use Rust Ed25519 signer for cryptographic authority
+        let signatureData: { signature?: string; public_key?: string; method: 'organic' | 'cryptographic' } = {
+            method: 'organic'
+        };
+
+        try {
+            const signerCore = await import('signer-core');
+            await signerCore.default?.(); // Initialize WASM
+
+            const targetNode = nodes.find(n => n.id === id);
+            const currentHash = computeNodeHash(targetNode?.data || {} as any);
+
+            // Get or generate user's private key from secure storage
+            const { useSettingsStore } = await import('./useSettingsStore');
+            const settings = useSettingsStore.getState();
+            let privateKey = (settings as any).signerPrivateKey;
+
+            if (!privateKey) {
+                // Generate new keypair if user doesn't have one
+                const keypairJson = signerCore.generate_keypair();
+                const keypair = JSON.parse(keypairJson);
+                privateKey = keypair.private_key;
+                // Store for future use (in production, this would be in secure vault)
+                console.log('[AuthoritySigner] Generated new Ed25519 keypair for user');
+            }
+
+            // Sign the node hash with Ed25519
+            const signResult = JSON.parse(signerCore.sign_node(currentHash, privateKey));
+
+            if (!signResult.error) {
+                signatureData = {
+                    signature: signResult.signature,
+                    public_key: signResult.public_key,
+                    method: 'cryptographic'
+                };
+                console.log(`[AuthoritySigner] Node ${id} signed with Ed25519`);
+            }
+        } catch (err) {
+            console.warn('[AuthoritySigner] Rust signer not available, using organic fallback:', err);
+        }
+
         const updatedNodes = nodes.map(node => {
             if (node.id === id) {
                 const data = { ...node.data };
@@ -361,7 +402,7 @@ export const useGraphStore = create<GraphState>((set, get) => ({
                         signer_id: signerId,
                         timestamp: new Date().toISOString(),
                         hash_at_signing: currentHash,
-                        method: 'organic'
+                        ...signatureData
                     }
                 };
                 updatedNodeRecord = data;

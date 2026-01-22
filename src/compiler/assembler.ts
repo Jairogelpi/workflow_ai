@@ -119,8 +119,14 @@ IMPORTANTE: NO puedes contradecir, cuestionar ni sugerir cambios a estos nodos. 
         // Si el verificador detecta una violación de un PIN, verifyBranch lanzará LogicCircuitBreakerError
         await verifyBranch(filteredNodes);
 
-        // 2. ACUMULAR
-        fullDocument += `\n\n## ${step.description}\n\n${sectionContent}`;
+        // [Phase 7 Final] INJECT FORENSIC IDs
+        // Each section gets a unique forensic ID for deep traceability
+        const forensicId = `f-${step.id}-${Date.now().toString(36)}`;
+        const evidenceRefs = filteredNodes.map(n => n.id).join(',');
+        const signedNodeIds = signedNodes.map(n => n.id).join(',');
+
+        // 2. ACUMULAR (with forensic metadata as HTML comment)
+        fullDocument += `\n\n<!-- forensic:${forensicId} evidence:[${evidenceRefs}] signed:[${signedNodeIds}] -->\n## ${step.description}\n\n${sectionContent}`;
 
         // 3. COMPRIMIR MEMORIA (Tier: EFFICIENCY or REASONING based on qualityMode)
         // Esto es lo que permite longitud infinita.
