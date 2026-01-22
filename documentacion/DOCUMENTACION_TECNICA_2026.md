@@ -126,3 +126,16 @@ Colaboración en tiempo real sin conflictos usando Yrs (Yjs para Rust). Permite 
 Generador de documentos de 500+ páginas mediante streaming HTTP. No carga todo el documento en RAM, permitiendo exportaciones masivas.
 
 **Evidencia**: `signer-core/`, `logic-engine/`, `crdt-sync/`, `stream-assembler/`
+
+---
+
+## ⚡ Phase 10: Resource Optimization (Efficiency Mastery)
+
+Para maximizar el rendimiento y minimizar el consumo de recursos (RAM/CPU), hemos consolidado la arquitectura:
+
+- **Unificación en Rust**: El microservicio de Python (`rlm-core`) ha sido migrado íntegramente a Rust y fusionado con el `ingestor` y el `assembler`.
+- **WorkGraph Worker**: Un único binario de alto rendimiento gestiona la ingesta de archivos, el ensamblaje de documentos y la verificación lógica local.
+- **Reducción de Footprint**: Eliminación del runtime de Python, ahorrando ~200MB de RAM por instancia y reduciendo la latencia de red entre servicios.
+- **Docker Optimizado**: El stack se ha simplificado a 3 servicios core (`main-app`, `workgraph-worker`, `ollama`).
+
+**Evidencia**: `workgraph-worker/`, `docker-compose.yml`

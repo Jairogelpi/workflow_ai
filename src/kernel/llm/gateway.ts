@@ -9,7 +9,7 @@ interface LLMResponse {
 }
 
 // RLM Core (Python) client configuration
-const RLM_CORE_URL = process.env.RLM_CORE_URL || 'http://localhost:8082';
+const RLM_CORE_URL = process.env.RLM_CORE_URL || 'http://localhost:8080';
 
 /**
  * Calls the local Python RLM Core for verification tasks.

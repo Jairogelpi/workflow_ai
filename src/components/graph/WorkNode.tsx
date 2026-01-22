@@ -86,16 +86,24 @@ const NODE_TYPE_CONFIG: Record<string, {
     },
 };
 
-export function WorkNodeComponent({ data, selected, id }: NodeProps<WorkNodeIR>) {
-    const { mutateNodeType, edges, isAntigravityActive } = useGraphStore();
+export function WorkNodeComponent(props: any) {
+    const { data, selected, id, className } = props;
+    const { mutateNodeType, edges, isAntigravityActive, logicalTension, isXRayActive } = useGraphStore();
 
-    // Antigravity Semantic Physics Logic: Calculate Tension (Contradictions)
+    // [Phase 12] Ghost Node Detection
+    const isGhost = className?.includes('ghost-predicted');
+    const isSigned = !!data?.metadata?.human_signature;
+
+    // Combined Tension: Physical (edges) + Logical (SAT Solver)
     const tensionLevel = useMemo(() => {
-        return edges.filter(e =>
+        const physicalTension = edges.filter(e =>
             (e.target === id || e.source === id) &&
             e.data?.relation === 'contradicts'
         ).length;
-    }, [edges, id]);
+
+        const logicalTensionValue = logicalTension[id] ?? 0;
+        return physicalTension + (logicalTensionValue * 5); // Scale logical tension
+    }, [edges, id, logicalTension]);
 
     // Antigravity Semantic Physics Logic: Calculate Depth (Z-Axis)
     const zDepth = useMemo(() => {
@@ -148,24 +156,68 @@ export function WorkNodeComponent({ data, selected, id }: NodeProps<WorkNodeIR>)
                 className={`
                     min-w-[200px] max-w-[280px] rounded-3xl 
                     transition-all duration-300 ease-out
+                    ${isGhost ? 'opacity-40 border-dashed border-cyan-400 grayscale brightness-75' : ''}
+                    ${isSigned ? 'shadow-[0_0_20px_rgba(245,158,11,0.25)]' : ''}
                     ${selected ? 'scale-105 shadow-elevation-5' : 'shadow-elevation-3'}
-                    ${tensionLevel > 0 ? 'animate-pulse' : ''}
-                    ${data.metadata.origin === 'ai' ? 'opacity-70 border-dashed border-gray-400 grayscale-[0.5]' : ''}
+                    ${tensionLevel > 0 ? 'animate-vibration' : ''}
+                    ${data.metadata.origin === 'ai' && !isGhost ? 'opacity-70 border-dashed border-gray-400 grayscale-[0.5]' : ''}
                 `}
                 style={{
                     backgroundColor: colors.bg,
-                    border: data.metadata.origin === 'ai'
-                        ? `2px dashed ${colors.text}50`
+                    border: data.metadata.origin === 'ai' || isGhost
+                        ? `2px dashed ${isGhost ? '#22d3ee' : colors.text + '50'}`
                         : `2px solid ${selected ? colors.text : colors.border}`,
                     transform: isAntigravityActive ? `scale(${zDepth})` : undefined,
                     boxShadow: tensionLevel > 0
                         ? `0 0 ${10 + tensionLevel * 5}px rgba(239, 68, 68, ${0.3 + tensionLevel * 0.1})`
-                        : undefined
+                        : (isSigned ? '0 0 15px rgba(245, 158, 11, 0.2)' : undefined),
+                    animation: isSigned ? 'heartbeat 2s infinite ease-in-out' : (tensionLevel > 0 ? `vibration ${Math.max(0.1, 0.5 - tensionLevel * 0.05)}s infinite linear` : undefined)
                 }}
             >
+                <style jsx>{`
+                    @keyframes vibration {
+                        0% { transform: translate(0,0) rotate(0); }
+                        25% { transform: translate(1px, 1px) rotate(0.5deg); }
+                        50% { transform: translate(-1px, 2px) rotate(-0.5deg); }
+                        75% { transform: translate(-2px, -1px) rotate(0.5deg); }
+                        100% { transform: translate(1px, -2px) rotate(-0.5deg); }
+                    }
+                    @keyframes heartbeat {
+                        0% { transform: scale(1); box-shadow: 0 0 15px rgba(245, 158, 11, 0.15); }
+                        14% { transform: scale(1.02); box-shadow: 0 0 25px rgba(245, 158, 11, 0.35); }
+                        28% { transform: scale(1); box-shadow: 0 0 15px rgba(245, 158, 11, 0.15); }
+                        42% { transform: scale(1.02); box-shadow: 0 0 20px rgba(245, 158, 11, 0.25); }
+                        70% { transform: scale(11); box-shadow: 0 0 15px rgba(245, 158, 11, 0.15); }
+                    }
+                    .animate-vibration {
+                        animation: vibration 0.2s infinite linear;
+                    }
+                `}</style>
                 {tensionLevel > 0 && (
                     <div className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 shadow-lg z-10">
                         <Zap size={12} fill="currentColor" />
+                    </div>
+                )}
+
+                {/* [Phase 12] X-Ray Structural Layer */}
+                {isXRayActive && (
+                    <div className="absolute inset-0 z-20 bg-slate-950/95 rounded-3xl p-4 flex flex-col justify-between font-mono text-[9px] border-2 border-cyan-500/40 shadow-[inset_0_0_20px_rgba(34,211,238,0.2)] animate-in fade-in zoom-in-95 duration-200">
+                        <div className="flex justify-between text-cyan-400 font-bold uppercase tracking-tighter">
+                            <span>PHY_ADDR: {id.slice(0, 8)}</span>
+                            <span>VER: {data.metadata.version_hash?.slice(0, 6) || 'RAW'}</span>
+                        </div>
+                        <div className="flex-1 flex flex-col items-center justify-center gap-2">
+                            <div className="text-[10px] text-cyan-300 font-black animate-pulse">NEURAL_SCAN_ACTIVE</div>
+                            <div className="w-full bg-cyan-900/30 h-10 border border-cyan-500/20 rounded-xl flex items-center justify-center">
+                                <span className="text-cyan-500 flex items-center gap-1">
+                                    <Zap size={14} className="animate-bounce" />
+                                    INTEGRITY_INDEX: {(data.metadata.confidence * 100).toFixed(1)}%
+                                </span>
+                            </div>
+                        </div>
+                        <div className="text-slate-400 border-t border-cyan-950 mt-2 py-1 truncate">
+                            {isSigned ? `SIGNATURE_ED25519: ${(data.metadata.human_signature as any)?.public_key?.slice(0, 16)}...` : 'AUTH: AI_INFERRED (NON_CANON)'}
+                        </div>
                     </div>
                 )}
                 <div className="px-4 py-3 flex items-start gap-3">

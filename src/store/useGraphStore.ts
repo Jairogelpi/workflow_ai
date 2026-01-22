@@ -10,10 +10,11 @@ import {
     addEdge
 } from 'reactflow';
 import { v4 as uuidv4 } from 'uuid';
-import { WorkNode, WorkEdge } from '../canon/schema/ir';
+import { WorkNode, WorkEdge, UserRole } from '../canon/schema/ir';
 import { NodeId, EdgeId } from '../canon/schema/primitives';
 import { ChangeProposal } from '../kernel/collaboration/Negotiator';
 import { createVersion, computeNodeHash } from '../kernel/versioning';
+import { canModifyNode, canDeleteNode } from '../kernel/guards';
 import { backendToFlow } from '../lib/adapters';
 import { syncService } from '../lib/sync';
 import * as d3 from 'd3-force';
@@ -42,6 +43,12 @@ interface GraphState {
     isLoading: boolean;
     isSyncing: boolean;
 
+    // RBAC: Current User (Hito 4.1)
+    currentUser: {
+        id: string;
+        role: UserRole;
+    };
+
     // AI Mediator Proposals
     proposals: ChangeProposal[];
     addProposal: (proposal: ChangeProposal) => void;
@@ -49,6 +56,8 @@ interface GraphState {
 
     // Shadow Storage
     draftNodes: AppNode[];
+    ghostNodes: AppNode[]; // Predicted nodes (Neural Shadowing)
+    healProposals: ChangeProposal[]; // SAT self-healing patches
 
     // Antigravity State
     isAntigravityActive: boolean;
@@ -69,10 +78,30 @@ interface GraphState {
     } | null;
     recordAudit: (record: GraphState['lastAuditRecord']) => void;
 
+    logicalTension: Record<string, number>; // nodeID -> intensity (0-1)
+    setLogicalTension: (tension: Record<string, number>) => void;
+
+    // RLM Terminal (Phase 11)
+    rlmThoughts: Array<{
+        id: string;
+        timestamp: string;
+        message: string;
+        type: 'info' | 'warn' | 'error' | 'success' | 'reasoning';
+        agentId?: string; // Phase 14: Swarm Identity
+        agentName?: string;
+    }>;
+    addRLMThought: (thought: Omit<GraphState['rlmThoughts'][0], 'id' | 'timestamp'>) => void;
+
+    // Phase 15: Swarm Dashboard State
+    activeAgents: Record<string, { name: string, status: 'IDLE' | 'THINKING' | 'WORKING', color: string }>;
+    setAgentStatus: (agentId: string, status: 'IDLE' | 'THINKING' | 'WORKING') => void;
+
     // Core Actions
     setNodes: (nodes: AppNode[]) => void;
     setEdges: (edges: AppEdge[]) => void;
     loadProject: (projectId: string) => Promise<void>;
+    setCurrentUser: (user: GraphState['currentUser']) => void;
+    voteOnNode: (nodeId: string, agentId: string, vote: 'support' | 'skeptic') => void;
 
     // React Flow Handlers
     onNodesChange: OnNodesChange;
@@ -99,6 +128,8 @@ interface GraphState {
 
     // Shadow Storage Actions
     proposeNode: (node: WorkNode, position?: { x: number, y: number }) => void;
+    addGhostNode: (node: WorkNode, position?: { x: number, y: number }) => void;
+    clearGhosts: () => void;
     commitDraft: (id: string) => Promise<void>;
     discardDraft: (id: string) => void;
 
@@ -124,6 +155,10 @@ interface GraphState {
     setAntigravity: (active: boolean) => void;
     toggleAntigravity: () => void;
     applyForces: () => void;
+
+    // Phase 12: Structural X-Ray
+    isXRayActive: boolean;
+    setXRayActive: (active: boolean) => void;
 }
 
 export const useGraphStore = create<GraphState>((set, get) => ({
@@ -134,8 +169,15 @@ export const useGraphStore = create<GraphState>((set, get) => ({
     activeWindow: null,
     isLoading: false,
     isSyncing: false,
+    currentUser: {
+        id: 'admin-001', // Default for now, populated by Auth later
+        role: 'admin'
+    },
     proposals: [],
     draftNodes: [],
+    ghostNodes: [],
+    healProposals: [],
+    isXRayActive: false,
 
     // Antigravity Initial State (Fricción Cero: On by default)
     isAntigravityActive: true,
@@ -148,11 +190,70 @@ export const useGraphStore = create<GraphState>((set, get) => ({
     lastAuditRecord: null,
     recordAudit: (record) => set({ lastAuditRecord: record }),
 
+    logicalTension: {},
+    setLogicalTension: (tension) => set({ logicalTension: tension }),
+    setXRayActive: (active) => set({ isXRayActive: active }),
+
+    rlmThoughts: [],
+    addRLMThought: (thought) => set((state) => ({
+        rlmThoughts: [
+            ...state.rlmThoughts,
+            {
+                ...thought,
+                id: uuidv4(),
+                timestamp: new Date().toISOString()
+            }
+        ].slice(-50) // Keep only last 50 thoughts
+    })),
+
+    activeAgents: {
+        'harvester-01': { name: 'Neural Harvester', status: 'IDLE', color: '#fbbf24' },
+        'builder-01': { name: 'Expansionist', status: 'IDLE', color: '#22d3ee' },
+        'critic-01': { name: 'Logical Critic', status: 'IDLE', color: '#f87171' },
+        'validator-01': { name: 'Evidence Hunter', status: 'IDLE', color: '#c084fc' },
+        'librarian-01': { name: 'G-Librarian', status: 'IDLE', color: '#4ade80' }
+    },
+    setAgentStatus: (agentId, status) => set((state) => {
+        const agent = state.activeAgents[agentId];
+        if (!agent) return state;
+        return {
+            activeAgents: {
+                ...state.activeAgents,
+                [agentId]: { ...agent, status }
+            }
+        };
+    }),
+
     setNodes: (nodes) => set({ nodes }),
     setEdges: (edges) => set({ edges }),
     setSearchQuery: (searchQuery) => set({ searchQuery }),
     openWindow: (window) => set({ activeWindow: window }),
     closeWindow: () => set({ activeWindow: null }),
+    setCurrentUser: (currentUser) => set({ currentUser }),
+
+    voteOnNode: (nodeId, agentId, vote) => set((state) => {
+        const updatedGhostNodes = state.ghostNodes.map(node => {
+            if (node.id === nodeId) {
+                const nodeData = node.data;
+                const metadata = nodeData.metadata;
+                const consensus = metadata.consensus || { support_count: 0, skeptics_count: 0, voters: [] };
+
+                if (consensus.voters.includes(agentId)) return node;
+
+                const newConsensus = {
+                    ...consensus,
+                    voters: [...consensus.voters, agentId],
+                    support_count: vote === 'support' ? consensus.support_count + 1 : consensus.support_count,
+                    skeptics_count: vote === 'skeptic' ? consensus.skeptics_count + 1 : consensus.skeptics_count,
+                };
+
+                return { ...node, data: { ...nodeData, metadata: { ...metadata, consensus: newConsensus } } };
+            }
+            return node;
+        });
+
+        return { ghostNodes: updatedGhostNodes };
+    }),
 
     loadProject: async (projectId) => {
         set({ isLoading: true });
@@ -202,7 +303,11 @@ export const useGraphStore = create<GraphState>((set, get) => ({
                 origin: 'human',
                 confidence: 1.0,
                 validated: false,
-                pin: false
+                pin: false,
+                access_control: {
+                    role_required: 'editor',
+                    owner_id: get().currentUser.id
+                }
             }
         };
 
@@ -223,11 +328,16 @@ export const useGraphStore = create<GraphState>((set, get) => ({
     setSelectedNode: (id) => set({ selectedNodeId: id }),
 
     updateNodeContent: async (id, content) => {
-        const { nodes } = get();
+        const { nodes, currentUser } = get();
         let updatedNodeRecord: WorkNode | null = null;
 
         const updatedNodes = nodes.map((node) => {
             if (node.id === id) {
+                // [RBAC] Guard check
+                if (!canModifyNode(node.data, currentUser.role, currentUser.id)) {
+                    return node;
+                }
+
                 const nodeData = node.data;
                 const newData = { ...nodeData };
 
@@ -268,7 +378,11 @@ export const useGraphStore = create<GraphState>((set, get) => ({
                 version_hash: '' as any,
                 confidence: 1.0,
                 validated: false,
-                pin: false
+                pin: false,
+                access_control: {
+                    role_required: 'editor',
+                    owner_id: get().currentUser.id
+                }
             }
         };
 
@@ -330,7 +444,13 @@ export const useGraphStore = create<GraphState>((set, get) => ({
     },
 
     deleteNode: async (id: string) => {
-        const { nodes, edges } = get();
+        const { nodes, edges, currentUser } = get();
+        const targetNode = nodes.find(n => n.id === id);
+
+        if (targetNode && !canDeleteNode(targetNode.data, { nodes: {}, edges: Object.fromEntries(edges.map(e => [e.id, e.data])) } as any, currentUser.role, currentUser.id)) {
+            return;
+        }
+
         set({
             nodes: nodes.filter(n => n.id !== id),
             edges: edges.filter(e => e.source !== id && e.target !== id)
@@ -465,6 +585,14 @@ export const useGraphStore = create<GraphState>((set, get) => ({
         set({ draftNodes: get().draftNodes.filter(n => n.id !== id) });
     },
 
+    addGhostNode: (node, position) => {
+        const flowNode = backendToFlow(node, position || { x: Math.random() * 400, y: Math.random() * 400 });
+        (flowNode as any).className = 'ghost-predicted';
+        set({ ghostNodes: [...get().ghostNodes, flowNode] });
+    },
+
+    clearGhosts: () => set({ ghostNodes: [] }),
+
     // --- MEDIATOR PROPOSAL ACTIONS ---
 
     addProposal: (proposal: ChangeProposal) => {
@@ -523,6 +651,13 @@ export const useGraphStore = create<GraphState>((set, get) => ({
                 else if (data.type === 'artifact') (data as any).name = newName;
                 else if (data.type === 'assumption') (data as any).premise = newName;
                 else if (data.type === 'constraint') (data as any).rule = newName;
+
+                if (!data.metadata.access_control) {
+                    data.metadata.access_control = {
+                        role_required: 'editor',
+                        owner_id: get().currentUser.id
+                    };
+                }
 
                 const updatedMetadata = createVersion(data, node.data.metadata.version_hash);
                 updatedNodeRecord = { ...data, metadata: updatedMetadata };
@@ -596,12 +731,13 @@ export const useGraphStore = create<GraphState>((set, get) => ({
     toggleAntigravity: () => set({ isAntigravityActive: !get().isAntigravityActive }),
 
     applyForces: () => {
-        const { nodes, edges, isAntigravityActive } = get();
-        if (!isAntigravityActive || nodes.length === 0) return;
+        const { nodes, ghostNodes, edges, isAntigravityActive } = get();
+        if (!isAntigravityActive || (nodes.length === 0 && ghostNodes.length === 0)) return;
 
+        const allVisibleNodes = [...nodes, ...ghostNodes];
         const start = performance.now();
 
-        const simulation = d3.forceSimulation(nodes as any)
+        const simulation = d3.forceSimulation(allVisibleNodes as any)
             .force('link', d3.forceLink(edges).id((d: any) => d.id).distance((d: any) => {
                 const relation = d.data?.relation || 'relates_to';
                 if (relation === 'evidence_for') return 60;

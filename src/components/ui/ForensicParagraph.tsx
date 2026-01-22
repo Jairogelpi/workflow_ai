@@ -8,6 +8,7 @@
 
 import { useState, useRef } from 'react';
 import { Eye, Shield, Link, FileText } from 'lucide-react';
+import { ForensicHUD } from './ForensicHUD';
 
 export interface ForensicMetadata {
     forensic_id: string;
@@ -33,7 +34,8 @@ interface ForensicParagraphProps {
 export function ForensicParagraph({ content, forensicData, onEvidenceClick }: ForensicParagraphProps) {
     const [isHovered, setIsHovered] = useState(false);
     const [showPopup, setShowPopup] = useState(false);
-    const timeoutRef = useRef<NodeJS.Timeout>();
+    const [showHUD, setShowHUD] = useState(false);
+    const timeoutRef = useRef<NodeJS.Timeout | null>(null);
 
     const handleMouseEnter = () => {
         setIsHovered(true);
@@ -53,9 +55,10 @@ export function ForensicParagraph({ content, forensicData, onEvidenceClick }: Fo
 
     return (
         <div
-            className="relative group"
+            className="relative group cursor-help"
             onMouseEnter={handleMouseEnter}
             onMouseLeave={handleMouseLeave}
+            onClick={() => setShowHUD(true)}
         >
             {/* The Paragraph Content */}
             <p
@@ -137,6 +140,16 @@ export function ForensicParagraph({ content, forensicData, onEvidenceClick }: Fo
                         </div>
                     )}
                 </div>
+            )}
+
+            {/* Forensic HUD Overlay */}
+            {showHUD && (
+                <ForensicHUD
+                    forensicId={forensicData.forensic_id}
+                    evidenceIds={forensicData.evidence_refs}
+                    signedNodeIds={forensicData.source_nodes.filter(n => n.is_signed).map(n => n.id)}
+                    onClose={() => setShowHUD(false)}
+                />
             )}
         </div>
     );

@@ -1,5 +1,43 @@
+import { WorkNode, WorkGraph, NodeId, UserRole } from '../canon/schema/ir';
 
-import { WorkNode, WorkGraph, NodeId } from '../canon/schema/ir';
+// RBAC Role Hierarchy (Higher is more powerful)
+const ROLE_HIERARCHY: Record<UserRole, number> = {
+    'viewer': 1,
+    'editor': 2,
+    'admin': 3
+};
+
+/**
+ * Validates if a user role satisfies the required role.
+ */
+export function hasRequiredRole(userRole: UserRole, requiredRole: UserRole): boolean {
+    return ROLE_HIERARCHY[userRole] >= ROLE_HIERARCHY[requiredRole];
+}
+
+/**
+ * Validates if an action can be performed by a user on a node.
+ */
+export function canPerformAction(
+    node: WorkNode,
+    userRole: UserRole,
+    userId: string,
+    action: 'MODIFY' | 'DELETE' | 'PIN' | 'UNPIN'
+): boolean {
+    const { access_control } = node.metadata;
+    const requiredRole = access_control?.role_required || 'editor';
+
+    // Owners or Admins always have bypass (unless PIN enforcement applies later)
+    if (userRole === 'admin' || access_control?.owner_id === userId) {
+        return true;
+    }
+
+    if (!hasRequiredRole(userRole, requiredRole)) {
+        logBlock(action, node.id, `INSUFFICIENT_ROLE (Required: ${requiredRole}, Have: ${userRole})`);
+        return false;
+    }
+
+    return true;
+}
 
 // Simple Observability (Audit Log stub)
 const logBlock = (action: string, nodeId: string, reason: string) => {
@@ -8,9 +46,12 @@ const logBlock = (action: string, nodeId: string, reason: string) => {
 
 /**
  * Validates if a node can be modified.
- * Rule: PIN nodes are immutable unless explicitly unpinned (which is a separate privileged action).
+ * Rule 1: RBAC check (role and ownership).
+ * Rule 2: PIN nodes are immutable unless explicitly unpinned.
  */
-export function canModifyNode(node: WorkNode): boolean {
+export function canModifyNode(node: WorkNode, userRole: UserRole, userId: string): boolean {
+    if (!canPerformAction(node, userRole, userId, 'MODIFY')) return false;
+
     if (node.metadata.pin) {
         logBlock('MODIFY', node.id, 'Node is PINNED (Invariant Violation)');
         return false;
@@ -20,10 +61,13 @@ export function canModifyNode(node: WorkNode): boolean {
 
 /**
  * Validates if a node can be deleted.
- * Rule 1: Cannot delete PIN nodes.
- * Rule 2: Cannot delete nodes with active dependents (Incoming Edges).
+ * Rule 1: RBAC check.
+ * Rule 2: Cannot delete PIN nodes.
+ * Rule 3: Cannot delete nodes with active dependents (Incoming Edges).
  */
-export function canDeleteNode(node: WorkNode, graph: WorkGraph): boolean {
+export function canDeleteNode(node: WorkNode, graph: WorkGraph, userRole: UserRole, userId: string): boolean {
+    if (!canPerformAction(node, userRole, userId, 'DELETE')) return false;
+
     if (node.metadata.pin) {
         logBlock('DELETE', node.id, 'Node is PINNED');
         return false;

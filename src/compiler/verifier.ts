@@ -4,6 +4,7 @@ import { NodeId } from '../canon/schema/primitives';
 import { computeStableHash } from '../kernel/versioning';
 import { LogicCircuitBreakerError } from '../kernel/errors';
 import { traceSpan } from '../kernel/observability';
+import { useGraphStore } from '../store/useGraphStore';
 
 export interface VerificationContext {
     goal: string;
@@ -15,8 +16,10 @@ export interface VerificationContext {
  * [Phase 7] Now integrates with Rust Logic SAT Solver for deep consistency checks.
  */
 export async function verifyBranch(nodes: WorkNode[], edges?: any[]): Promise<VerificationResult> {
+    const { addRLMThought, setLogicalTension } = useGraphStore.getState();
     const issues: Array<{ severity: 'CRITICAL' | 'error' | 'warn', message: string, code: string }> = [];
     let passed = true;
+    let tensions: Record<string, number> = {};
 
     // === PHASE 1: TypeScript-level checks ===
     nodes.forEach(node => {
@@ -67,14 +70,24 @@ export async function verifyBranch(nodes: WorkNode[], edges?: any[]): Promise<Ve
             const satResult = JSON.parse(logicEngine.check_pin_consistency(JSON.stringify(graphData)));
 
             if (!satResult.consistent) {
+                addRLMThought({ message: `SAT SOLVER: Contradiction detected in current graph topology.`, type: 'error' });
                 satResult.violations.forEach((violation: string) => {
                     issues.push({
                         severity: 'CRITICAL',
                         message: violation,
                         code: 'SAT_VIOLATION'
                     });
+
+                    // Trigger visual tension for involved nodes (assuming violation msg contains IDs or generic)
+                    nodes.forEach(n => {
+                        if (violation.includes(n.id)) {
+                            tensions[n.id] = 1.0;
+                        }
+                    });
                 });
                 passed = false;
+            } else {
+                addRLMThought({ message: `SAT Solver verified ${satResult.checked_constraints} constraints. Topology consistent.`, type: 'success' });
             }
 
             console.log(`[Verifier] SAT Solver checked ${satResult.checked_constraints} constraints`);
@@ -83,6 +96,9 @@ export async function verifyBranch(nodes: WorkNode[], edges?: any[]): Promise<Ve
             console.warn('[Verifier] Rust Logic Engine not available, skipping SAT verification:', err);
         }
     }
+
+    // Apply sensory feedback
+    setLogicalTension(tensions);
 
     if (!passed) {
         const criticalErrors = issues.filter(i => i.severity === 'CRITICAL');

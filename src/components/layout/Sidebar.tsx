@@ -2,10 +2,11 @@
 import React from 'react';
 import { useGraphStore } from '../../store/useGraphStore';
 import { NodeListItem } from './NodeListItem';
-import { Search, Layers } from 'lucide-react';
+import { Search, Layers, ShieldCheck, User, Ghost } from 'lucide-react';
+import { UserRole } from '../../canon/schema/ir';
 
 export default function Sidebar() {
-    const { nodes, selectedNodeId, centerNode, searchQuery, setSearchQuery } = useGraphStore();
+    const { nodes, selectedNodeId, centerNode, searchQuery, setSearchQuery, currentUser, setCurrentUser } = useGraphStore();
 
     const filteredNodes = nodes.filter(node => {
         const data = node.data;
@@ -79,8 +80,29 @@ export default function Sidebar() {
                 )}
             </div>
 
-            <div className="p-3 border-t border-slate-800 bg-slate-950/20 text-[9px] text-slate-600 font-mono text-center">
-                V-HASH INTEGRity: ACTIVE
+            {/* RBAC Role Selector (Hito 4.1) */}
+            <div className="p-4 border-t border-slate-800 bg-slate-950/40">
+                <div className="flex items-center gap-2 mb-3 text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+                    <ShieldCheck size={12} className="text-cyan-500" />
+                    RBAC Identity
+                </div>
+                <div className="flex gap-1">
+                    {(['viewer', 'editor', 'admin'] as UserRole[]).map((role) => (
+                        <button
+                            key={role}
+                            onClick={() => setCurrentUser({ ...currentUser, role })}
+                            className={`flex-1 flex flex-col items-center gap-1.5 py-2 rounded-lg border transition-all duration-300 ${currentUser.role === role ? 'bg-cyan-500/20 border-cyan-500 text-cyan-400' : 'bg-slate-950 border-slate-800 text-slate-600 hover:border-slate-700'}`}
+                        >
+                            {role === 'viewer' && <Ghost size={14} />}
+                            {role === 'editor' && <User size={14} />}
+                            {role === 'admin' && <ShieldCheck size={14} />}
+                            <span className="text-[8px] font-black uppercase tracking-tighter">{role}</span>
+                        </button>
+                    ))}
+                </div>
+                <div className="mt-3 text-[8px] font-mono text-slate-700 text-center truncate">
+                    ID: {currentUser.id} | V-HASH INTEGRity: ACTIVE
+                </div>
             </div>
         </aside>
     );

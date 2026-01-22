@@ -714,3 +714,80 @@ operational_rules:
           - "Support Markdown and PDF (stub) output"
         evidence_nodes:
           - "stream-assembler/src/main.rs"
+
+  - id: 12
+    title: "Phase 12: Neural Synergy & Omniscience"
+    description: "Absolute visibility and predictive state management."
+    phase_gate: "X-Ray mode and Ghost Nodes are functional."
+    hitos:
+      - id: "12.1"
+        title: "Neural Shadowing"
+        description: "Ghost nodes for predictive drafting."
+        status: "done"
+        tasks: ["Implement ghostNodes state", "Add Predict action"]
+        evidence_nodes: ["src/store/useGraphStore.ts"]
+      - id: "12.2"
+        title: "X-Ray Vision"
+        description: "Structural skeleton visualization."
+        status: "done"
+        tasks: ["Implement X-Ray toggle", "Add Alt-key overlay"]
+        evidence_nodes: ["src/components/graph/WorkNode.tsx"]
+
+  - id: 13
+    title: "Phase 13: Enterprise Hardening"
+    description: "SOC2-compliant security and role-based access."
+    phase_gate: "RBAC policies enforced in Kernel Guards."
+    hitos:
+      - id: "13.1"
+        title: "RBAC Foundation"
+        description: "Viewer/Editor/Admin role hierarchy."
+        status: "done"
+        tasks: ["Define UserRoleSchema", "Implement canPerformAction"]
+        evidence_nodes: ["src/kernel/guards.ts"]
+
+  - id: 14
+    title: "Phase 14: Swarm Orchestrator"
+    description: "Multi-agent coordination logic."
+    phase_gate: "Swarm Pulse dispatches to multiple agents."
+    hitos:
+      - id: "14.1"
+        title: "Agent Registry"
+        description: "Managing specialized agent personas."
+        status: "done"
+        tasks: ["Create SwarmOrchestrator.ts", "Add Agent Badges to UI"]
+        evidence_nodes: ["src/kernel/collaboration/SwarmOrchestrator.ts"]
+
+  - id: 15
+    title: "Phase 15: Swarm Autonomy"
+    description: "Real neural synergy and parallel inference."
+    phase_gate: "Swarm Dashboard HUD is operational."
+    hitos:
+      - id: "15.1"
+        title: "Neural Deepening"
+        description: "Agents connected to real LLM inference."
+        status: "done"
+        tasks: ["Integrate Mediator inference in Swarm", "Add SwarmDashboard UI"]
+        evidence_nodes: ["src/components/ui/SwarmDashboard.tsx"]
+  - id: 16
+    title: "Phase 16: Neural Convergence"
+    description: "The Singular Point: Autonomous Intelligence Environment."
+    phase_gate: "Ambient Swarm and Neural Consensus are fully operational."
+    hitos:
+      - id: "16.1"
+        title: "Ambient Awareness"
+        description: "Zero-click autonomous reasoning."
+        status: "done"
+        tasks: ["Implement AmbientSwarmManager", "Integrate store-subscribe triggers"]
+        evidence_nodes: ["src/kernel/collaboration/AmbientSwarmManager.ts"]
+      - id: "16.2"
+        title: "Neural Consensus"
+        description: "Multi-agent voting on node validity."
+        status: "done"
+        tasks: ["Implement voteOnNode action", "Add consensus metadata to IR"]
+        evidence_nodes: ["src/store/useGraphStore.ts"]
+      - id: "16.3"
+        title: "Convergence UI"
+        description: "Visual 'consciousness pulse' in Graph Canvas."
+        status: "done"
+        tasks: ["Create ConsciousnessPulse component", "Add ambient background effects"]
+        evidence_nodes: ["src/components/graph/GraphCanvas.tsx"]

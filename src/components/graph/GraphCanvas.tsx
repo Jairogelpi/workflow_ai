@@ -44,6 +44,10 @@ function GraphContent() {
     const isAntigravityActive = useGraphStore(state => state.isAntigravityActive);
     const toggleAntigravity = useGraphStore(state => state.toggleAntigravity);
     const draftNodes = useGraphStore(state => state.draftNodes);
+    const ghostNodes = useGraphStore(state => state.ghostNodes);
+    const isXRayActive = useGraphStore(state => state.isXRayActive);
+    const setXRayActive = useGraphStore(state => state.setXRayActive);
+    const clearGhosts = useGraphStore(state => state.clearGhosts);
 
     const { screenToFlowPosition, fitView } = useReactFlow();
 
@@ -55,15 +59,15 @@ function GraphContent() {
 
     // Key Listeners for X-Ray mode
     useEffect(() => {
-        const handleKeyDown = (e: KeyboardEvent) => { if (e.key === 'Alt') setIsXRayMode(true); };
-        const handleKeyUp = (e: KeyboardEvent) => { if (e.key === 'Alt') setIsXRayMode(false); };
+        const handleKeyDown = (e: KeyboardEvent) => { if (e.key === 'Alt') setXRayActive(true); };
+        const handleKeyUp = (e: KeyboardEvent) => { if (e.key === 'Alt') setXRayActive(false); };
         window.addEventListener('keydown', handleKeyDown);
         window.addEventListener('keyup', handleKeyUp);
         return () => {
             window.removeEventListener('keydown', handleKeyDown);
             window.removeEventListener('keyup', handleKeyUp);
         };
-    }, []);
+    }, [setXRayActive]);
 
     // Initialize with dummy node if empty
     useEffect(() => {
@@ -79,7 +83,11 @@ function GraphContent() {
                     origin: 'human',
                     confidence: 1.0,
                     validated: true,
-                    pin: true
+                    pin: true,
+                    access_control: {
+                        role_required: 'viewer',
+                        owner_id: 'system'
+                    }
                 }
             };
             setNodes([backendToFlow(dummyNode)]);
@@ -126,7 +134,9 @@ function GraphContent() {
         });
     }, [setSelectedNode, openWindow, fitView, nodes, edges]);
 
-    const allNodes = [...nodes, ...draftNodes];
+    const allNodesComp = React.useMemo(() => {
+        return [...nodes, ...draftNodes, ...ghostNodes];
+    }, [nodes, draftNodes, ghostNodes]);
 
     const flowEdges: Edge[] = edges.map(e => {
         const isContradiction = e.data?.relation === 'contradicts';
@@ -147,7 +157,7 @@ function GraphContent() {
 
     return (
         <ReactFlow
-            nodes={allNodes}
+            nodes={allNodesComp}
             edges={flowEdges}
             nodeTypes={nodeTypes}
             onNodesChange={onNodesChange}

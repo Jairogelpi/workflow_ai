@@ -7,6 +7,10 @@ export * from './primitives'; // Re-export for convenience
 
 // --- Metadata ---
 
+// --- RBAC ---
+export const UserRoleSchema = z.enum(['viewer', 'editor', 'admin']);
+export type UserRole = z.infer<typeof UserRoleSchema>;
+
 // --- Metadata ---
 
 export const NodeMetadataSchema = z.object({
@@ -19,6 +23,11 @@ export const NodeMetadataSchema = z.object({
     confidence: ConfidenceSchema.default(1.0), // 1.0 = Human certainty, <1.0 = AI estimation
     validated: z.boolean().default(false),     // Explicit human validation flag
     pin: z.boolean().default(false),           // Invariant marker (Canon enforcement)
+    // RBAC: Enterprise Access Control (Hito 4.1)
+    access_control: z.object({
+        role_required: UserRoleSchema.default('editor'),
+        owner_id: z.string().optional(),
+    }).default({}),
     // Human Authority Signature (Hito 4.4)
     human_signature: z.object({
         signer_id: z.string(),
@@ -31,6 +40,12 @@ export const NodeMetadataSchema = z.object({
     source_title: z.string().optional(),
     accessed_at: TimestampSchema.optional(),
     snippet_context: z.string().optional(),
+    // Phase 16: Neural Consensus (The Singular Point)
+    consensus: z.object({
+        support_count: z.number().default(0),
+        skeptics_count: z.number().default(0),
+        voters: z.array(z.string()).default([]),
+    }).optional(),
 });
 export type NodeMetadata = z.infer<typeof NodeMetadataSchema>;
 

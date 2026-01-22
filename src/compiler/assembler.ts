@@ -1,6 +1,7 @@
 import { traceSpan, auditStore, measureCost } from '../kernel/observability';
 import { Plan, CompilerContext } from './types';
 import { verifyBranch } from './verifier';
+import { useGraphStore } from '../store/useGraphStore';
 import { useSettingsStore } from '../store/useSettingsStore';
 import { WorkNode, ArtifactNodeSchema } from '../canon/schema/ir';
 import { CompilationReceipt, AssertionMap } from '../canon/schema/receipt';
@@ -43,10 +44,13 @@ Objetivo: Que la siguiente iteración de la IA entienda qué pasó aquí sin lee
 export async function assembleRecursiveArtifact(plan: Plan, contextNodes: any[], compilerContext?: CompilerContext): Promise<string> {
     let fullDocument = "";
     let previousDigest = "Inicio del documento.";
+    // [Phase 11] Sensory Feedback: Start Assembly Log
+    const { addRLMThought } = useGraphStore.getState();
+    addRLMThought({ message: `Starting artifact assembly: ${plan.goal}`, type: 'info' });
 
     // Bucle RLM: Iteramos sobre cada paso del plan
     for (const step of plan.steps) {
-        console.log(`[RLM] Generando sección: ${step.id}...`);
+        addRLMThought({ message: `Compiling section: ${step.description}`, type: 'reasoning' });
 
         // TOON: Real Topology-Based Context Filtering
         const filteredNodes = contextNodes.filter(node => {
@@ -133,6 +137,7 @@ IMPORTANTE: NO puedes contradecir, cuestionar ni sugerir cambios a estos nodos. 
         const { modelConfig } = useSettingsStore.getState();
         const digestionTier = modelConfig.qualityMode === 'high-fidelity' ? 'REASONING' : 'EFFICIENCY';
 
+        addRLMThought({ message: `Digesting section for memory continuity...`, type: 'info' });
         const newDigest = await generateText(
             DIGEST_PROMPT,
             sectionContent,
@@ -143,6 +148,7 @@ IMPORTANTE: NO puedes contradecir, cuestionar ni sugerir cambios a estos nodos. 
         previousDigest = newDigest;
     }
 
+    addRLMThought({ message: `Artifact composition successful.`, type: 'success' });
     return fullDocument;
 }
 

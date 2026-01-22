@@ -8,6 +8,7 @@ import NodeEditor from '../components/editor/NodeEditor';
 import { useGraphStore } from '../store/useGraphStore';
 import { useTheme } from '../components/providers/ThemeProvider';
 import { MediatorHUD } from '../components/ui/MediatorHUD';
+import { SwarmDashboard } from '../components/ui/SwarmDashboard';
 
 export default function Home() {
     const { activeWindow, closeWindow } = useGraphStore();
@@ -65,6 +66,7 @@ export default function Home() {
                 <div className="w-full h-full">
                     <GraphCanvas />
                     <MediatorHUD />
+                    <SwarmDashboard />
                 </div>
 
                 {/* Floating Editor Panel */}

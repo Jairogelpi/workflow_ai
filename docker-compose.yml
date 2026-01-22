@@ -7,33 +7,25 @@ services:
     ports:
       - "3000:3000"
     environment:
-      - RUST_WORKER_URL=http://ingestor:8080
-      - RLM_CORE_URL=http://rlm-core:8082
+      - RUST_WORKER_URL=http://workgraph-worker:8080
+      - RLM_CORE_URL=http://workgraph-worker:8080
       - DATABASE_URL=${DATABASE_URL}
       - NEXT_PUBLIC_SUPABASE_URL=${NEXT_PUBLIC_SUPABASE_URL}
       - NEXT_PUBLIC_SUPABASE_ANON_KEY=${NEXT_PUBLIC_SUPABASE_ANON_KEY}
     depends_on:
-      - ingestor
-      - rlm-core
+      - workgraph-worker
+      - ollama
 
-  # El "Músculo" (Ingestor en Rust)
-  ingestor:
-    build: ./ingestor-rust
+  # El "Trabajador Unificado" (Rust: Ingest, Assemble, Verify)
+  workgraph-worker:
+    build: ./workgraph-worker
     ports:
       - "8080:8080"
     environment:
       - PORT=8080
-      - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4317
-    restart: always
-
-  # El "Criterio" (RLM Core en Python)
-  rlm-core:
-    build: ./rlm-core
-    ports:
-      - "8082:8082"
-    environment:
       - OLLAMA_BASE_URL=http://ollama:11434
       - DEFAULT_LOCAL_MODEL=phi3:mini
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4317
     depends_on:
       - ollama
     restart: always
