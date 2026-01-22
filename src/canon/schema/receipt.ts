@@ -25,17 +25,17 @@ export type VerificationResult = z.infer<typeof VerificationResultSchema>;
 
 // 2. Define Receipt
 export const CompilationReceiptSchema = z.object({
-    job_id: z.string().uuid(),
+    job_id: z.string().uuid().optional(),
     compiled_at: TimestampSchema,
     input_hash: z.string(), // Integrity check (Hash of Goal + Context IDs)
     assertion_map: AssertionMapSchema,
 
-    // Optional diagnostics
+    // Forensic & Business Analytics (Hito 4.6)
     token_usage: z.number().optional(),
     latency_ms: z.number().optional(),
+    cost_usd: z.number().optional(),
 
-    // The result is optional in the receipt (it might not be verified yet), 
-    // but the type VerificationResult itself matches the object structure.
+    // The result is optional in the receipt (it might not be verified yet)
     verification_result: VerificationResultSchema.optional()
 });
 export type CompilationReceipt = z.infer<typeof CompilationReceiptSchema>;

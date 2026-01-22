@@ -71,3 +71,43 @@ export function checkNodeStaleness(node: WorkNode): { isStale: boolean; reason?:
     // Future: Add real URL check here for 'source' nodes
     return { isStale: false };
 }
+
+// --- Log Sanitization (Hito 3.5: Vault) ---
+
+// Patterns for common LLM API Keys
+const SENSITIVE_PATTERNS = [
+    /sk-[a-zA-Z0-9]{32,}/g,           // OpenAI
+    /xkeys-[a-zA-Z0-9]{64,}/g,        // Anthropic / Generic
+    /AIza[0-9A-Za-z-_]{35}/g,         // Google Gemini
+];
+
+/**
+ * Scans text and redacts sensitive patterns.
+ * Injected into audit trails and observability exports.
+ */
+export function sanitizeLogs(text: string): string {
+    if (!text) return text;
+
+    let sanitized = text;
+    for (const pattern of SENSITIVE_PATTERNS) {
+        sanitized = sanitized.replace(pattern, (match) => {
+            // Keep first 3 and last 3 chars for debugging context, redact the rest
+            if (match.length > 10) {
+                return `${match.slice(0, 3)}...[REDACTED]...${match.slice(-3)}`;
+            }
+            return "[REDACTED]";
+        });
+    }
+
+    return sanitized;
+}
+
+/**
+ * Higher-order utility to wrap console logging in dev mode.
+ */
+export const secureLog = (message: string, ...optionalParams: any[]) => {
+    const logBatch = [message, ...optionalParams].map(p =>
+        typeof p === 'string' ? sanitizeLogs(p) : p
+    );
+    console.log(...logBatch);
+};

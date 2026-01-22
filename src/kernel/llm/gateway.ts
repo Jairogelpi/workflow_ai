@@ -1,6 +1,7 @@
-import { traceSpan, measureCost, estimateCallCost, getModelTier } from '../observability';
+import { traceSpan, measureCost, estimateCallCost, getModelTier, auditStore } from '../observability';
 import { useSettingsStore } from '../../store/useSettingsStore';
-import { auditStore } from '../observability';
+import { Vault } from '../../lib/security/vault';
+import { sanitizeLogs } from '../guards';
 
 interface LLMResponse {
     content: string;
@@ -14,6 +15,35 @@ interface LLMResponse {
  * - INYECTA OBSERVABILIDAD AUTOMÁTICA.
  */
 export type TaskTier = 'REASONING' | 'EFFICIENCY';
+
+export enum TaskComplexity {
+    LOW = 'MECHANICAL',    // Formateo, limpieza, resúmenes simples
+    MEDIUM = 'ANALYSIS',   // Detección de evidencias, extracción de claims
+    HIGH = 'REASONING'     // Verificación de invariantes (PIN), resolución de contradicciones
+}
+
+export class SmartRouter {
+    /**
+     * Elige el modelo óptimo basado en complejidad y coste.
+     */
+    static getOptimalModel(complexity: TaskComplexity): string {
+        const { modelConfig } = useSettingsStore.getState();
+
+        switch (complexity) {
+            case TaskComplexity.LOW:
+                // Prioridad absoluta: Ahorro (DeepSeek o local)
+                return 'deepseek/v3';
+            case TaskComplexity.MEDIUM:
+                // Prioridad: Ventana de contexto amplia (Gemini Flash)
+                return 'google/gemini-3-flash';
+            case TaskComplexity.HIGH:
+                // Prioridad: Inteligencia máxima (GPT-5 o Claude Opus)
+                return modelConfig.reasoningModel.modelId || 'openai/gpt-5.2';
+            default:
+                return 'google/gemini-3-flash';
+        }
+    }
+}
 
 /**
  * PRE-FLIGHT COST PREDICTION (Hito 3.3 & Gate 7)
@@ -56,8 +86,7 @@ export async function generateText(
 
     // Budget threshold warning (>$0.10 for single operation)
     if (estimatedCost > 0.10) {
-        console.warn(`[GATEWAY] HIGH COST OPERATION: Estimated $${estimatedCost.toFixed(4)} for ${tier} call. Session total: $${sessionSpend.toFixed(4)}`);
-        // In production, this would trigger a UI confirmation dialog
+        console.warn(sanitizeLogs(`[GATEWAY] HIGH COST OPERATION: Estimated $${estimatedCost.toFixed(4)} for ${tier} call. Session total: $${sessionSpend.toFixed(4)}`));
     }
 
     return traceSpan(`llm.generate.${tier.toLowerCase()}`, { model: activeConfig.modelId, provider: activeConfig.provider }, async () => {
@@ -74,14 +103,15 @@ export async function generateText(
             throw new Error(`Proveedor ${activeConfig.provider} no implementado aún.`);
         }
 
-        // --- OBSERVABILIDAD OBLIGATORIA ---
+        // --- OBSERVABILIDAD OBLIGATORIA CON SANITIZACIÓN ---
         const cost = await measureCost(
-            activeConfig.provider === 'openai' ? response.usage.inputTokens : response.usage.inputTokens, // Simplification
+            response.usage.inputTokens,
             response.usage.outputTokens,
             activeConfig.modelId
         );
 
-        console.log(`[LLM GATEWAY] Coste estimado (${tier}): $${cost.toFixed(6)} | Tokens: ${response.usage.inputTokens}in/${response.usage.outputTokens}out`);
+        const logMsg = `[LLM GATEWAY] Coste estimado (${tier}): $${cost.toFixed(6)} | Tokens: ${response.usage.inputTokens}in/${response.usage.outputTokens}out`;
+        console.log(sanitizeLogs(logMsg));
 
         return response.content;
     });
@@ -90,11 +120,19 @@ export async function generateText(
 // --- Adaptadores Específicos (Minimalistas para no depender de SDKs pesados) ---
 
 async function callOpenAI(config: any, system: string, user: string): Promise<LLMResponse> {
+    const { encryptedKeys, masterSecret } = useSettingsStore.getState();
+    const apiKeyEncrypted = encryptedKeys[config.modelId];
+
+    // Decrypt JIT
+    const apiKey = apiKeyEncrypted
+        ? await Vault.decryptKey(apiKeyEncrypted, masterSecret)
+        : config.apiKey; // Fallback to plain if not migrated
+
     const res = await fetch('https://api.openai.com/v1/chat/completions', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${config.apiKey}`
+            'Authorization': `Bearer ${apiKey}`
         },
         body: JSON.stringify({
             model: config.modelId,
@@ -122,15 +160,22 @@ async function callOpenAI(config: any, system: string, user: string): Promise<LL
 }
 
 async function callGemini(config: any, system: string, user: string): Promise<LLMResponse> {
-    // Nota: Gemini usa una estructura diferente. Ajustar endpoint según versión.
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/${config.modelId}:generateContent?key=${config.apiKey}`;
+    const { encryptedKeys, masterSecret } = useSettingsStore.getState();
+    const apiKeyEncrypted = encryptedKeys[config.modelId];
+
+    // Decrypt JIT
+    const apiKey = apiKeyEncrypted
+        ? await Vault.decryptKey(apiKeyEncrypted, masterSecret)
+        : config.apiKey;
+
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${config.modelId}:generateContent?key=${apiKey}`;
 
     const res = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
             contents: [{
-                parts: [{ text: `${system}\n\nUser Task: ${user}` }] // Gemini System Prompts son diferentes, simplificamos concatenando
+                parts: [{ text: `${system}\n\nUser Task: ${user}` }]
             }]
         })
     });
@@ -152,13 +197,21 @@ async function callGemini(config: any, system: string, user: string): Promise<LL
  * Adaptador Universal para cualquier endpoint compatible con OpenAI (Ollama, vLLM, etc.)
  */
 async function callCustomOpenAI(config: any, system: string, user: string): Promise<LLMResponse> {
+    const { encryptedKeys, masterSecret } = useSettingsStore.getState();
+    const apiKeyEncrypted = encryptedKeys[config.modelId];
+
+    // Decrypt JIT
+    const apiKey = apiKeyEncrypted
+        ? await Vault.decryptKey(apiKeyEncrypted, masterSecret)
+        : (config.apiKey || 'no-key');
+
     const baseUrl = config.baseUrl?.replace(/\/+$/, '') || 'http://localhost:11434/v1';
 
     const res = await fetch(`${baseUrl}/chat/completions`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${config.apiKey || 'no-key'}`
+            'Authorization': `Bearer ${apiKey}`
         },
         body: JSON.stringify({
             model: config.modelId === 'local-model' ? 'default' : config.modelId,

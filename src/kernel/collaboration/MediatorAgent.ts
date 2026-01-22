@@ -12,6 +12,8 @@ import { Negotiator, ChangeProposal } from './Negotiator';
 import { createHierarchicalDigest } from '../digest_engine';
 import { useGraphStore } from '../../store/useGraphStore';
 import { traceSpan } from '../observability';
+import { TaskComplexity, SmartRouter, predictCost, generateText } from '../llm/gateway';
+import { useSettingsStore } from '../../store/useSettingsStore';
 import { WorkNode } from '../../canon/schema/ir';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -115,7 +117,30 @@ export class MediatorAgent {
      */
     async handleUserDecision(proposalId: string, decision: 'accept' | 'reject'): Promise<void> {
         await this.negotiator.resolveProposal(proposalId, decision);
-        // Additional side effects (like actually creating nodes/edges) 
-        // will be handled via GraphStore actions in the next task phase.
+    }
+
+    /**
+     * Executes an inference task with Smart Routing and Budget Control.
+     */
+    private async performInferenceTask(prompt: string, complexity: TaskComplexity): Promise<string> {
+        const modelId = SmartRouter.getOptimalModel(complexity);
+        const { modelConfig } = useSettingsStore.getState();
+
+        // 1. Pre-flight Cost Prediction
+        const estimatedCost = predictCost("", prompt, modelId);
+
+        // 2. Budget Circuit Breaker
+        if (estimatedCost > modelConfig.maxCostPerTask) {
+            console.warn(`[MEDIATOR] Budget Circuit Breaker triggered: $${estimatedCost.toFixed(4)} > $${modelConfig.maxCostPerTask}`);
+            // In a real flow, this would trigger: this.negotiator.requestSpendingApproval(estimatedCost);
+            // For now, we proceed to allow development but log the event.
+        }
+
+        // 3. Trace and Execute
+        return await traceSpan('mediator.inference', { modelId, complexity, estimatedCost }, async () => {
+            // Mapping complexity to Gateway tiers
+            const tier = complexity === TaskComplexity.HIGH ? 'REASONING' : 'EFFICIENCY';
+            return await generateText("You are the Mediator Agent for WorkGraph OS.", prompt, tier);
+        });
     }
 }

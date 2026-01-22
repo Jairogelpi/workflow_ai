@@ -58,19 +58,18 @@ export async function traceSpan<T>(
 export interface ModelPrice2026 {
     input_1m: number;  // USD per 1 million tokens
     output_1m: number;
+    context_window: number;
 }
 
 export type ModelTier = 'FRONTIER' | 'EFFICIENCY' | 'LOCAL';
 
 export const PRICE_REGISTRY_2026: Record<string, ModelPrice2026> = {
-    'openai/gpt-5.2': { input_1m: 2.00, output_1m: 14.00 },
-    'openai/gpt-4o': { input_1m: 5.00, output_1m: 15.00 },
-    'anthropic/claude-4.5-opus': { input_1m: 5.00, output_1m: 25.00 },
-    'anthropic/claude-3-5-sonnet': { input_1m: 3.00, output_1m: 15.00 },
-    'google/gemini-3-flash': { input_1m: 0.50, output_1m: 3.00 },
-    'google/gemini-2-flash': { input_1m: 0.30, output_1m: 1.50 },
-    'deepseek/v3': { input_1m: 0.25, output_1m: 0.38 },
-    'local/default': { input_1m: 0.00, output_1m: 0.00 }
+    'openai/gpt-5.2': { input_1m: 2.00, output_1m: 10.00, context_window: 200000 },
+    'anthropic/claude-4.5-opus': { input_1m: 3.00, output_1m: 15.00, context_window: 200000 },
+    'google/gemini-3-flash': { input_1m: 0.10, output_1m: 0.40, context_window: 1000000 },
+    'deepseek/v3': { input_1m: 0.15, output_1m: 0.25, context_window: 64000 },
+    'local/llama-3-8b': { input_1m: 0.00, output_1m: 0.00, context_window: 8192 },
+    'local/default': { input_1m: 0.00, output_1m: 0.00, context_window: 8192 }
 };
 
 export const MODEL_TIERS: Record<string, ModelTier> = {
@@ -93,7 +92,9 @@ export function estimateCallCost(
     expectedOutputTokens: number,
     modelId: string
 ): number {
-    const price = PRICE_REGISTRY_2026[modelId] || PRICE_REGISTRY_2026['openai/gpt-4o'];
+    const price = PRICE_REGISTRY_2026[modelId] || PRICE_REGISTRY_2026['google/gemini-3-flash'];
+    if (!price) return 0; // Fallback if record is missing completely
+
     const inputCost = (inputTokens / 1_000_000) * price.input_1m;
     const outputCost = (expectedOutputTokens / 1_000_000) * price.output_1m;
     return inputCost + outputCost;

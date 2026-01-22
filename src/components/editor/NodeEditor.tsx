@@ -7,6 +7,7 @@ import { useGraphStore } from '../../store/useGraphStore';
 import { computeNodeHash } from '../../kernel/versioning';
 import { WorkNode } from '../../canon/schema/ir';
 import SourceNodeView from './SourceNodeView';
+import { AuthoritySeal } from '../ui/AuthoritySeal';
 
 // Simple debounce hook
 function useDebouncedCallback<T extends (...args: any[]) => void>(
@@ -192,52 +193,13 @@ export default function NodeEditor() {
 
                 {/* Zona de Firma de Autoridad (Hito 4.4) */}
                 {selectedNode && (
-                    <div className={`mt-8 p-4 rounded border transition-all ${isSigned
-                            ? (isSealBroken ? 'border-red-500/50 bg-red-950/20' : 'border-blue-500/30 bg-blue-900/10 shadow-[0_0_20px_rgba(30,58,138,0.1)]')
-                            : 'border-dashed border-slate-800 bg-slate-800/20'
-                        }`}>
-                        <h4 className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-3 flex items-center gap-2">
-                            <Shield className={`h-3.5 w-3.5 ${isSigned && !isSealBroken ? 'text-blue-400' : ''}`} /> Canon & Authority Pact
-                        </h4>
-
-                        {!isSigned ? (
-                            <div className="space-y-3">
-                                <p className="text-[11px] text-slate-400 leading-relaxed italic">
-                                    Sella este nodo como **Cimiento del Canon**. La IA lo tratará como verdad absoluta en el RLM y no podrá alterarlo.
-                                </p>
-                                <button
-                                    onClick={handleSign}
-                                    className="w-full py-2 bg-blue-600 hover:bg-blue-700 text-white rounded font-bold text-xs transition flex items-center justify-center gap-2 shadow-lg shadow-blue-900/20"
-                                >
-                                    <Award className="h-4 w-4" /> SELLAR CON AUTORIDAD
-                                </button>
-                            </div>
-                        ) : (
-                            <div className="space-y-3">
-                                <div className="flex items-start gap-3">
-                                    <div className={`p-2 rounded ${isSealBroken ? 'bg-red-500/20' : 'bg-blue-500/20'}`}>
-                                        {isSealBroken ? <Unlock className="text-red-400 h-4 w-4" /> : <Lock className="text-blue-400 h-4 w-4" />}
-                                    </div>
-                                    <div>
-                                        <p className={`text-xs font-bold ${isSealBroken ? 'text-red-400' : 'text-blue-100'}`}>
-                                            {isSealBroken ? 'Pacto de Integridad Roto' : 'Sello de Autoridad Activo'}
-                                        </p>
-                                        <p className="text-[10px] text-slate-500">
-                                            Autorizado el {new Date(selectedNode.data.metadata.human_signature?.timestamp || '').toLocaleTimeString()}
-                                        </p>
-                                    </div>
-                                </div>
-                                <button
-                                    onClick={handleBreakSeal}
-                                    className={`w-full py-2 border rounded font-bold text-xs transition ${isSealBroken
-                                            ? 'border-red-500/50 text-red-400 hover:bg-red-500/10'
-                                            : 'border-slate-700 text-slate-400 hover:bg-slate-700/30'
-                                        }`}
-                                >
-                                    {isSealBroken ? 'REINICIAR SELLO' : 'ROMPER SELLO (Fricción Alta)'}
-                                </button>
-                            </div>
-                        )}
+                    <div className="mt-10">
+                        <AuthoritySeal
+                            isSigned={isSigned}
+                            isBroken={isSealBroken}
+                            onSign={handleSign}
+                            onReset={isSealBroken ? () => setIsSealBroken(false) : handleBreakSeal}
+                        />
                     </div>
                 )}
 

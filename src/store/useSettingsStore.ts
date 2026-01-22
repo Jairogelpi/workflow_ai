@@ -12,6 +12,7 @@ export interface DualModelConfig {
     reasoningModel: ModelConfig;
     efficiencyModel: ModelConfig;
     qualityMode: 'hybrid' | 'high-fidelity';
+    maxCostPerTask: number; // USD threshold for circuit breaker
 }
 
 interface SettingsState {
@@ -21,6 +22,11 @@ interface SettingsState {
     updateReasoning: (update: Partial<ModelConfig>) => void;
     updateEfficiency: (update: Partial<ModelConfig>) => void;
     setQualityMode: (mode: 'hybrid' | 'high-fidelity') => void;
+    // Vault Security (Hito 3.5)
+    encryptedKeys: Record<string, string>; // modelId -> encrypted blob
+    masterSecret: string; // The passphrase (stored in memory/session only in prod)
+    setEncryptedKey: (modelId: string, encryptedBlob: string) => void;
+    setMasterSecret: (secret: string) => void;
 }
 
 export const useSettingsStore = create<SettingsState>()(
@@ -29,7 +35,8 @@ export const useSettingsStore = create<SettingsState>()(
             modelConfig: {
                 reasoningModel: { provider: 'openai', modelId: 'gpt-4o', apiKey: '' },
                 efficiencyModel: { provider: 'gemini', modelId: 'gemini-1.5-flash', apiKey: '' },
-                qualityMode: 'hybrid'
+                qualityMode: 'hybrid',
+                maxCostPerTask: 0.10
             },
             availableModels: [
                 { id: 'gpt-4o', name: 'GPT-4o (Omni)', provider: 'openai' },
@@ -39,7 +46,13 @@ export const useSettingsStore = create<SettingsState>()(
                 { id: 'claude-3-5-sonnet', name: 'Claude 3.5 Sonnet', provider: 'anthropic' },
                 { id: 'local-model', name: 'Custom / Local Model', provider: 'local' },
             ],
+            encryptedKeys: {},
+            masterSecret: '',
             setModelConfig: (updates) => set((state) => ({ modelConfig: { ...state.modelConfig, ...updates } as any })),
+            setEncryptedKey: (modelId, encryptedBlob) => set((state) => ({
+                encryptedKeys: { ...state.encryptedKeys, [modelId]: encryptedBlob }
+            })),
+            setMasterSecret: (masterSecret) => set({ masterSecret }),
             updateReasoning: (update) => set((state) => ({
                 modelConfig: { ...state.modelConfig, reasoningModel: { ...state.modelConfig.reasoningModel, ...update } }
             })),

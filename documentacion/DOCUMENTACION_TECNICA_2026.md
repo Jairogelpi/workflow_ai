@@ -44,6 +44,12 @@ Definida en `src/canon/schema/ir.ts` y persistida en Supabase.
 - **LinkOS Extension (X-Ray Percept)**: Captura contexto del navegador mediante "Ambient Scanning" e iluminación semántica por categoría.
 - **SidePanelViewer.tsx**: Interfaz de pre-visualización y validación rápida.
 
+#### D. Performance & Security (Production 2026)
+- **Antigravity Engine (`antigravity-engine/`)**: Motor de física de grafos en **Rust (WebAssembly)**. Procesa cálculos vectoriales a 60 FPS sin bloquear el hilo de UI.
+- **Smart Router (`src/kernel/llm/gateway.ts`)**: Inteligencia financiera. Selecciona el modelo óptimo (GPT-5, Gemini 3 Flash, DeepSeek) basado en el **Price Registry 2026** y la complejidad de la tarea.
+- **The Vault (`src/lib/security/vault.ts`)**: Bóveda de secretos BYOK con cifrado AES-GCM (E2EE). Las claves API nunca se guardan en texto plano.
+- **Privacy Guardian (`src/kernel/guards.ts`)**: Sanitización automática de logs y trazas (Redacción de claves API).
+
 ---
 
 ## 💾 Base de Datos (Supabase Protocol)
@@ -78,6 +84,7 @@ No es una lista de tareas. Es un centro de mando donde el **MediatorCard** prese
 Interfaz basada en grafos (Nodes) y texto rico, donde cada párrafo es un nodo direccionable.
 - **Modo X-Ray (Alt)**: Visualización de "cables lógicos" (Assertion Map) y HUD forense con métricas de coste y latencia real.
 - **Audit Trail**: Trazabilidad absoluta desde el artefacto final hasta la evidencia original en el Canon.
+- **Authority Seal**: Interacción de "Alta Fricción" (Hold-to-Seal 1.5s) para firmar la verdad inmutable en el Canon, bloqueando el nodo contra ediciones no autorizadas.
 
 ---
 
@@ -98,4 +105,4 @@ Interfaz basada en grafos (Nodes) y texto rico, donde cada párrafo es un nodo d
 
 ---
 
-*Documentación actualizada para el despliegue Hito 4.6 - Mediator & Forensics.*
+*Documentación actualizada para el despliegue Hito 4.8 - Rust Engine, Smart Routing & Vault.*

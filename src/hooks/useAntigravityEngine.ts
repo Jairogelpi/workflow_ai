@@ -1,77 +1,61 @@
-import { useEffect, useRef } from 'react';
+import { useEffect } from 'react';
+import init, { apply_forces } from 'antigravity-engine';
 import { useGraphStore } from '../store/useGraphStore';
 import { traceSpan } from '../kernel/observability';
 
 /**
- * Antigravity Engine Hook
+ * useAntigravityEngine v3.0 (Gate 11)
  * 
- * Drives the semantic physics simulation with integrated traceability.
- * This hook manages the continuous physics loop that applies forces to nodes
- * based on their semantic relationships (evidence, contradiction, etc.).
- * 
- * **Key Features:**
- * - Automatic physics simulation when antigravity is active
- * - Real-time observability via OpenTelemetry-style tracing
- * - Seamless integration with the graph store
- * - Performance monitoring via traceSpan
- * - Automatic pause when no nodes exist or antigravity is disabled
- * 
- * **Physics Relationships:**
- * - `evidence_for`: 60px distance, strong attraction (0.7 strength)
- * - `contradicts`: 450px distance, strong repulsion (1.0 strength)
- * - `relates_to`: 200px distance, weak association (0.1 strength)
- * - PIN nodes: Act as heavy anchors with -2200 charge
- * 
- * **Performance:**
- * - ~1ms per physics tick (40 D3-force iterations)
- * - Runs at 60 FPS via requestAnimationFrame
- * - Traced with OpenTelemetry semantics
- * 
- * @example
- * ```tsx
- * // In GraphCanvas component
- * function GraphContent() {
- *   useAntigravityEngine(); // Automatically starts the physics loop
- *   // ... rest of component
- * }
- * ```
- * 
- * @see {@link useGraphStore} for the store that manages graph state
- * @see {@link traceSpan} for observability integration
+ * Performance Bridge: Delegates heavy vectorial calculations to Rust/WASM.
+ * Disables itself automatically when Antigravity is toggled off.
  */
 export function useAntigravityEngine() {
-    const isAntigravityActive = useGraphStore((state) => state.isAntigravityActive);
-    const applyForces = useGraphStore((state) => state.applyForces);
-    const nodes = useGraphStore((state) => state.nodes);
-    const edges = useGraphStore((state) => state.edges);
-    const frameRef = useRef<number | undefined>(undefined);
+    const { nodes, setNodes, isAntigravityActive } = useGraphStore();
 
     useEffect(() => {
-        if (!isAntigravityActive || nodes.length === 0) {
-            if (frameRef.current) cancelAnimationFrame(frameRef.current);
-            return;
-        }
+        let interval: NodeJS.Timeout;
 
-        const loop = async () => {
-            // Permanent Observability: Trace every physics cycle as a Span
-            await traceSpan('antigravity.physics.engine', {
-                node_count: nodes.length,
-                edge_count: edges.length,
-                active_forces: 'RLM_SEMANTIC_FORCE'
-            }, async () => {
-                applyForces();
-                return { success: true }; // Return value for traceSpan
-            });
+        const runPhysics = async () => {
+            if (!isAntigravityActive || nodes.length === 0) return;
 
-            if (isAntigravityActive) {
-                frameRef.current = requestAnimationFrame(loop);
+            try {
+                // Observability Trace [Hito 4.5]
+                await traceSpan('antigravity.wasm_tick', { count: nodes.length }, async () => {
+                    // Note: In production, init() is called once at app startup
+                    await init();
+
+                    const nodesForWasm = nodes.map(n => ({
+                        id: n.id,
+                        x: n.position.x,
+                        y: n.position.y,
+                        is_pin: n.data.metadata.pin
+                    }));
+
+                    const updatedPositions = apply_forces(nodesForWasm, []);
+
+                    // Re-map WASM results back to React Flow nodes
+                    const updatedNodes = nodes.map(n => {
+                        const wasmNode = (updatedPositions as any[]).find(wn => wn.id === n.id);
+                        if (wasmNode) {
+                            return {
+                                ...n,
+                                position: { x: wasmNode.x, y: wasmNode.y }
+                            };
+                        }
+                        return n;
+                    });
+
+                    setNodes(updatedNodes);
+                });
+            } catch (err) {
+                console.error("Antigravity WASM engine failure:", err);
             }
         };
 
-        frameRef.current = requestAnimationFrame(loop);
+        if (isAntigravityActive) {
+            interval = setInterval(runPhysics, 16); // 60 FPS Target
+        }
 
-        return () => {
-            if (frameRef.current) cancelAnimationFrame(frameRef.current);
-        };
-    }, [isAntigravityActive, nodes.length, edges.length, applyForces]);
+        return () => clearInterval(interval);
+    }, [isAntigravityActive, nodes, setNodes]);
 }
