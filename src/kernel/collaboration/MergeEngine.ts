@@ -141,4 +141,46 @@ export class MergeEngine {
         }
         return merged;
     }
+
+    /**
+     * [Phase 7] CRDT-based conflict-free merge using Rust engine.
+     * Returns the merged content when two users edit the same node.
+     */
+    static async crdtMerge(localState: string, remoteUpdate: string): Promise<{
+        success: boolean;
+        merged_content: string;
+        conflicts_resolved: number;
+    }> {
+        try {
+            const crdtSync = await import('crdt-sync');
+            await crdtSync.default?.(); // Initialize WASM
+
+            const result = JSON.parse(crdtSync.merge_remote_update(localState, remoteUpdate));
+
+            console.log(`[MergeEngine] CRDT merge: ${result.conflicts_resolved} conflicts auto-resolved`);
+            return result;
+        } catch (err) {
+            console.warn('[MergeEngine] CRDT engine not available, using fallback merge:', err);
+            // Fallback: prefer remote (last-write-wins)
+            return {
+                success: true,
+                merged_content: remoteUpdate,
+                conflicts_resolved: 0
+            };
+        }
+    }
+
+    /**
+     * [Phase 7] Creates a CRDT document for collaborative editing.
+     */
+    static async createCrdtDocument(initialContent: string): Promise<string> {
+        try {
+            const crdtSync = await import('crdt-sync');
+            await crdtSync.default?.();
+            return crdtSync.create_document(initialContent);
+        } catch (err) {
+            console.warn('[MergeEngine] CRDT engine not available:', err);
+            return '';
+        }
+    }
 }

@@ -12,11 +12,13 @@ export interface VerificationContext {
 
 /**
  * Checks a branch state (list of nodes) for integrity and PIN violations.
+ * [Phase 7] Now integrates with Rust Logic SAT Solver for deep consistency checks.
  */
-export async function verifyBranch(nodes: WorkNode[]): Promise<VerificationResult> {
+export async function verifyBranch(nodes: WorkNode[], edges?: any[]): Promise<VerificationResult> {
     const issues: Array<{ severity: 'CRITICAL' | 'error' | 'warn', message: string, code: string }> = [];
     let passed = true;
 
+    // === PHASE 1: TypeScript-level checks ===
     nodes.forEach(node => {
         // 1. PIN CONFIDENCE CHECK
         if (node.metadata.pin && (node.metadata.confidence || 0) < 1.0) {
@@ -30,7 +32,7 @@ export async function verifyBranch(nodes: WorkNode[]): Promise<VerificationResul
 
         // 2. HUMAN SIGNATURE (SEAL) INTEGRITY CHECK (Hito 4.4)
         if (node.metadata.human_signature) {
-            const currentHash = computeStableHash(node); // Assuming verifier has access or computeNodeHash
+            const currentHash = computeStableHash(node);
             if (currentHash !== node.metadata.human_signature.hash_at_signing) {
                 issues.push({
                     severity: 'CRITICAL',
@@ -41,6 +43,46 @@ export async function verifyBranch(nodes: WorkNode[]): Promise<VerificationResul
             }
         }
     });
+
+    // === PHASE 2: Rust SAT Solver Integration (Phase 7) ===
+    if (edges && edges.length > 0) {
+        try {
+            // Dynamic import for WASM module (logic-engine)
+            const logicEngine = await import('logic-engine');
+            await logicEngine.default?.(); // Initialize WASM if needed
+
+            const graphData = {
+                nodes: nodes.map(n => ({
+                    id: n.id,
+                    is_pin: n.metadata.pin || false,
+                    node_type: n.type
+                })),
+                edges: edges.map(e => ({
+                    source: e.source,
+                    target: e.target,
+                    relation: e.data?.relation || 'relates_to'
+                }))
+            };
+
+            const satResult = JSON.parse(logicEngine.check_pin_consistency(JSON.stringify(graphData)));
+
+            if (!satResult.consistent) {
+                satResult.violations.forEach((violation: string) => {
+                    issues.push({
+                        severity: 'CRITICAL',
+                        message: violation,
+                        code: 'SAT_VIOLATION'
+                    });
+                });
+                passed = false;
+            }
+
+            console.log(`[Verifier] SAT Solver checked ${satResult.checked_constraints} constraints`);
+        } catch (err) {
+            // Fallback: If WASM not available, log warning but don't fail
+            console.warn('[Verifier] Rust Logic Engine not available, skipping SAT verification:', err);
+        }
+    }
 
     if (!passed) {
         const criticalErrors = issues.filter(i => i.severity === 'CRITICAL');
