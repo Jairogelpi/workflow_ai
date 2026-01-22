@@ -1,65 +1,169 @@
-# WorkGraph OS 🧠
+# WorkGraph OS
 
-> **The Cognitive Operating System for The Knowledge Age.**
-> *Más allá de archivos y carpetas. Hacia la verdad semántica.*
+> **Sistema de Razonamiento y Captura Universal**  
+> Transforma cualquier fuente de conocimiento en un grafo navegable y consultable.
 
-## 🌟 Estado del Proyecto: Hito 3.7 (Gate 9 Ext - The Brain)
+[![Phase](https://img.shields.io/badge/Phase-2%20Complete-green)]()
+[![License](https://img.shields.io/badge/License-MIT-blue)]()
 
-Este repositorio contiene la implementación de **WorkGraph OS**, una plataforma diseñada para 2026 que reestructura la colaboración humana en torno a grafos de lógica verificada. El sistema ahora cuenta con una arquitectura de **Cerebro Dual** (Reasoning/Efficiency) y **RLM (Recursive Language Modeling)** para generación de contenido ilimitado.
+---
 
-### 🚀 Características Clave
+## 🌟 Características Principales
 
-#### 1. Recursive Logic Model (RLM) & Smart Routing
-Arquitectura híbrida (Código + IA) que reduce costes en un 90% y permite longitudes infinitas sin degradar la coherencia.
-- **Dual Engine**: BYOK (OpenAI/Gemini) con separación de tareas por complejidad (Reasoning vs Efficiency).
-- **Infinite Loop**: Generación recursiva mediante "Digests" constantes.
-- **TOON Logic**: Filtrado de contexto optimizado topológicamente de forma real.
+### 🎯 Captura Universal
+- **Desde LLMs**: Captura archivos de ChatGPT, Claude, Gemini con un click
+- **Drag & Drop**: Arrastra texto desde cualquier web → Nodo creado automáticamente
+- **Archivos Locales**: Arrastra PDFs, documentos, imágenes desde tu PC
 
-#### 2. Colaboración "Zero-Fear"
-- **AI Mediator**: Un agente que negocia conflictos por ti.
-- **Visual Diff Engine**: Evidencia forense de cambios lado a lado con Native Transitions API.
-- **Gobernanza Invisible**: El sistema impide romper reglas de negocio (PINs) antes de que ocurran.
+### 🧠 Razonamiento Avanzado
+- **Compilación Recursiva**: Subdivide tareas complejas automáticamente
+- **Retrieval Selectivo**: Usa digests para contexto, raw para precisión
+- **Grafo Visual**: Navega dependencias y relaciones
 
-#### 3. Forensic UX & Seguridad
-- **Circuit Breaker**: Parada automática ante violaciones de la lógica del Canon.
-- **Modo Rayos X (X-Ray)**: Trazabilidad visual instantánea de evidencias (Alt-key).
-- **Identidad RLS 2.0**: Protección de nodos a nivel de base de datos.
-- **LinkOS Extension**: Captura segura y análisis profundo de contexto.
+### 🔐 Seguridad BYOK
+- **Tus Claves**: Cifrado cliente-side (AES-256-GCM)
+- **Zero Trust**: Las claves nunca salen del navegador
+- **Rate Limiting**: Control de costos por usuario
+
+### 🛡️ Canon Enforcement
+- **PIN Nodes**: Protección de verdades fundamentales
+- **Guards**: Evita contradicciones y borrados accidentales
+- **Staleness Detection**: Identifica conocimiento obsoleto
+
+---
+
+## 🚀 Quick Start
+
+### Instalación
+
+```bash
+# Clone
+git clone https://github.com/yourorg/workgraph-os.git
+cd workgraph-os
+
+# Install
+npm install
+
+# Setup Supabase
+cp .env.example .env.local
+# Añade tus credenciales de Supabase
+
+# Run
+npm run dev
+```
+
+### Instalar Extensión
+
+```bash
+cd extension
+npm install
+npm run build
+
+# Chrome: chrome://extensions
+# Load unpacked → extension/dist
+```
+
+---
+
+## 📖 Documentación
+
+- [**Sistema de Captura Universal**](./documentacion/SISTEMA_CAPTURA_UNIVERSAL.md) - Guía técnica completa
+- [**Guía de Captura**](./documentacion/GUIA_CAPTURA.md) - Quick reference para usuarios
+- [**ROADMAP**](./ROADMAP.yml) - Hitos y evidencia
+
+---
+
+## 🎬 Demo
+
+### Captura desde ChatGPT
+1. Sube PDF a ChatGPT
+2. Click "📥 Send to WorkGraph"
+3. Nodo creado con chunks vectorizados
+
+### Drag & Drop Texto
+1. Selecciona texto en Wikipedia
+2. Arrastra a ventana flotante
+3. Nodo con texto + URL origen
+
+---
+
+## 🏗️ Arquitectura
+
+```
+┌─────────────┐
+│  Browser    │
+│  Extension  │ ─────┐
+└─────────────┘      │
+                     ▼
+┌─────────────────────────┐
+│   Next.js Frontend      │
+│   (React + ReactFlow)   │
+└─────────────────────────┘
+           │
+           ▼
+┌─────────────────────────┐
+│   API Routes (Backend)  │
+│   - /ingest/file        │
+│   - /ingest/link        │
+│   - /nodes/quick        │
+└─────────────────────────┘
+           │
+           ▼
+┌─────────────────────────┐
+│   Supabase              │
+│   (PostgreSQL+pgvector) │
+└─────────────────────────┘
+```
 
 ---
 
 ## 🛠️ Stack Tecnológico
 
-- **Frontend**: React 19, TailwindCSS, Lucide Icons.
-- **Backend / Database**: Supabase (PostgreSQL + Vector).
-- **Kernel**: TypeScript, Logic Compiler, Merge Engine.
-- **AI**: Gateway de 3 capas con observabilidad y soporte BYOE (Local).
-
-## 📂 Estructura del Proyecto
-
-```
-/src
-  /canon        # Definiciones de Tipos y Esquemas (La Verdad)
-  /compiler     # Verifier, Assembler & RLM (El Juez Lógico)
-  /kernel       # Logic Core (LLM Gateway, Forensic Errors)
-  /components
-    /collaboration # UI Premium (Inbox, Diff, Cards)
-    /ui            # Forensic UI (CircuitBreaker, XRay)
-    /settings      # Configuración BYOK/BYOE
-  /lib/ingest   # Procesamiento de documentos
-/supabase
-  /migrations   # Evolución del esquema DB (Gate 1 -> Gate 9)
-/documentacion  # Manuales detallados por Hito (The Source of Truth)
-```
-
-## 📖 Documentación
-
-Para entender la profundidad del sistema, consulta:
-- [📄 Hito 4.3: Forensic UX (Transparencia Radical)](./documentacion/HITO_4.3_FORENSIC_UX.md)
-- [📄 Hito 4.2: Local Compiler (Saturismo de Datos)](./documentacion/HITO_4.2_LOCAL_COMPILER.md)
-- [📄 Hito 3.7: Trasplante de Cerebro (Real LLM & RLM)](./documentacion/HITO_3.7_GATE9_EXTENSION_BRAIN.md)
-- [📄 Manual Técnico Completo (2026)](./documentacion/DOCUMENTACION_TECNICA_2026.md)
+- **Frontend**: Next.js 15, React 19, ReactFlow, TipTap
+- **Backend**: Next.js API Routes, Supabase
+- **Extension**: Chrome MV3, Vite, TypeScript
+- **Security**: Web Crypto API, Supabase RLS
+- **Vector DB**: pgvector (OpenAI embeddings)
 
 ---
 
-**WorkGraph OS Team** - *Building the future of truth.*
+## 📋 Roadmap
+
+- [x] Phase 0: IR Kernel
+- [x] Phase 1: RLM Compiler
+- [x] Phase 2: Capture & Interface
+- [x] Phase 3: Scaling & Verification
+- [x] Phase 4: Enterprise Hardening
+- [x] Phase 5: Universal Capture System
+- [ ] Phase 6: Multi-Agent Collaboration
+
+Ver [ROADMAP.yml](./ROADMAP.yml) para detalles.
+
+---
+
+## 🤝 Contribuir
+
+Las contribuciones son bienvenidas. Por favor:
+1. Fork el repo
+2. Crea feature branch (`git checkout -b feature/AmazingFeature`)
+3. Commit cambios (`git commit -m 'Add AmazingFeature'`)
+4. Push (`git push origin feature/AmazingFeature`)
+5. Abre Pull Request
+
+---
+
+## 📄 Licencia
+
+MIT License - Ver [LICENSE](./LICENSE)
+
+---
+
+## 💬 Soporte
+
+- **Issues**: [GitHub Issues](https://github.com/yourorg/workgraph-os/issues)
+- **Docs**: [/documentacion](./documentacion)
+- **Email**: support@workgraph.io
+
+---
+
+**Built with ❤️ by the WorkGraph Team**

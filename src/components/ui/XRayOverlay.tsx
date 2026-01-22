@@ -10,7 +10,9 @@ interface XRayOverlayProps {
 }
 
 export const XRayOverlay: React.FC<XRayOverlayProps> = ({ receipt, isActive }) => {
-    const { nodes } = useGraphStore();
+    const nodes = useGraphStore(state => state.nodes);
+    const physicsStats = useGraphStore(state => state.physicsStats);
+    const isAntigravityActive = useGraphStore(state => state.isAntigravityActive);
 
     if (!isActive || !receipt) return null;
 
@@ -67,6 +69,20 @@ export const XRayOverlay: React.FC<XRayOverlayProps> = ({ receipt, isActive }) =
                     <span className="opacity-60">AUDIT_COST:</span> <span>${jobMetrics.reduce((acc: number, m: any) => acc + m.cost_usd, 0).toFixed(4)}</span>
                     <span className="opacity-60">AVG_LATENCY:</span> <span>{Math.round(jobMetrics.reduce((acc: number, m: any) => acc + m.latency_ms, 0) / (jobMetrics.length || 1))}ms</span>
                 </div>
+
+                <div className="pt-2 mt-2 border-t border-emerald-500/30">
+                    <p className="font-bold text-sky-400">ANTIGRAVITY ENGINE: {isAntigravityActive ? 'FLIGHT' : 'STATIONARY'}</p>
+                    <div className="grid grid-cols-2 gap-x-4">
+                        <span className="opacity-60">CYCLE_TIME:</span> <span>{physicsStats.latency_ms}ms</span>
+                        <span className="opacity-60">COST_ABSTR:</span> <span className={physicsStats.latency_ms > 20 ? 'text-orange-400' : 'text-emerald-400'}>
+                            {(physicsStats.latency_ms * 0.0001).toFixed(4)} AU
+                        </span>
+                    </div>
+                    <div className="text-[8px] opacity-40 mt-1 uppercase italic">
+                        Forces: Attraction(Evidence) / Repulsion(Contradicts)
+                    </div>
+                </div>
+
                 <p className="pt-1 mt-1 border-t border-emerald-500/30 text-emerald-600">HASH: {receipt.input_hash.slice(0, 10)}</p>
             </div>
         </div>

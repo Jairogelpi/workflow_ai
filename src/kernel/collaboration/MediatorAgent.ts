@@ -6,10 +6,11 @@ import { WorkNode } from '../../canon/schema/ir';
 // Tipos para el reporte de análisis
 export interface AnalysisReport {
     summary: string;
-    category: 'logic_violation' | 'content_conflict' | 'clean_merge';
+    category: 'logic_violation' | 'content_conflict' | 'clean_merge' | 'structural_void';
     severity: 'high' | 'medium' | 'low';
     suggestions: string[];
     ai_confidence: number;
+    proposed_nodes?: WorkNode[];
 }
 
 export class MediatorAgent {
@@ -60,7 +61,6 @@ export class MediatorAgent {
             }
 
             // PHASE 3: Explain (Humanize, Low Cost)
-            // Simulated AI Call to GPT-4o-mini
             let analysis: AnalysisReport;
 
             if (promptContext.type === 'VIOLATION') {
@@ -98,6 +98,73 @@ export class MediatorAgent {
 
             return analysis;
         });
+    }
+
+    /**
+     * VOID INFERENCE (RLM Planner integration)
+     * Detects claims without evidence and suggests search/discovery nodes.
+     */
+    static inferVoids(nodes: WorkNode[], edges: any[]): AnalysisReport {
+        const claims = nodes.filter(n => n.type === 'claim');
+        const unsupportedClaims = claims.filter(c => {
+            return !edges.some(e => (e.target === c.id || e.source === c.id) && e.relation === 'evidence_for');
+        });
+
+        if (unsupportedClaims.length === 0) {
+            return {
+                summary: "Topología robusta: Todas las afirmaciones tienen respaldo.",
+                category: 'clean_merge',
+                severity: 'low',
+                suggestions: [],
+                ai_confidence: 0.9
+            };
+        }
+
+        return {
+            summary: `Se han detectado ${unsupportedClaims.length} Claims sin evidencia de soporte (Vacíos Lógicos).`,
+            category: 'structural_void',
+            severity: 'medium',
+            suggestions: unsupportedClaims.map(c => `Buscar evidencia para: ${(c as any).statement}`),
+            ai_confidence: 0.85
+        };
+    }
+
+    /**
+     * FORENSIC INTEGRITY CHECK
+     * Real-time verification of PIN nodes and logical consistencies.
+     */
+    static async verifyGraphIntegrity(nodes: WorkNode[]): Promise<AnalysisReport> {
+        try {
+            const report = await Verifier.verifyBranch(nodes);
+            if (report.passed) {
+                return {
+                    summary: "Integridad Forense confirmada: El grafo es coherente con el Canon.",
+                    category: 'clean_merge',
+                    severity: 'low',
+                    suggestions: [],
+                    ai_confidence: 1.0
+                };
+            }
+
+            const violations = report.issues?.filter(i => i.severity === 'CRITICAL' || i.severity === 'error') || [];
+
+            return {
+                summary: `ALERTA DE INCONSISTENCIA: Se han detectado ${violations.length} violaciones de integridad.`,
+                category: 'logic_violation',
+                severity: 'high',
+                suggestions: violations.map(v => v.message),
+                ai_confidence: 1.0
+            };
+
+        } catch (error: any) {
+            return {
+                summary: `Error de Integridad Lógica: ${error.message}`,
+                category: 'logic_violation',
+                severity: 'high',
+                suggestions: ["Revertir últimos cambios", "Ajustar PINs"],
+                ai_confidence: 1.0
+            };
+        }
     }
 
     private static async fetchBranchNodes(projectId: string): Promise<WorkNode[]> {

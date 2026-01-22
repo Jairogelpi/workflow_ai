@@ -1,5 +1,6 @@
-import { traceSpan, measureCost } from '../observability';
+import { traceSpan, measureCost, estimateCallCost, getModelTier } from '../observability';
 import { useSettingsStore } from '../../store/useSettingsStore';
+import { auditStore } from '../observability';
 
 interface LLMResponse {
     content: string;
@@ -15,10 +16,23 @@ interface LLMResponse {
 export type TaskTier = 'REASONING' | 'EFFICIENCY';
 
 /**
+ * PRE-FLIGHT COST PREDICTION (Hito 3.3 & Gate 7)
+ * Estimates the cost of a call before execution.
+ */
+export function predictCost(system: string, user: string, modelId: string): number {
+    // Approximate tokens (chars / 4 is standard for 2026 models)
+    const inputTokens = (system.length + user.length) / 4;
+    const expectedOutput = 1000; // Standard buffer for RLM Compiler responses
+
+    return estimateCallCost(inputTokens, expectedOutput, modelId);
+}
+
+/**
  * Gateway unificado para llamadas a LLMs.
  * - Gestiona la autenticación (BYOK).
  * - Estandariza la respuesta.
  * - INYECTA OBSERVABILIDAD AUTOMÁTICA.
+ * - PRE-FLIGHT COST ESTIMATION.
  */
 export async function generateText(
     systemPrompt: string,
@@ -34,6 +48,16 @@ export async function generateText(
 
     if (!activeConfig.apiKey) {
         throw new Error(`⚠️ API Key no configurada para el motor de ${tier}. Ve a ajustes.`);
+    }
+
+    // PRE-FLIGHT COST ESTIMATION
+    const estimatedCost = predictCost(systemPrompt, userPrompt, activeConfig.modelId);
+    const sessionSpend = auditStore.getSessionSpend();
+
+    // Budget threshold warning (>$0.10 for single operation)
+    if (estimatedCost > 0.10) {
+        console.warn(`[GATEWAY] HIGH COST OPERATION: Estimated $${estimatedCost.toFixed(4)} for ${tier} call. Session total: $${sessionSpend.toFixed(4)}`);
+        // In production, this would trigger a UI confirmation dialog
     }
 
     return traceSpan(`llm.generate.${tier.toLowerCase()}`, { model: activeConfig.modelId, provider: activeConfig.provider }, async () => {

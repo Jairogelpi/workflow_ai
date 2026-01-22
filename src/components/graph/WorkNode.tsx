@@ -1,5 +1,5 @@
 'use client';
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Handle, Position, NodeProps, NodeToolbar } from 'reactflow';
 import { WorkNode as WorkNodeIR } from '../../canon/schema/ir';
 import { useGraphStore } from '../../store/useGraphStore';
@@ -13,71 +13,73 @@ import {
     FileText,
     Brain,
     Lock,
-    Link
+    Link,
+    Zap
 } from 'lucide-react';
+import { AppNode, AppEdge } from '../../store/useGraphStore';
 
-const NODE_TYPE_CONFIG: Record<string, { 
-    label: string; 
+const NODE_TYPE_CONFIG: Record<string, {
+    label: string;
     icon: any;
     light: { bg: string; text: string; border: string };
     dark: { bg: string; text: string; border: string };
 }> = {
-    note: { 
-        label: 'Note', 
+    note: {
+        label: 'Note',
         icon: MessageSquare,
         light: { bg: '#F3EDF7', text: '#4A4458', border: '#CAC4D0' },
         dark: { bg: '#4A4458', text: '#E8DEF8', border: '#938F99' }
     },
-    claim: { 
-        label: 'Claim', 
+    claim: {
+        label: 'Claim',
         icon: ShieldAlert,
         light: { bg: '#D3E3FD', text: '#041E49', border: '#A8C7FA' },
         dark: { bg: '#004A77', text: '#C2E7FF', border: '#0077B6' }
     },
-    evidence: { 
-        label: 'Evidence', 
+    evidence: {
+        label: 'Evidence',
         icon: CheckCircle2,
         light: { bg: '#C4EED0', text: '#0D5D2C', border: '#6DD58C' },
         dark: { bg: '#0D5D2C', text: '#C4EED0', border: '#1B8A45' }
     },
-    decision: { 
-        label: 'Decision', 
+    decision: {
+        label: 'Decision',
         icon: Brain,
         light: { bg: '#FEF7C3', text: '#594F05', border: '#FDD663' },
         dark: { bg: '#594F05', text: '#FEF7C3', border: '#8D7E0A' }
     },
-    idea: { 
-        label: 'Idea', 
+    idea: {
+        label: 'Idea',
         icon: Lightbulb,
         light: { bg: '#E7F8ED', text: '#0D5D2C', border: '#A8DAB5' },
         dark: { bg: '#0D5D2C', text: '#E7F8ED', border: '#2E7D32' }
     },
-    task: { 
-        label: 'Task', 
+    task: {
+        label: 'Task',
         icon: CheckSquare,
         light: { bg: '#E8DEF8', text: '#4A4458', border: '#CAC4D0' },
         dark: { bg: '#4A4458', text: '#E8DEF8', border: '#7E57C2' }
     },
-    artifact: { 
-        label: 'Artifact', 
+    artifact: {
+        label: 'Artifact',
         icon: FileText,
         light: { bg: '#FFE0B2', text: '#5D4037', border: '#FFCC80' },
         dark: { bg: '#5D4037', text: '#FFE0B2', border: '#8D6E63' }
     },
-    assumption: { 
-        label: 'Assumption', 
+    assumption: {
+        label: 'Assumption',
         icon: HelpCircle,
         light: { bg: '#FCE4EC', text: '#880E4F', border: '#F48FB1' },
         dark: { bg: '#880E4F', text: '#FCE4EC', border: '#AD1457' }
     },
-    constraint: { 
-        label: 'Constraint', 
+    constraint: {
+        label: 'Constraint',
         icon: Lock,
         light: { bg: '#F9DEDC', text: '#8C1D18', border: '#F2B8B5' },
         dark: { bg: '#8C1D18', text: '#F9DEDC', border: '#C62828' }
     },
-    source: { 
-        label: 'Source', 
+    source: {
+        label: 'Source',
         icon: Link,
         light: { bg: '#E3F2FD', text: '#0D47A1', border: '#90CAF9' },
         dark: { bg: '#0D47A1', text: '#E3F2FD', border: '#1976D2' }
@@ -85,7 +87,23 @@ const NODE_TYPE_CONFIG: Record<string, {
 };
 
 export function WorkNodeComponent({ data, selected, id }: NodeProps<WorkNodeIR>) {
-    const { mutateNodeType } = useGraphStore();
+    const { mutateNodeType, edges, isAntigravityActive } = useGraphStore();
+
+    // Antigravity Semantic Physics Logic: Calculate Tension (Contradictions)
+    const tensionLevel = useMemo(() => {
+        return edges.filter(e =>
+            (e.target === id || e.source === id) &&
+            e.data?.relation === 'contradicts'
+        ).length;
+    }, [edges, id]);
+
+    // Antigravity Semantic Physics Logic: Calculate Depth (Z-Axis)
+    const zDepth = useMemo(() => {
+        const confidence = data.metadata?.confidence ?? 1.0;
+        const isCanon = data.metadata?.pin ?? false;
+        return isCanon ? 1.2 : 0.8 + (confidence * 0.2);
+    }, [data.metadata]);
+
     const config = NODE_TYPE_CONFIG[data.type] ?? NODE_TYPE_CONFIG.note!;
     const Icon = config!.icon;
     const isDark = typeof document !== 'undefined' && document.documentElement.classList.contains('dark');
@@ -126,35 +144,45 @@ export function WorkNodeComponent({ data, selected, id }: NodeProps<WorkNodeIR>)
                 })}
             </NodeToolbar>
 
-            <div 
+            <div
                 className={`
                     min-w-[200px] max-w-[280px] rounded-3xl 
-                    transition-all duration-200 ease-out
-                    ${selected ? 'scale-105 shadow-elevation-5' : 'shadow-elevation-3 hover:shadow-elevation-4 hover:-translate-y-0.5'}
+                    transition-all duration-300 ease-out
+                    ${selected ? 'scale-105 shadow-elevation-5' : 'shadow-elevation-3'}
+                    ${tensionLevel > 0 ? 'animate-pulse' : ''}
                 `}
                 style={{
                     backgroundColor: colors.bg,
                     border: `2px solid ${selected ? colors.text : colors.border}`,
+                    transform: isAntigravityActive ? `scale(${zDepth})` : undefined,
+                    boxShadow: tensionLevel > 0
+                        ? `0 0 ${10 + tensionLevel * 5}px rgba(239, 68, 68, ${0.3 + tensionLevel * 0.1})`
+                        : undefined
                 }}
             >
+                {tensionLevel > 0 && (
+                    <div className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 shadow-lg z-10">
+                        <Zap size={12} fill="currentColor" />
+                    </div>
+                )}
                 <div className="px-4 py-3 flex items-start gap-3">
-                    <div 
+                    <div
                         className="p-2 rounded-xl shrink-0"
-                        style={{ 
+                        style={{
                             backgroundColor: `${colors.text}15`,
                         }}
                     >
                         <Icon size={18} style={{ color: colors.text }} />
                     </div>
-                    
+
                     <div className="flex-1 min-w-0 pt-0.5">
-                        <span 
+                        <span
                             className="text-[10px] font-bold uppercase tracking-widest opacity-70"
                             style={{ color: colors.text }}
                         >
                             {config.label}
                         </span>
-                        <p 
+                        <p
                             className="text-sm font-medium leading-snug mt-1 line-clamp-2"
                             style={{ color: colors.text }}
                         >
@@ -167,7 +195,7 @@ export function WorkNodeComponent({ data, selected, id }: NodeProps<WorkNodeIR>)
                     type="target"
                     position={Position.Top}
                     className="!w-3 !h-3 !border-2 !rounded-full !-top-1.5"
-                    style={{ 
+                    style={{
                         backgroundColor: colors.bg,
                         borderColor: colors.border,
                     }}
@@ -176,7 +204,7 @@ export function WorkNodeComponent({ data, selected, id }: NodeProps<WorkNodeIR>)
                     type="source"
                     position={Position.Bottom}
                     className="!w-3 !h-3 !border-2 !rounded-full !-bottom-1.5"
-                    style={{ 
+                    style={{
                         backgroundColor: colors.bg,
                         borderColor: colors.border,
                     }}

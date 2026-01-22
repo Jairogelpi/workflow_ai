@@ -42,11 +42,14 @@ phases:
         tasks:
           - "Implement canModifyNode (Guard)"
           - "Implement canDeleteNode (Guard/Dependency Check)"
+          - "Implement canAddRelation (Contradiction Prevention)"
+          - "Implement checkNodeStaleness (Expiration Logic)"
           - "Implement KernelLogger (Observability)"
         evidence_nodes: 
           - "PLAN-HITO-0.3.md"
           - "src/kernel/guards.ts"
           - "tests/guards.test.ts"
+          - "documentacion/HITO_PHASE_2_ENHANCEMENTS.md"
 
   - id: 1
     title: "Phase 1: RLM Compiler v1 (Deliverable Engine)"
@@ -268,10 +271,16 @@ phases:
       - id: "2.9"
         title: "BYOK Secrets Management"
         description: "Vault integration for user keys."
-        status: "pending"
+        status: "done"
         gate: "Encryption at rest for all third-party keys."
-        tasks: []
-        evidence_nodes: []
+        tasks:
+          - "Implement KeyVault (AES-GCM Web Crypto)"
+          - "Implement Secure Storage Logic (LocalStorage)"
+          - "Implement RateLimiter infrastructure"
+        evidence_nodes:
+          - "src/lib/security/vault.ts"
+          - "src/kernel/security/rate-limiter.ts"
+          - "documentacion/HITO_PHASE_2_ENHANCEMENTS.md"
 
   - id: 3
     title: "Phase 3: Scaling & Verification (Operational Excellence)"
@@ -304,6 +313,7 @@ phases:
         evidence_nodes: 
           - "src/kernel/digest_engine.ts"
           - "src/kernel/observability.ts"
+          - "documentacion/HITO_3.2_STALENESS_DETECTION.md"
 
       - id: "3.3"
         title: "Dynamic Pricing Oracle"
@@ -326,12 +336,15 @@ phases:
         tasks:
           - "Implement Offscreen Document (Readability.js)"
           - "Implement Side Panel UI (React)"
+          - "Implement Selection Capture (Wedge)"
+          - "Implement Source Metadata extraction (URL, Title, Timestamp)"
           - "Implement Content Script 🧠 Trigger"
           - "Implement Insert-to-Chat automation"
         evidence_nodes:
           - "extension/src/background/index.ts"
           - "extension/src/sidepanel/SidePanelViewer.tsx"
           - "documentacion/HITO_3.4_LINK_OS_EXTENSION.md"
+          - "documentacion/HITO_PHASE_2_ENHANCEMENTS.md"
 
       - id: "3.5"
         title: "Identity & Security (Gate 8)"
@@ -370,12 +383,17 @@ phases:
           - "Implement Dual-Engine Settings (Reasoning/Efficiency)"
           - "Implement Smart Routing Gateway (traceSpan + measureCost)"
           - "Implement Recursive Language Modeling (RLM Loop)"
+          - "Implement Recursive Planner Subdivision"
+          - "Implement Selective Retriever (Digests vs Raw)"
           - "Implement TOON Topology-based context filtering"
           - "Add Quality/Fidelity Mode toggle (preventing drift)"
         evidence_nodes:
           - "src/kernel/llm/gateway.ts"
+          - "src/compiler/planner.ts"
+          - "src/compiler/retriever.ts"
           - "src/compiler/assembler.ts"
           - "documentacion/HITO_3.7_GATE9_EXTENSION_BRAIN.md"
+          - "documentacion/HITO_PHASE_2_ENHANCEMENTS.md"
 
   - id: 4
     title: "Phase 4: Enterprise Hardening"
@@ -445,6 +463,90 @@ phases:
         evidence_nodes:
           - "src/kernel/observability.ts"
           - "documentacion/HITO_4.5_AUDIT_LOGS.md"
+
+  - id: 5
+    title: "Phase 5: Universal Capture System"
+    description: "Frictionless knowledge capture from any source."
+    phase_gate: "Files and text can be captured from LLMs, cloud services, and local system."
+    hitos:
+      - id: "5.1"
+        title: "LLM File Capture"
+        description: "Capture files uploaded to ChatGPT, Claude, and Gemini interfaces."
+        status: "done"
+        gate: "Extension detects and captures files from all major LLM platforms."
+        tasks:
+          - "Implement BaseFileDetector interface"
+          - "Implement ChatGPTDetector"
+          - "Implement ClaudeDetector"
+          - "Implement GeminiDetector"
+          - "Implement DragDropHandler for file dragging"
+          - "Add CAPTURE_FILE handler in background script"
+          - "Create /api/ingest/file endpoint"
+        evidence_nodes:
+          - "extension/src/content/file-detector.ts"
+          - "extension/src/content/chatgpt-detector.ts"
+          - "extension/src/content/claude-detector.ts"
+          - "extension/src/content/gemini-detector.ts"
+          - "extension/src/content/drag-drop-handler.ts"
+          - "extension/src/background/index.ts"
+          - "src/app/api/ingest/file/route.ts"
+          - "documentacion/SISTEMA_CAPTURA_UNIVERSAL.md"
+
+      - id: "5.2"
+        title: "Text-to-Node Drag & Drop"
+        description: "Direct text selection capture to floating windows with auto-node creation."
+        status: "done"
+        gate: "Text can be dragged from any web page to floating panels."
+        tasks:
+          - "Enhance FloatingPanel with drag & drop handlers"
+          - "Implement visual feedback for drop zones"
+          - "Add text/file type detection"
+          - "Create /api/nodes/quick endpoint"
+          - "Support source URL capture"
+        evidence_nodes:
+          - "src/components/ui/FloatingPanel.tsx"
+          - "src/app/api/nodes/quick/route.ts"
+          - "documentacion/SISTEMA_CAPTURA_UNIVERSAL.md"
+
+      - id: "5.3"
+        title: "Cloud Storage Integration"
+        description: "Capture files from Notion, Google Drive, Dropbox interfaces."
+        status: "done"
+        gate: "Files from cloud platforms captured with same UX as LLM files."
+        tasks:
+          - "Implement CloudFileDetector interface"
+          - "Implement GoogleDriveDetector"
+          - "Implement NotionDetector"
+          - "Implement DropboxDetector"
+          - "Implement unified CloudStorageCapture system"
+          - "Add CAPTURE_CLOUD_FILE handler in background script"
+        evidence_nodes:
+          - "extension/src/content/cloud-detectors/base.ts"
+          - "extension/src/content/cloud-detectors/google-drive.ts"
+          - "extension/src/content/cloud-detectors/notion.ts"
+          - "extension/src/content/cloud-detectors/dropbox.ts"
+          - "extension/src/content/cloud-detectors/index.ts"
+          - "extension/src/background/index.ts"
+          - "documentacion/HITO_5.3_CLOUD_STORAGE.md"
+
+      - id: "5.4"
+        title: "X-Ray Vision: Ambient Percept"
+        description: "Real-time semantic analysis and visual highlighting of web content."
+        status: "done"
+        gate: "Ambient scanner identifies IR types (Claim/Evidence) with zero-click HUD metrics."
+        tasks:
+          - "Implement TextBlockDetector (Ambient Scanner)"
+          - "Implement SemanticBuffer (Batch Queue)"
+          - "Build XRayHighlighter (Visual Layer w/ Shadow DOM)"
+          - "Implement XRayHUD (Real-time Engineering Metrics)"
+          - "Integrate One-Click Capture to /api/nodes/quick"
+        evidence_nodes:
+          - "extension/src/content/text-block-detector.ts"
+          - "extension/src/content/semantic-buffer.ts"
+          - "extension/src/content/xray-highlighter.ts"
+          - "extension/src/content/xray-hud.ts"
+          - "extension/src/content/xray-system.ts"
+          - "documentacion/XRAY_VISION_TECHNICAL.md"
 
 operational_rules:
   sequential_execution: true # Mandatory: Hito N requires Hito N-1 as Done.

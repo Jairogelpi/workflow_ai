@@ -12,9 +12,10 @@ import {
 import { v4 as uuidv4 } from 'uuid';
 import { WorkNode, WorkEdge } from '../canon/schema/ir';
 import { NodeId, EdgeId } from '../canon/schema/primitives';
-import { createVersion } from '../kernel/versioning';
+import { createVersion, computeNodeHash } from '../kernel/versioning';
 import { backendToFlow } from '../lib/adapters';
 import { syncService } from '../lib/sync';
+import * as d3 from 'd3-force';
 
 // AppNode uses the Kernel WorkNode as its internal data
 export type AppNode = Node<WorkNode, string>;
@@ -23,12 +24,33 @@ export type AppEdge = Edge<WorkEdge>;
 // Default project ID for now (Local-first mindset but SQL-backed)
 const DEFAULT_PROJECT_ID = '00000000-0000-0000-0000-000000000000';
 
+// Semantic force mapping based on IR relations
+const FORCE_MAPPING: Record<string, number> = {
+    'evidence_for': -50, // Strong attraction
+    'validates': -50,    // Strong attraction
+    'part_of': -20,      // Weak grouping
+    'contradicts': 300,  // Strong repulsion
+    'blocks': 100,       // Structural tension
+    'relates_to': -10    // Neutral/weak association
+};
+
 interface GraphState {
     nodes: AppNode[];
     edges: AppEdge[];
     selectedNodeId: string | null;
     isLoading: boolean;
     isSyncing: boolean;
+
+    // Shadow Storage
+    draftNodes: AppNode[];
+
+    // Antigravity State
+    isAntigravityActive: boolean;
+    physicsStats: {
+        latency_ms: number;
+        cost_usd: number;
+        iterations: number;
+    };
 
     // Core Actions
     setNodes: (nodes: AppNode[]) => void;
@@ -47,46 +69,63 @@ interface GraphState {
     mutateNodeType: (id: string, newType: WorkNode['type']) => void;
     deleteNode: (id: string) => Promise<void>;
 
+    // --- INTERACTIVE EDITING ACTIONS ---
+    renameNode: (id: string, newName: string) => Promise<void>;
+    addNodeComment: (id: string, comment: string) => Promise<void>;
+    updateEdgeRelation: (edgeId: string, newRelation: string) => Promise<void>;
+    deleteEdge: (edgeId: string) => Promise<void>;
+
     // Discovery
     searchQuery: string;
     setSearchQuery: (query: string) => void;
     centerNode: (id: string) => void;
 
+    // Shadow Storage Actions
+    proposeNode: (node: WorkNode, position?: { x: number, y: number }) => void;
+    commitDraft: (id: string) => Promise<void>;
+    discardDraft: (id: string) => void;
+
     // --- WINDOW MANAGER STATE ---
-    /** The currently active floating window (if any) */
     activeWindow: {
         id: string;
         title: string;
         contentUrl?: string;
-        /** The type of content to render inside the window */
         contentType: 'pdf' | 'web' | 'text' | 'editor';
-        /** Optional data passed to the editor component */
         nodeData?: any;
-        /** MIME type of the file, used for SmartViewer */
         mimeType?: string;
-        /** Extracted text content for fallback viewing */
         textContent?: string;
     } | null;
 
-    /** Opens a floating window with the specified configuration */
     openWindow: (window: GraphState['activeWindow']) => void;
-    /** Closes the currently active floating window */
     closeWindow: () => void;
 
     // --- AUTHORITY SIGNATURE ACTIONS (Hito 4.4) ---
     signNode: (id: string, signerId: string) => Promise<void>;
     breakSeal: (id: string) => Promise<void>;
+
+    // --- ANTIGRAVITY ACTIONS ---
+    setAntigravity: (active: boolean) => void;
+    toggleAntigravity: () => void;
+    applyForces: () => void;
 }
 
 export const useGraphStore = create<GraphState>((set, get) => ({
     nodes: [],
     edges: [],
     selectedNodeId: null,
-
     searchQuery: '',
     activeWindow: null,
     isLoading: false,
     isSyncing: false,
+    draftNodes: [],
+
+    // Antigravity Initial State (Fricción Cero: On by default)
+    isAntigravityActive: true,
+    physicsStats: {
+        latency_ms: 0,
+        cost_usd: 0,
+        iterations: 0
+    },
 
     setNodes: (nodes) => set({ nodes }),
     setEdges: (edges) => set({ edges }),
@@ -94,24 +133,17 @@ export const useGraphStore = create<GraphState>((set, get) => ({
     openWindow: (window) => set({ activeWindow: window }),
     closeWindow: () => set({ activeWindow: null }),
 
-    signNode: async () => { }, // Defined later
-    breakSeal: async () => { }, // Defined later
-
     loadProject: async (projectId) => {
         set({ isLoading: true });
         try {
             const { nodes: rawNodes, edges: rawEdges } = await syncService.fetchGraph(projectId);
-
-            // Map Domain Nodes (WorkNode) to React Flow Nodes (AppNode)
             const flowNodes = rawNodes.map(node => backendToFlow(node));
-
             const flowEdges = rawEdges.map(edge => ({
                 id: edge.id,
                 source: edge.source,
                 target: edge.target,
-                data: edge // WorkEdge is the data
+                data: edge
             }));
-
             set({ nodes: flowNodes, edges: flowEdges, isLoading: false });
         } catch (error) {
             console.error('Failed to hydrate graph:', error);
@@ -119,9 +151,7 @@ export const useGraphStore = create<GraphState>((set, get) => ({
         }
     },
 
-    centerNode: (id) => {
-        set({ selectedNodeId: id });
-    },
+    centerNode: (id) => set({ selectedNodeId: id }),
 
     onNodesChange: (changes) => {
         set({
@@ -166,7 +196,6 @@ export const useGraphStore = create<GraphState>((set, get) => ({
             edges: addEdge(newEdge, get().edges) as AppEdge[],
         });
 
-        // Background Sync
         await syncService.upsertEdge(DEFAULT_PROJECT_ID, newWorkEdge);
     },
 
@@ -181,7 +210,6 @@ export const useGraphStore = create<GraphState>((set, get) => ({
                 const nodeData = node.data;
                 const newData = { ...nodeData };
 
-                // Discriminant-aware update
                 if (newData.type === 'note') newData.content = content;
                 else if (newData.type === 'claim') newData.statement = content;
                 else if (newData.type === 'evidence') newData.content = content;
@@ -192,7 +220,6 @@ export const useGraphStore = create<GraphState>((set, get) => ({
                 else if (newData.type === 'assumption') newData.premise = content;
                 else if (newData.type === 'constraint') newData.rule = content;
 
-                // Cryptographic update (re-hashes the node)
                 const updatedMetadata = createVersion(newData as WorkNode, node.data.metadata.version_hash);
                 updatedNodeRecord = { ...newData, metadata: updatedMetadata } as WorkNode;
 
@@ -202,8 +229,6 @@ export const useGraphStore = create<GraphState>((set, get) => ({
         });
 
         set({ nodes: updatedNodes });
-
-        // Background Sync
         if (updatedNodeRecord) {
             await syncService.upsertNode(DEFAULT_PROJECT_ID, updatedNodeRecord);
         }
@@ -212,8 +237,6 @@ export const useGraphStore = create<GraphState>((set, get) => ({
     addNode: async (type, position) => {
         const id = uuidv4() as NodeId;
         const now = new Date().toISOString();
-
-        // Base structure for initial state
         const baseNode: any = {
             id,
             type,
@@ -228,7 +251,6 @@ export const useGraphStore = create<GraphState>((set, get) => ({
             }
         };
 
-        // Populate content placeholders
         if (type === 'note') baseNode.content = 'New Note';
         else if (type === 'claim') baseNode.statement = 'New Claim';
         else if (type === 'evidence') baseNode.content = 'New Evidence';
@@ -239,17 +261,11 @@ export const useGraphStore = create<GraphState>((set, get) => ({
         else if (type === 'assumption') { baseNode.premise = 'New Assumption'; baseNode.risk_level = 'medium'; }
         else if (type === 'constraint') { baseNode.rule = 'New Constraint'; baseNode.enforcement_level = 'strict'; }
 
-        // Sign the node
         const signedMetadata = createVersion(baseNode as WorkNode);
         const finalNode: WorkNode = { ...baseNode, metadata: signedMetadata };
-
         const flowNode = backendToFlow(finalNode, position || { x: Math.random() * 400, y: Math.random() * 400 });
 
-        set({
-            nodes: [...get().nodes, flowNode],
-        });
-
-        // Background Sync
+        set({ nodes: [...get().nodes, flowNode] });
         await syncService.upsertNode(DEFAULT_PROJECT_ID, finalNode);
     },
 
@@ -266,7 +282,6 @@ export const useGraphStore = create<GraphState>((set, get) => ({
                     metadata: oldData.metadata
                 };
 
-                // Preserve content if possible or create new placeholder
                 const oldContent = (oldData as any).content || (oldData as any).statement || (oldData as any).rationale || (oldData as any).summary || (oldData as any).description || (oldData as any).details || (oldData as any).name || (oldData as any).premise || (oldData as any).rule || '';
 
                 if (newType === 'note') newData.content = oldContent;
@@ -280,18 +295,14 @@ export const useGraphStore = create<GraphState>((set, get) => ({
                 else if (newType === 'constraint') { newData.rule = oldContent; newData.enforcement_level = 'strict'; }
                 else if (newType === 'source') { newData.citation = oldContent; }
 
-                // Re-sign node with new type
                 const updatedMetadata = createVersion(newData as WorkNode, oldData.metadata.version_hash);
                 updatedNodeRecord = { ...newData, metadata: updatedMetadata } as WorkNode;
-
                 return { ...node, data: updatedNodeRecord };
             }
             return node;
         });
 
         set({ nodes: updatedNodes });
-
-        // Background Sync
         if (updatedNodeRecord) {
             await syncService.upsertNode(DEFAULT_PROJECT_ID, updatedNodeRecord);
         }
@@ -299,8 +310,6 @@ export const useGraphStore = create<GraphState>((set, get) => ({
 
     deleteNode: async (id: string) => {
         const { nodes, edges } = get();
-
-        // Roadmap Perfection: Soft Delete
         set({
             nodes: nodes.filter(n => n.id !== id),
             edges: edges.filter(e => e.source !== id && e.target !== id)
@@ -308,7 +317,6 @@ export const useGraphStore = create<GraphState>((set, get) => ({
 
         try {
             await syncService.archiveNode(id);
-            // Also archive related edges in DB
             const edgesToArchive = edges.filter(e => e.source === id || e.target === id);
             for (const edge of edgesToArchive) {
                 await syncService.archiveEdge(edge.id);
@@ -325,9 +333,7 @@ export const useGraphStore = create<GraphState>((set, get) => ({
         const updatedNodes = nodes.map(node => {
             if (node.id === id) {
                 const data = { ...node.data };
-                // Snap the current hash as the seal
                 const currentHash = computeNodeHash(data);
-
                 data.metadata = {
                     ...data.metadata,
                     human_signature: {
@@ -367,5 +373,178 @@ export const useGraphStore = create<GraphState>((set, get) => ({
         if (updatedNodeRecord) {
             await syncService.upsertNode(DEFAULT_PROJECT_ID, updatedNodeRecord);
         }
+    },
+
+    proposeNode: (node, position) => {
+        const flowNode = backendToFlow(node, position || { x: Math.random() * 400, y: Math.random() * 400 });
+        // Mark as draft visually in React Flow
+        (flowNode as any).className = 'draft-proposal';
+        set({ draftNodes: [...get().draftNodes, flowNode] });
+    },
+
+    commitDraft: async (id) => {
+        const { draftNodes, nodes } = get();
+        const draft = draftNodes.find(n => n.id === id);
+        if (!draft) return;
+
+        // Finalize node (sign it implicitly as accepted)
+        const finalizedNode = { ...draft.data };
+        finalizedNode.metadata.origin = 'human'; // Now human-approved
+
+        set({
+            nodes: [...nodes, { ...draft, data: finalizedNode, className: '' }],
+            draftNodes: draftNodes.filter(n => n.id !== id)
+        });
+
+        await syncService.upsertNode(DEFAULT_PROJECT_ID, finalizedNode);
+    },
+
+    discardDraft: (id) => {
+        set({ draftNodes: get().draftNodes.filter(n => n.id !== id) });
+    },
+
+    // --- INTERACTIVE EDITING ACTIONS ---
+
+    renameNode: async (id, newName) => {
+        const { nodes } = get();
+        let updatedNodeRecord: WorkNode | null = null;
+
+        const updatedNodes = nodes.map(node => {
+            if (node.id === id) {
+                const data = { ...node.data };
+
+                // Update the appropriate field based on node type
+                if (data.type === 'note') (data as any).content = newName;
+                else if (data.type === 'claim') (data as any).statement = newName;
+                else if (data.type === 'decision') (data as any).rationale = newName;
+                else if (data.type === 'task') (data as any).title = newName;
+                else if (data.type === 'artifact') (data as any).name = newName;
+                else if (data.type === 'assumption') (data as any).premise = newName;
+                else if (data.type === 'constraint') (data as any).rule = newName;
+
+                const updatedMetadata = createVersion(data, node.data.metadata.version_hash);
+                updatedNodeRecord = { ...data, metadata: updatedMetadata };
+                return { ...node, data: updatedNodeRecord };
+            }
+            return node;
+        });
+
+        set({ nodes: updatedNodes });
+        if (updatedNodeRecord) {
+            await syncService.upsertNode(DEFAULT_PROJECT_ID, updatedNodeRecord);
+        }
+    },
+
+    addNodeComment: async (id, comment) => {
+        const { nodes } = get();
+        let updatedNodeRecord: WorkNode | null = null;
+
+        const updatedNodes = nodes.map(node => {
+            if (node.id === id) {
+                const data = { ...node.data };
+                data.metadata = {
+                    ...data.metadata,
+                    comment: comment
+                } as any; // Allow comment extension
+                updatedNodeRecord = data;
+                return { ...node, data: updatedNodeRecord };
+            }
+            return node;
+        });
+
+        set({ nodes: updatedNodes });
+        if (updatedNodeRecord) {
+            await syncService.upsertNode(DEFAULT_PROJECT_ID, updatedNodeRecord);
+        }
+    },
+
+    updateEdgeRelation: async (edgeId, newRelation) => {
+        const { edges } = get();
+        let updatedEdgeRecord: WorkEdge | null = null;
+
+        const updatedEdges = edges.map(edge => {
+            if (edge.id === edgeId && edge.data) {
+                const data = { ...edge.data };
+                data.relation = newRelation as any;
+                const updatedMetadata = createVersion(data as any, edge.data.metadata.version_hash);
+                updatedEdgeRecord = { ...data, metadata: updatedMetadata };
+                return { ...edge, data: updatedEdgeRecord };
+            }
+            return edge;
+        });
+
+        set({ edges: updatedEdges });
+        if (updatedEdgeRecord) {
+            await syncService.upsertEdge(DEFAULT_PROJECT_ID, updatedEdgeRecord);
+        }
+    },
+
+    deleteEdge: async (edgeId) => {
+        const { edges } = get();
+        set({ edges: edges.filter(e => e.id !== edgeId) });
+
+        try {
+            await syncService.archiveEdge(edgeId);
+        } catch (error) {
+            console.error('Failed to archive edge:', error);
+        }
+    },
+
+    setAntigravity: (active) => set({ isAntigravityActive: active }),
+    toggleAntigravity: () => set({ isAntigravityActive: !get().isAntigravityActive }),
+
+    applyForces: () => {
+        const { nodes, edges, isAntigravityActive } = get();
+        if (!isAntigravityActive || nodes.length === 0) return;
+
+        const start = performance.now();
+
+        const simulation = d3.forceSimulation(nodes as any)
+            .force('link', d3.forceLink(edges).id((d: any) => d.id).distance((d: any) => {
+                const relation = d.data?.relation || 'relates_to';
+                if (relation === 'evidence_for') return 60;
+                if (relation === 'contradicts') return 450;
+                return 200;
+            }).strength((d: any) => {
+                const relation = d.data?.relation || 'relates_to';
+                if (relation === 'evidence_for' || relation === 'validates') return 0.7;
+                if (relation === 'contradicts') return 1.0;
+                return 0.1;
+            }))
+            .force('charge', d3.forceManyBody().strength((d: any) => {
+                return d.data?.metadata?.pin ? -2200 : -1100;
+            }))
+            .force('center', d3.forceCenter(window.innerWidth / 2, window.innerHeight / 2))
+            .force('collision', d3.forceCollide().radius(220))
+            .stop();
+
+        nodes.forEach((node: any) => {
+            if (node.data?.metadata?.pin) {
+                node.fx = node.position.x;
+                node.fy = node.position.y;
+            }
+        });
+
+        const iterations = 40;
+        for (let i = 0; i < iterations; ++i) simulation.tick();
+
+        const end = performance.now();
+
+        const updatedNodes = nodes.map((node: any) => ({
+            ...node,
+            position: {
+                x: isNaN(node.x) ? node.position.x : node.x,
+                y: isNaN(node.y) ? node.position.y : node.y
+            }
+        }));
+
+        set({
+            nodes: updatedNodes,
+            physicsStats: {
+                latency_ms: Math.round(end - start),
+                cost_usd: 0,
+                iterations
+            }
+        });
     },
 }));

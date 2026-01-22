@@ -6,14 +6,16 @@ import ReactFlow, {
     Background,
     Panel,
     useReactFlow,
-    ReactFlowProvider
+    ReactFlowProvider,
+    Edge
 } from 'reactflow';
 import 'reactflow/dist/style.css';
 import { useGraphStore } from '../../store/useGraphStore';
+import { useAntigravityEngine } from '../../hooks/useAntigravityEngine';
 import { backendToFlow } from '../../lib/adapters';
 import { NodeId } from '../../canon/schema/primitives';
 import { WorkNode } from '../../canon/schema/ir';
-import { Plus } from 'lucide-react';
+import { Plus, Search, Filter, Wind } from 'lucide-react';
 import { WorkNodeComponent } from './WorkNode';
 
 const nodeTypes = {
@@ -30,20 +32,40 @@ const nodeTypes = {
 };
 
 function GraphContent() {
-    const {
-        nodes,
-        edges,
-        onNodesChange,
-        onEdgesChange,
-        onConnect,
-        setNodes,
-        setSelectedNode,
-        addNode,
-        openWindow
-    } = useGraphStore();
+    const nodes = useGraphStore(state => state.nodes);
+    const edges = useGraphStore(state => state.edges);
+    const onNodesChange = useGraphStore(state => state.onNodesChange);
+    const onEdgesChange = useGraphStore(state => state.onEdgesChange);
+    const onConnect = useGraphStore(state => state.onConnect);
+    const setNodes = useGraphStore(state => state.setNodes);
+    const setSelectedNode = useGraphStore(state => state.setSelectedNode);
+    const addNode = useGraphStore(state => state.addNode);
+    const openWindow = useGraphStore(state => state.openWindow);
+    const isAntigravityActive = useGraphStore(state => state.isAntigravityActive);
+    const toggleAntigravity = useGraphStore(state => state.toggleAntigravity);
+    const draftNodes = useGraphStore(state => state.draftNodes);
 
-    const { screenToFlowPosition } = useReactFlow();
+    const { screenToFlowPosition, fitView } = useReactFlow();
 
+    // Alt-key X-Ray State
+    const [isXRayMode, setIsXRayMode] = React.useState(false);
+
+    // Start the Antigravity Physics Engine Hook
+    useAntigravityEngine();
+
+    // Key Listeners for X-Ray mode
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => { if (e.key === 'Alt') setIsXRayMode(true); };
+        const handleKeyUp = (e: KeyboardEvent) => { if (e.key === 'Alt') setIsXRayMode(false); };
+        window.addEventListener('keydown', handleKeyDown);
+        window.addEventListener('keyup', handleKeyUp);
+        return () => {
+            window.removeEventListener('keydown', handleKeyDown);
+            window.removeEventListener('keyup', handleKeyUp);
+        };
+    }, []);
+
+    // Initialize with dummy node if empty
     useEffect(() => {
         if (nodes.length === 0) {
             const dummyNode: WorkNode = {
@@ -60,7 +82,7 @@ function GraphContent() {
                     pin: true
                 }
             };
-            (setNodes as any)([backendToFlow(dummyNode)]);
+            setNodes([backendToFlow(dummyNode)]);
         }
     }, [nodes.length, setNodes]);
 
@@ -74,34 +96,86 @@ function GraphContent() {
         }
     }, [addNode, screenToFlowPosition]);
 
+    const handleNodeClick = useCallback((_: any, node: any) => {
+        setSelectedNode(node.id);
+
+        // Find context nodes for cinematic flight (Decisions show supporters/contradictors)
+        const contextNodeIds = new Set([node.id]);
+        if (node.data?.type === 'decision' || node.data?.type === 'claim') {
+            edges.forEach(edge => {
+                if (edge.source === node.id || edge.target === node.id) {
+                    contextNodeIds.add(edge.source);
+                    contextNodeIds.add(edge.target);
+                }
+            });
+        }
+
+        // Cinematic Flight Mode: Voyage to context group
+        fitView({
+            nodes: nodes.filter(n => contextNodeIds.has(n.id)),
+            duration: 800,
+            padding: 0.5
+        });
+
+        openWindow({
+            id: node.id,
+            title: `${(node.data as any).label || (node.data as any).content?.slice(0, 30) || 'Untitled'}`,
+            contentType: 'editor',
+            nodeData: node,
+            contentUrl: `/editor?nodeId=${node.id}`
+        });
+    }, [setSelectedNode, openWindow, fitView, nodes, edges]);
+
+    const allNodes = [...nodes, ...draftNodes];
+
+    const flowEdges: Edge[] = edges.map(e => {
+        const isContradiction = e.data?.relation === 'contradicts';
+        const isEvidence = e.data?.relation === 'evidence_for';
+
+        const style: React.CSSProperties = isContradiction
+            ? { stroke: '#ef4444', strokeWidth: 3, filter: 'drop-shadow(0 0 5px #ef4444)' }
+            : isEvidence
+                ? { stroke: '#10b981', strokeWidth: 2 }
+                : {};
+
+        return {
+            ...e,
+            animated: isContradiction,
+            style
+        };
+    });
+
     return (
         <ReactFlow
-            nodes={nodes}
-            edges={edges}
+            nodes={allNodes}
+            edges={flowEdges}
             nodeTypes={nodeTypes}
             onNodesChange={onNodesChange}
             onEdgesChange={onEdgesChange}
             onConnect={onConnect}
-            onNodeClick={(_, node) => {
-                setSelectedNode(node.id);
-                openWindow({
-                    id: node.id,
-                    title: `${(node.data as any).label || (node.data as any).content?.slice(0, 30) || 'Untitled'}`,
-                    contentType: 'editor',
-                    nodeData: node,
-                    contentUrl: `/editor?nodeId=${node.id}`
-                });
-            }}
+            onNodeClick={handleNodeClick}
             onPaneClick={onPaneClick}
             zoomOnDoubleClick={false}
             fitView
-            className="dot-grid"
+            className={`dot-grid transition-all duration-500 ${isXRayMode ? 'brightness-90 grayscale-[0.3]' : ''}`}
             proOptions={{ hideAttribution: true }}
         >
+            <Background color={isXRayMode ? "#33ffff" : "#ccc"} variant={"dots" as any} />
+
+            {/* X-Ray Spatial Wires (Alt key) */}
+            {isXRayMode && (
+                <Panel position="top-center" className="mt-4">
+                    <div className="bg-sky-950/80 border border-sky-400 text-sky-400 px-4 py-2 rounded-full font-mono text-xs animate-pulse">
+                        X-RAY SPATIAL MODE: SEMANTIC WIRES VISIBLE
+                    </div>
+                </Panel>
+            )}
+
             <Controls className="!bg-white/90 dark:!bg-surface-dark-container-high/90 !backdrop-blur-xl !border !border-outline-variant/20 dark:!border-white/10 !rounded-2xl !shadow-elevation-3 !p-1 [&>button]:!bg-transparent [&>button]:!border-0 [&>button]:!rounded-xl [&>button:hover]:!bg-primary/10 [&>button]:!text-outline dark:[&>button]:!text-outline-variant [&>button]:!w-8 [&>button]:!h-8" />
-            <MiniMap 
-                className="!bg-white/80 dark:!bg-surface-dark-container/80 !backdrop-blur-xl !border !border-outline-variant/20 dark:!border-white/10 !rounded-2xl !shadow-elevation-3" 
+            <MiniMap
+                className="!bg-white/80 dark:!bg-surface-dark-container/80 !backdrop-blur-xl !border !border-outline-variant/20 dark:!border-white/10 !rounded-2xl !shadow-elevation-3"
                 nodeColor={(node) => {
+                    if ((node as any).className === 'draft-proposal') return '#94a3b8';
                     const type = node.type || 'note';
                     const colors: Record<string, string> = {
                         note: '#F3EDF7', claim: '#D3E3FD', evidence: '#C4EED0',
@@ -112,10 +186,10 @@ function GraphContent() {
                 }}
                 maskColor="rgba(0,0,0,0.05)"
             />
-            
+
             {/* Floating Toolbar Island */}
             <Panel position="bottom-center" className="!mb-6">
-                <div className="floating-island flex items-center gap-2 px-4 py-2">
+                <div className="floating-island flex items-center gap-2 px-4 py-2 bg-white/90 dark:bg-surface-dark/90 backdrop-blur-xl border border-outline-variant/20 rounded-full shadow-elevation-3">
                     <button
                         onClick={() => addNode('note')}
                         className="flex items-center gap-2 px-4 py-2 rounded-full bg-primary text-white font-medium text-sm transition-all hover:bg-primary/90 hover:scale-105 active:scale-95 shadow-elevation-2"
@@ -123,20 +197,25 @@ function GraphContent() {
                         <Plus size={18} />
                         <span>New Node</span>
                     </button>
-                    
+
                     <div className="w-px h-6 bg-outline-variant/30 dark:bg-white/10" />
-                    
+
                     <button className="p-2 rounded-full hover:bg-primary/10 transition-colors text-outline dark:text-outline-variant" title="Search">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                            <circle cx="11" cy="11" r="8" />
-                            <path d="m21 21-4.3-4.3" />
-                        </svg>
+                        <Search size={20} />
                     </button>
-                    
+
                     <button className="p-2 rounded-full hover:bg-primary/10 transition-colors text-outline dark:text-outline-variant" title="Filter">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                            <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" />
-                        </svg>
+                        <Filter size={20} />
+                    </button>
+
+                    <div className="w-px h-6 bg-outline-variant/30 dark:bg-white/10" />
+
+                    <button
+                        onClick={toggleAntigravity}
+                        className={`p-2 rounded-full transition-all duration-300 ${isAntigravityActive ? 'bg-primary text-white shadow-elevation-2' : 'hover:bg-primary/10 text-outline dark:text-outline-variant'}`}
+                        title={isAntigravityActive ? "Switch to Stationary (Freeze)" : "Enable Antigravity (Physics)"}
+                    >
+                        <Wind size={20} className={isAntigravityActive ? 'animate-pulse' : ''} />
                     </button>
                 </div>
             </Panel>

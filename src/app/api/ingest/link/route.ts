@@ -12,6 +12,7 @@ const IngestSchema = z.object({
     content: z.string(),      // Plain text for vectorization
     html: z.string().optional(), // Sanitized HTML for rendering
     images: z.array(z.string()).optional(),
+    timestamp: z.string().optional(), // Added for traceability
     projectId: z.string().uuid().default('00000000-0000-0000-0000-000000000000')
 });
 
@@ -19,7 +20,7 @@ export async function POST(req: NextRequest) {
     try {
         const body = await req.json();
         const validated = IngestSchema.parse(body);
-        const { url, title, content, html, images, projectId } = validated;
+        const { url, title, content, html, images, timestamp, projectId } = validated;
 
         const supabase = await createClient();
 
@@ -63,6 +64,7 @@ export async function POST(req: NextRequest) {
                 metadata: {
                     source_url: url,
                     ingested_at: now,
+                    original_timestamp: timestamp || now,
                     origin: 'ai_generated',
                     browser_captured: true
                 }

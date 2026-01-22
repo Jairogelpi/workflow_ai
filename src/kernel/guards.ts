@@ -24,25 +24,50 @@ export function canModifyNode(node: WorkNode): boolean {
  * Rule 2: Cannot delete nodes with active dependents (Incoming Edges).
  */
 export function canDeleteNode(node: WorkNode, graph: WorkGraph): boolean {
-    // 1. PIN Check
     if (node.metadata.pin) {
         logBlock('DELETE', node.id, 'Node is PINNED');
         return false;
     }
 
-    // 2. Dependency Check (Referential Integrity)
-    // We look for edges where this node is the TARGET.
-    // If ANY edge points TO this node, it cannot be deleted.
-    // Note: We filter for edges that exist (not undefined) to satisfy TS strict checks if array contains holes, 
-    // though Object.values usually doesn't.
     const hasDependents = Object.values(graph.edges).some(
         (edge) => edge && edge.target === node.id
     );
 
     if (hasDependents) {
-        logBlock('DELETE', node.id, 'Node has ACTIVE DEPENDENTS (Referential Integrity)');
+        logBlock('DELETE', node.id, 'Node has ACTIVE DEPENDENTS');
         return false;
     }
 
     return true;
+}
+
+/**
+ * Validates if a new edge (relation) violates an invariant.
+ * Rule: Cannot add a 'contradicts' relation to a PIN node without explicit override.
+ */
+export function canAddRelation(source: WorkNode, target: WorkNode, relation: string): boolean {
+    if (relation === 'contradicts' && target.metadata.pin) {
+        logBlock('RELATION', target.id, 'Cannot contradict a PINNED node (Canonical Invariant)');
+        return false;
+    }
+    return true;
+}
+
+/**
+ * Staleness Detection (Hito 5.1)
+ * Checks if a node should be considered "stale" based on time or external source flags.
+ */
+export function checkNodeStaleness(node: WorkNode): { isStale: boolean; reason?: string } {
+    const STALENESS_THRESHOLD_DAYS = 30;
+    const now = new Date();
+    const updated = new Date(node.metadata.updated_at);
+
+    const diffDays = (now.getTime() - updated.getTime()) / (1000 * 3600 * 24);
+
+    if (diffDays > STALENESS_THRESHOLD_DAYS) {
+        return { isStale: true, reason: `Node has not been updated in ${Math.floor(diffDays)} days.` };
+    }
+
+    // Future: Add real URL check here for 'source' nodes
+    return { isStale: false };
 }

@@ -86,7 +86,11 @@ IMPORTANTE: NO puedes contradecir, cuestionar ni sugerir cambios a estos nodos. 
             RLM_PROMPT
                 .replace('{goal}', plan.goal)
                 .replace('{currentStep}', step.description)
-                .replace('{contextData}', JSON.stringify(filteredNodes.map(n => ({ id: n.id, type: n.type, data: (n as any).content || (n as any).statement || (n as any).summary }))))
+                .replace('{contextData}', JSON.stringify(filteredNodes.map(n => ({
+                    id: n.id,
+                    type: n.type,
+                    data: (n as any).raw || (n as any).digest || (n as any).content || (n as any).statement || (n as any).summary
+                }))))
                 .replace('{previousSectionDigest}', previousDigest + signatureInstruction),
             "Genera esta sección respetando los sellos humanos.",
             'REASONING' // <--- Gasto alto aquí para calidad

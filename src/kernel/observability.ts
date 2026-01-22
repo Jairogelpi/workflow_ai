@@ -53,21 +53,74 @@ export async function traceSpan<T>(
 }
 
 
-// --- Dynamic Pricing Engine (OpenRouter) ---
+// --- Price Registry 2026 (Gate 7: Pre-flight Estimation) ---
 
-interface ModelPrice {
+export interface ModelPrice2026 {
+    input_1m: number;  // USD per 1 million tokens
+    output_1m: number;
+}
+
+export type ModelTier = 'FRONTIER' | 'EFFICIENCY' | 'LOCAL';
+
+export const PRICE_REGISTRY_2026: Record<string, ModelPrice2026> = {
+    'openai/gpt-5.2': { input_1m: 2.00, output_1m: 14.00 },
+    'openai/gpt-4o': { input_1m: 5.00, output_1m: 15.00 },
+    'anthropic/claude-4.5-opus': { input_1m: 5.00, output_1m: 25.00 },
+    'anthropic/claude-3-5-sonnet': { input_1m: 3.00, output_1m: 15.00 },
+    'google/gemini-3-flash': { input_1m: 0.50, output_1m: 3.00 },
+    'google/gemini-2-flash': { input_1m: 0.30, output_1m: 1.50 },
+    'deepseek/v3': { input_1m: 0.25, output_1m: 0.38 },
+    'local/default': { input_1m: 0.00, output_1m: 0.00 }
+};
+
+export const MODEL_TIERS: Record<string, ModelTier> = {
+    'openai/gpt-5.2': 'FRONTIER',
+    'anthropic/claude-4.5-opus': 'FRONTIER',
+    'openai/gpt-4o': 'EFFICIENCY',
+    'anthropic/claude-3-5-sonnet': 'EFFICIENCY',
+    'google/gemini-3-flash': 'EFFICIENCY',
+    'google/gemini-2-flash': 'EFFICIENCY',
+    'deepseek/v3': 'EFFICIENCY',
+    'local/default': 'LOCAL'
+};
+
+/**
+ * Pre-flight cost estimation before LLM call.
+ * Returns estimated cost in USD.
+ */
+export function estimateCallCost(
+    inputTokens: number,
+    expectedOutputTokens: number,
+    modelId: string
+): number {
+    const price = PRICE_REGISTRY_2026[modelId] || PRICE_REGISTRY_2026['openai/gpt-4o'];
+    const inputCost = (inputTokens / 1_000_000) * price.input_1m;
+    const outputCost = (expectedOutputTokens / 1_000_000) * price.output_1m;
+    return inputCost + outputCost;
+}
+
+/**
+ * Get model tier for budget optimization recommendations.
+ */
+export function getModelTier(modelId: string): ModelTier {
+    return MODEL_TIERS[modelId] || 'FRONTIER';
+}
+
+// --- Legacy Dynamic Pricing Engine (OpenRouter) ---
+
+interface LegacyModelPrice {
     prompt: number;
     completion: number;
 }
 
 class PriceRegistry {
     private static instance: PriceRegistry;
-    private prices: Map<string, ModelPrice> = new Map();
+    private prices: Map<string, LegacyModelPrice> = new Map();
     private lastSync: number = 0;
     private readonly SYNC_INTERVAL = 24 * 60 * 60 * 1000; // 24 hours
 
     // Fallback Pricing (Static)
-    private readonly FALLBACKS: Record<string, ModelPrice> = {
+    private readonly FALLBACKS: Record<string, LegacyModelPrice> = {
         'gpt-4o': { prompt: 5.00 / 1e6, completion: 15.00 / 1e6 },
         'gpt-3.5-turbo': { prompt: 0.50 / 1e6, completion: 1.50 / 1e6 },
         'claude-3-5-sonnet': { prompt: 3.00 / 1e6, completion: 15.00 / 1e6 },
@@ -102,7 +155,7 @@ class PriceRegistry {
             let count = 0;
             if (data && Array.isArray(data.data)) {
                 data.data.forEach((model: any) => {
-                    const price: ModelPrice = {
+                    const price: LegacyModelPrice = {
                         prompt: parseFloat(model.pricing.prompt) || 0,
                         completion: parseFloat(model.pricing.completion) || 0
                     };
@@ -124,7 +177,7 @@ class PriceRegistry {
         }
     }
 
-    public getPrice(model: string): ModelPrice {
+    public getPrice(model: string): LegacyModelPrice {
         // Try strict match
         const exact = this.prices.get(model);
         if (exact) return exact;
@@ -156,6 +209,7 @@ interface AuditMetric {
 class AuditStore {
     private static instance: AuditStore;
     private metrics: AuditMetric[] = [];
+    private sessionStart: number = Date.now();
 
     private constructor() { }
 
@@ -175,6 +229,30 @@ class AuditStore {
 
     public getStepMetric(jobId: string, stepId: string): AuditMetric | undefined {
         return this.metrics.find(m => m.jobId === jobId && m.stepId === stepId);
+    }
+
+    /**
+     * Get cumulative session spend in USD.
+     */
+    public getSessionSpend(): number {
+        return this.metrics.reduce((acc, m) => acc + m.cost_usd, 0);
+    }
+
+    /**
+     * Get burn rate (USD/hour) based on current session.
+     */
+    public getBurnRate(): number {
+        const sessionDurationHours = (Date.now() - this.sessionStart) / (1000 * 60 * 60);
+        if (sessionDurationHours === 0) return 0;
+        return this.getSessionSpend() / sessionDurationHours;
+    }
+
+    /**
+     * Get metrics for the last N minutes.
+     */
+    public getRecentMetrics(minutes: number = 60): AuditMetric[] {
+        const cutoff = Date.now() - (minutes * 60 * 1000);
+        return this.metrics.filter(m => new Date(m.timestamp).getTime() > cutoff);
     }
 }
 

@@ -9,6 +9,7 @@ interface ArticleData {
     excerpt: string | null;
     images: string[];
     url: string;
+    timestamp?: string; // Added for traceability
 }
 
 export const SidePanelViewer = () => {
@@ -23,6 +24,22 @@ export const SidePanelViewer = () => {
         const listener = (msg: any) => {
             if (msg.type === 'SHOW_ARTICLE') {
                 setArticle(msg.data);
+                setLoading(false);
+                setSaved(false);
+            }
+            if (msg.type === 'SHOW_CAPTURE') {
+                setArticle({
+                    title: msg.data.title,
+                    url: msg.data.url,
+                    content: msg.data.content,
+                    html: `<div class="p-2 bg-yellow-50 border-l-4 border-yellow-400">
+                        <p class="text-sm font-medium text-yellow-800 mb-1">Captured Selection</p>
+                        <blockquote class="italic text-gray-700">${msg.data.content}</blockquote>
+                    </div>`,
+                    excerpt: msg.data.content.substring(0, 100),
+                    images: [],
+                    timestamp: msg.data.timestamp
+                });
                 setLoading(false);
                 setSaved(false);
             }
@@ -50,6 +67,7 @@ export const SidePanelViewer = () => {
                     title: article.title,
                     content: article.content, // Text for vectorization
                     images: article.images,
+                    timestamp: article.timestamp || new Date().toISOString(), // Ensure timestamp is sent
                     projectId: '00000000-0000-0000-0000-000000000000'
                 })
             });
