@@ -72,7 +72,7 @@ export async function retrieveContext(
     forceHighPrecision: boolean = false
 ): Promise<RetrievalContext> {
     return traceSpan('retrieve_context', { query_length: query.length, branchId }, async () => {
-        const supabase = createClient();
+        const supabase = await createClient();
 
         // 1. Try to fetch a valid Standard Digest
         const { data: digest } = await supabase
@@ -125,7 +125,7 @@ export async function retrieveContext(
  */
 export async function regenerateBranchDigest(branchId: string): Promise<void> {
     return traceSpan('generate_digest', { branchId }, async () => {
-        const supabase = createClient();
+        const supabase = await createClient();
 
         // 1. Fetch the full graph for this branch
         const { data: nodesRaw } = await supabase.from('work_nodes').select('*').eq('project_id', branchId);
@@ -197,7 +197,7 @@ export async function regenerateBranchDigest(branchId: string): Promise<void> {
  * Mark as stale logic (Triggered by DB hooks or API mutations)
  */
 export async function markStale(branchId: string): Promise<void> {
-    const supabase = createClient();
+    const supabase = await createClient();
     await supabase
         .from('digests')
         .update({ is_stale: true })

@@ -21,7 +21,7 @@ export async function generateEmbedding(text: string): Promise<number[]> {
  * Saves a node's embedding to the vector store.
  */
 export async function saveNodeEmbedding(nodeId: string, embedding: number[]) {
-    const supabase = createClient();
+    const supabase = await createClient();
 
     // We expect a table named 'node_embeddings' with 'node_id' and 'embedding' (vector) columns
     const { error } = await supabase

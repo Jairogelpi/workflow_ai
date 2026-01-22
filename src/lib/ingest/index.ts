@@ -29,7 +29,7 @@ export async function uploadFile(
     fileName: string,
     projectId: string = '00000000-0000-0000-0000-000000000000'
 ) {
-    const supabase = createClient();
+    const supabase = await createClient();
     const nodeId = uuidv4();
     const arrayBuffer = await file.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
@@ -100,7 +100,7 @@ export async function digestFile(
     file: File | Blob,
     projectId: string = '00000000-0000-0000-0000-000000000000'
 ) {
-    const supabase = createClient();
+    const supabase = await createClient();
     const arrayBuffer = await file.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
     const now = new Date().toISOString();

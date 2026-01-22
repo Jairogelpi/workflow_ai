@@ -21,12 +21,21 @@ export async function POST(req: NextRequest) {
         const validated = IngestSchema.parse(body);
         const { url, title, content, html, images, projectId } = validated;
 
-        const supabase = createClient();
+        const supabase = await createClient();
+
+        // 1. Verify Authentication
+        const { data: { user }, error: authError } = await supabase.auth.getUser();
+        if (authError || !user) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
+
         const nodeId = uuidv4();
         const now = new Date().toISOString();
 
-        // 1. Create the Source Node
+        // 2. Create the Source Node
+        // RLS will check if project_id belongs to the 'user'
         const { error: nodeError } = await supabase
+
             .from('work_nodes')
             .insert({
                 id: nodeId,
