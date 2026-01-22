@@ -19,6 +19,11 @@ export const NodeMetadataSchema = z.object({
     confidence: ConfidenceSchema.default(1.0), // 1.0 = Human certainty, <1.0 = AI estimation
     validated: z.boolean().default(false),     // Explicit human validation flag
     pin: z.boolean().default(false),           // Invariant marker (Canon enforcement)
+    // Rich Evidence (The Ingestor extension)
+    source: z.string().optional(),
+    source_title: z.string().optional(),
+    accessed_at: TimestampSchema.optional(),
+    snippet_context: z.string().optional(),
 });
 export type NodeMetadata = z.infer<typeof NodeMetadataSchema>;
 

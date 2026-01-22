@@ -50,11 +50,26 @@ async function handleCapture(text: string, tab?: chrome.tabs.Tab) {
 
     console.log('WorkGraph: Capture starting...', { text, targetProjectId });
 
-    // 2. Prepare WorkNode IR (Internal Representation)
+    // 2. Request Rich Context from Content Script
+    let contextData = { context: null, title: tab?.title || 'Unknown Webpage' };
+    if (tab?.id) {
+        try {
+            // Promise-based messaging with timeout
+            const response = await Promise.race([
+                chrome.tabs.sendMessage(tab.id, { type: 'GET_SELECTION_CONTEXT' }),
+                new Promise((_, reject) => setTimeout(() => reject('timeout'), 500))
+            ]) as any;
+
+            if (response) contextData = response;
+        } catch (e) {
+            console.warn('WorkGraph: Could not get rich context, using tab info fallback.', e);
+        }
+    }
+
+    // 3. Prepare WorkNode IR (Internal Representation)
     const nodeId = uuidv4();
     const now = new Date().toISOString();
 
-    // This matches the schema in src/canon/schema/ir.ts
     const workNodeIR = {
         id: nodeId,
         type: 'note' as const,
@@ -62,28 +77,33 @@ async function handleCapture(text: string, tab?: chrome.tabs.Tab) {
         metadata: {
             created_at: now,
             updated_at: now,
+            accessed_at: now, // Explicit evidence timestamp
             origin: 'human' as const,
             version_hash: 'signed-by-extension',
             confidence: 1.0,
             validated: false,
             pin: false,
-            source: tab?.url || 'web-capture'
+            source: tab?.url || 'web-capture',
+            source_title: contextData.title,
+            snippet_context: contextData.context // Surrounding text
         }
     };
 
-    // 3. Prepare DB Record (Flattened for SQL columns)
+    // 4. Prepare DB Record (Flattened for SQL columns)
     const dbRecord = {
         id: nodeId,
         project_id: targetProjectId,
         type: 'note',
-        content: workNodeIR, // Full IR stored in JSONB content column (as per sync.ts)
+        content: workNodeIR,
         confidence: 1.0,
         is_pinned: false,
         is_validated: false,
         origin: 'human',
         metadata: {
             source: tab?.url,
-            title: tab?.title
+            title: contextData.title,
+            accessed_at: now,
+            snippet_context: contextData.context
         },
         current_version_hash: 'signed-by-extension',
         updated_at: now,

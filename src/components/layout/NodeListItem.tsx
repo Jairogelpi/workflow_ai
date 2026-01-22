@@ -25,24 +25,34 @@ const NODE_TYPE_COLORS: Record<string, string> = {
 export function NodeListItem({ node, selected, onClick }: NodeListItemProps) {
     const { metadata } = node;
     const typeColor = NODE_TYPE_COLORS[node.type] || 'bg-slate-400';
+    const isInbox = (node as any).project_id === '00000000-0000-0000-0000-000000000000' || !((node as any).project_id);
 
-    // Extract a preview string from the various content fields
-    const content = (node as any).content || (node as any).statement || (node as any).rationale || (node as any).summary || (node as any).description || (node as any).name || (node as any).rule || (node as any).premise || '';
-    const preview = content.replace(/<[^>]*>?/gm, '').slice(0, 40) + (content.length > 40 ? '...' : '');
+    // Rich source display
+    const sourceTitle = (metadata as any).source_title;
+    const displayTitle = sourceTitle ? sourceTitle : (metadata.source ? metadata.source.split('/').pop() : 'Untitled');
+
+    // Extract a preview string
+    const content = (node as any).content || (node as any).statement || '';
+    const preview = typeof content === 'string'
+        ? content.replace(/<[^>]*>?/gm, '').slice(0, 80) + (content.length > 80 ? '...' : '')
+        : 'Complexity detected...';
 
     return (
         <div
             onClick={onClick}
-            className={`p-3 cursor-pointer border-l-2 transition-all hover:bg-slate-800/50 ${selected ? 'bg-slate-800 border-blue-500' : 'border-transparent'
+            className={`p-3 cursor-pointer border-l-2 transition-all hover:bg-slate-800/50 ${selected ? 'bg-slate-800 border-blue-500 shadow-inner' : 'border-transparent'
                 }`}
-            title={`Hash: ${metadata.version_hash.slice(0, 8)}...`}
+            title={`Source: ${metadata.source || 'Internal'}`}
         >
-            <div className="flex items-center justify-between mb-1">
+            <div className="flex items-center justify-between mb-1.5">
                 <div className="flex items-center gap-2">
                     <span className={`w-2 h-2 rounded-full ${typeColor}`} />
                     <span className="text-[10px] uppercase font-bold tracking-tighter text-slate-400">
                         {node.type}
                     </span>
+                    {isInbox && (
+                        <span className="text-[8px] bg-blue-900/40 text-blue-400 px-1 rounded border border-blue-800/50 font-bold">INBOX</span>
+                    )}
                 </div>
                 <div className="flex items-center gap-1.5">
                     {metadata.validated ? (
@@ -58,8 +68,12 @@ export function NodeListItem({ node, selected, onClick }: NodeListItemProps) {
                 </div>
             </div>
 
-            <p className="text-sm text-slate-200 truncate leading-tight">
-                {preview || <span className="italic text-slate-500">No content</span>}
+            <h4 className="text-xs font-bold text-slate-400 truncate mb-1">
+                {displayTitle}
+            </h4>
+
+            <p className="text-[11px] text-slate-300 leading-snug line-clamp-2">
+                {preview || <span className="italic text-slate-600">No content</span>}
             </p>
 
             <div className="flex items-center justify-between mt-2">

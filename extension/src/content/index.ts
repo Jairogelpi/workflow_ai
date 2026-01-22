@@ -46,3 +46,24 @@ window.addEventListener('mouseup', (e) => {
         }, 100);
     }
 });
+
+// Listener for Rich Context extraction
+chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
+    if (request.type === 'GET_SELECTION_CONTEXT') {
+        const selection = window.getSelection();
+        if (selection && selection.rangeCount > 0) {
+            const range = selection.getRangeAt(0);
+            const container = range.commonAncestorContainer;
+            // Get parent element to have some context (p, div, etc)
+            const parentElement = container.nodeType === 1 ? (container as HTMLElement) : container.parentElement;
+
+            sendResponse({
+                context: parentElement?.innerText || null,
+                title: document.title
+            });
+        } else {
+            sendResponse({ context: null, title: document.title });
+        }
+    }
+    return true;
+});

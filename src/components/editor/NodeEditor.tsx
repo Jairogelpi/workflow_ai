@@ -128,9 +128,71 @@ export default function NodeEditor() {
             </div>
 
             {/* Editor content */}
-            <div className="flex-1 overflow-auto p-6 prose dark:prose-invert max-w-none scrollbar-thin scrollbar-thumb-slate-700">
-                <EditorContent editor={editor} className="h-full outline-none" />
+            <div className="flex-1 overflow-auto p-6 scrollbar-thin scrollbar-thumb-slate-700">
+                <div className="prose dark:prose-invert max-w-none">
+                    <EditorContent editor={editor} className="outline-none min-h-[200px]" />
+                </div>
+
+                {/* Evidence & Context section */}
+                {selectedNode && (selectedNode.data.metadata.source || selectedNode.data.metadata.snippet_context) && (
+                    <div className="mt-8 pt-6 border-t border-slate-800">
+                        <h3 className="text-[10px] uppercase font-black text-slate-500 tracking-widest mb-4 flex items-center gap-2">
+                            <span className="w-1 h-3 bg-blue-500 rounded-full" />
+                            Evidence & Context
+                        </h3>
+
+                        <div className="space-y-4">
+                            {selectedNode.data.metadata.source_title && (
+                                <div>
+                                    <span className="text-[9px] text-slate-600 block mb-1 uppercase tracking-tighter">Source Title</span>
+                                    <p className="text-xs text-slate-300 font-medium">{selectedNode.data.metadata.source_title}</p>
+                                </div>
+                            )}
+
+                            {selectedNode.data.metadata.source && (
+                                <div>
+                                    <span className="text-[9px] text-slate-600 block mb-1 uppercase tracking-tighter">Origin URL</span>
+                                    <a
+                                        href={selectedNode.data.metadata.source}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="text-xs text-blue-400 hover:underline break-all block"
+                                    >
+                                        {selectedNode.data.metadata.source}
+                                    </a>
+                                </div>
+                            )}
+
+                            {selectedNode.data.metadata.accessed_at && (
+                                <div>
+                                    <span className="text-[9px] text-slate-600 block mb-1 uppercase tracking-tighter">Captured On</span>
+                                    <p className="text-[11px] text-slate-400">
+                                        {new Date(selectedNode.data.metadata.accessed_at).toLocaleString()}
+                                    </p>
+                                </div>
+                            )}
+
+                            {selectedNode.data.metadata.snippet_context && (
+                                <div>
+                                    <span className="text-[9px] text-slate-600 block mb-1 uppercase tracking-tighter">Surrounding Context</span>
+                                    <div className="p-3 bg-slate-950/50 rounded border border-slate-800 text-[11px] text-slate-500 italic leading-relaxed line-clamp-4 hover:line-clamp-none transition-all cursor-zoom-in">
+                                        "...{selectedNode.data.metadata.snippet_context}..."
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                )}
             </div>
+
+            {/* Inbox Triage Alert */}
+            {selectedNode && (selectedNode as any).project_id === '00000000-0000-0000-0000-000000000000' && (
+                <div className="p-3 bg-blue-900/20 border-t border-blue-900/40 text-center">
+                    <p className="text-[10px] text-blue-400 font-bold uppercase tracking-widest">
+                        Inbox: Triage required
+                    </p>
+                </div>
+            )}
         </div>
     );
 }
