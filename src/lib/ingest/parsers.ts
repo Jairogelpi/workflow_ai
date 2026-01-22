@@ -49,6 +49,7 @@ export async function extractTextFromXlsx(buffer: Buffer): Promise<string> {
     }
 }
 
+
 export async function extractTextFromGeneric(buffer: Buffer): Promise<string> {
     try {
         // Attempt UTF-8 decoding
@@ -59,4 +60,56 @@ export async function extractTextFromGeneric(buffer: Buffer): Promise<string> {
         const hexPreview = buffer.slice(0, 64).toString('hex').match(/.{1,2}/g)?.join(' ') || '';
         return `[Binary/Unknown Artifact]\n\nHex Preview (first 64 bytes):\n${hexPreview}\n\nThis file is stored as an opaque artifact.`;
     }
+}
+
+/**
+ * High-Ceiling Ingestion (Hito 4.2)
+ * Delegates heavy parsing and semantic chunking to the Rust worker.
+ */
+import { traceSpan } from '../../kernel/observability';
+
+export async function processHeavyFile(file: Buffer, type: 'pdf' | 'html') {
+    return await traceSpan('ingest.rust_worker', { type }, async () => {
+        // Interaction with the Rust Worker via HTTP
+        try {
+            const response = await fetch('http://localhost:8080/process', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/octet-stream',
+                    'X-File-Type': type
+                },
+                body: new Uint8Array(file)
+            });
+
+            if (!response.ok) throw new Error(`Rust Ingestor failed: ${response.statusText}`);
+
+            const data = await response.json() as { chunks: string[], engine: string };
+
+            // These chunks are already "masticated" for the RLM Compiler
+            return data.chunks.map(content => ({
+                id: crypto.randomUUID(),
+                type: 'evidence' as const,
+                data: {
+                    content,
+                    metadata: {
+                        source: 'heavy_ingest',
+                        engine: data.engine,
+                        created_at: new Date().toISOString()
+                    }
+                }
+            }));
+        } catch (err) {
+            console.warn("[INGEST] Rust worker fallback to local parser:", err);
+            // Fallback to basic local parsing if the worker is offline
+            const text = type === 'pdf' ? await extractTextFromPDF(file) : ""; // HTML local not impl yet
+            return [{
+                id: crypto.randomUUID(),
+                type: 'evidence' as const,
+                data: {
+                    content: text,
+                    metadata: { source: 'local_fallback', engine: 'node-v1' }
+                }
+            }];
+        }
+    });
 }
