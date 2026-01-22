@@ -1,5 +1,6 @@
-import { traceSpan } from '../kernel/observability';
+import { traceSpan, auditStore, measureCost } from '../kernel/observability';
 import { Plan, CompilerContext } from './types';
+import { verifyBranch } from './verifier';
 import { useSettingsStore } from '../store/useSettingsStore';
 import { WorkNode, ArtifactNodeSchema } from '../canon/schema/ir';
 import { CompilationReceipt, AssertionMap } from '../canon/schema/receipt';
@@ -39,7 +40,7 @@ Conserva hechos clave, decisiones y cifras. Elimina retórica.
 Objetivo: Que la siguiente iteración de la IA entienda qué pasó aquí sin leerlo todo.
 `;
 
-export async function assembleRecursiveArtifact(plan: Plan, contextNodes: any[]): Promise<string> {
+export async function assembleRecursiveArtifact(plan: Plan, contextNodes: any[], compilerContext?: CompilerContext): Promise<string> {
     let fullDocument = "";
     let previousDigest = "Inicio del documento.";
 
@@ -66,16 +67,53 @@ export async function assembleRecursiveArtifact(plan: Plan, contextNodes: any[])
             return step.required_context_keys.some(k => searchSource.includes(k.toLowerCase()));
         }).slice(0, 10); // Cap to 10 nodes for context safety
 
-        // 1. GENERAR (Tier: REASONING - Usamos el modelo listo)
+        // 1.1 IDENTIFICAR Nodos Firmados (Firma de Autoridad - Hito 4.4)
+        const signedNodes = filteredNodes.filter(n => n.metadata.human_signature);
+        let signatureInstruction = "";
+        if (signedNodes.length > 0) {
+            signatureInstruction = `
+### 🛡️ PACTO DE AUTORIDAD HUMANA (REGLA DE ORO)
+Los siguientes nodos han sido SELLADOS por el HUMANO y son VERDAD ABSOLUTA:
+${signedNodes.map(n => `- [ID: ${n.id}] ${n.type.toUpperCase()}`).join('\n')}
+
+IMPORTANTE: NO puedes contradecir, cuestionar ni sugerir cambios a estos nodos. Tu redacción DEBE basarse estrictamente en estos "Invariantes" humanos.
+`;
+        }
+
+        // 1.2 GENERAR (Tier: REASONING - Usamos el modelo listo)
+        const start = performance.now();
         const sectionContent = await generateText(
             RLM_PROMPT
                 .replace('{goal}', plan.goal)
                 .replace('{currentStep}', step.description)
                 .replace('{contextData}', JSON.stringify(filteredNodes.map(n => ({ id: n.id, type: n.type, data: (n as any).content || (n as any).statement || (n as any).summary }))))
-                .replace('{previousSectionDigest}', previousDigest),
-            "Genera esta sección.",
+                .replace('{previousSectionDigest}', previousDigest + signatureInstruction),
+            "Genera esta sección respetando los sellos humanos.",
             'REASONING' // <--- Gasto alto aquí para calidad
         );
+        const end = performance.now();
+
+        // 1.3 AUDITORÍA REACTIVA (Hito 4.5)
+        // Simulamos el conteo de tokens (en producción vendría del gateway)
+        const inputTokens = 1000;
+        const outputTokens = sectionContent.length / 4;
+        const cost = await measureCost(inputTokens, outputTokens, 'gpt-4o');
+        const jobId = compilerContext?.jobId || 'local-job';
+
+        auditStore.recordMetric({
+            jobId,
+            stepId: step.id,
+            model: 'gpt-4o',
+            tokens: { input: inputTokens, output: outputTokens },
+            latency_ms: Math.round(end - start),
+            cost_usd: cost,
+            timestamp: new Date().toISOString()
+        });
+
+        // 1.4 CIRCUIT BREAKER REACTIVO (Hito 4.3 Integrated)
+        // Verificamos esta rama específica antes de continuar
+        // Si el verificador detecta una violación de un PIN, verifyBranch lanzará LogicCircuitBreakerError
+        await verifyBranch(filteredNodes);
 
         // 2. ACUMULAR
         fullDocument += `\n\n## ${step.description}\n\n${sectionContent}`;
@@ -109,7 +147,7 @@ export async function assembleArtifact(plan: Plan, context: WorkNode[], compiler
         });
 
         // Use RLM instead of Template
-        const content = await assembleRecursiveArtifact(plan, context);
+        const content = await assembleRecursiveArtifact(plan, context, compilerContext);
 
         // Create Receipt
         const inputHash = computeStableHash({ goal: plan.goal, contextIds: context.map(n => n.id).sort() });

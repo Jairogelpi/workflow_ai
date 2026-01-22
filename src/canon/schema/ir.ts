@@ -19,6 +19,13 @@ export const NodeMetadataSchema = z.object({
     confidence: ConfidenceSchema.default(1.0), // 1.0 = Human certainty, <1.0 = AI estimation
     validated: z.boolean().default(false),     // Explicit human validation flag
     pin: z.boolean().default(false),           // Invariant marker (Canon enforcement)
+    // Human Authority Signature (Hito 4.4)
+    human_signature: z.object({
+        signer_id: z.string(),
+        timestamp: TimestampSchema,
+        hash_at_signing: VersionHashSchema, // The specific hash of the content at the moment of signing
+        method: z.enum(['organic', 'cryptographic']).default('organic')
+    }).optional(),
     // Rich Evidence (The Ingestor extension)
     source: z.string().optional(),
     source_title: z.string().optional(),

@@ -15,9 +15,10 @@ export const VerificationResultSchema = z.object({
     passed: z.boolean(),
     score: z.number().min(0).max(1),
     issues: z.array(z.object({
-        severity: z.enum(['error', 'warn']),
+        severity: z.enum(['CRITICAL', 'error', 'warn']),
         message: z.string(),
-        code: z.string()
+        code: z.string(),
+        nodeId: z.string().optional()
     })).optional()
 });
 export type VerificationResult = z.infer<typeof VerificationResultSchema>;

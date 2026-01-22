@@ -72,6 +72,10 @@ interface GraphState {
     openWindow: (window: GraphState['activeWindow']) => void;
     /** Closes the currently active floating window */
     closeWindow: () => void;
+
+    // --- AUTHORITY SIGNATURE ACTIONS (Hito 4.4) ---
+    signNode: (id: string, signerId: string) => Promise<void>;
+    breakSeal: (id: string) => Promise<void>;
 }
 
 export const useGraphStore = create<GraphState>((set, get) => ({
@@ -89,6 +93,9 @@ export const useGraphStore = create<GraphState>((set, get) => ({
     setSearchQuery: (searchQuery) => set({ searchQuery }),
     openWindow: (window) => set({ activeWindow: window }),
     closeWindow: () => set({ activeWindow: null }),
+
+    signNode: async () => { }, // Defined later
+    breakSeal: async () => { }, // Defined later
 
     loadProject: async (projectId) => {
         set({ isLoading: true });
@@ -308,6 +315,57 @@ export const useGraphStore = create<GraphState>((set, get) => ({
             }
         } catch (error) {
             console.error('Failed to archive node:', error);
+        }
+    },
+
+    signNode: async (id, signerId) => {
+        const { nodes } = get();
+        let updatedNodeRecord: WorkNode | null = null;
+
+        const updatedNodes = nodes.map(node => {
+            if (node.id === id) {
+                const data = { ...node.data };
+                // Snap the current hash as the seal
+                const currentHash = computeNodeHash(data);
+
+                data.metadata = {
+                    ...data.metadata,
+                    human_signature: {
+                        signer_id: signerId,
+                        timestamp: new Date().toISOString(),
+                        hash_at_signing: currentHash,
+                        method: 'organic'
+                    }
+                };
+                updatedNodeRecord = data;
+                return { ...node, data: updatedNodeRecord };
+            }
+            return node;
+        });
+
+        set({ nodes: updatedNodes });
+        if (updatedNodeRecord) {
+            await syncService.upsertNode(DEFAULT_PROJECT_ID, updatedNodeRecord);
+        }
+    },
+
+    breakSeal: async (id) => {
+        const { nodes } = get();
+        let updatedNodeRecord: WorkNode | null = null;
+
+        const updatedNodes = nodes.map(node => {
+            if (node.id === id) {
+                const data = { ...node.data };
+                delete data.metadata.human_signature;
+                updatedNodeRecord = data;
+                return { ...node, data: updatedNodeRecord };
+            }
+            return node;
+        });
+
+        set({ nodes: updatedNodes });
+        if (updatedNodeRecord) {
+            await syncService.upsertNode(DEFAULT_PROJECT_ID, updatedNodeRecord);
         }
     },
 }));

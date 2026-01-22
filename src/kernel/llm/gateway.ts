@@ -44,6 +44,8 @@ export async function generateText(
             response = await callOpenAI(activeConfig, systemPrompt, userPrompt);
         } else if (activeConfig.provider === 'gemini') {
             response = await callGemini(activeConfig, systemPrompt, userPrompt);
+        } else if (activeConfig.provider === 'local') {
+            response = await callCustomOpenAI(activeConfig, systemPrompt, userPrompt);
         } else {
             throw new Error(`Proveedor ${activeConfig.provider} no implementado aún.`);
         }
@@ -120,4 +122,65 @@ async function callGemini(config: any, system: string, user: string): Promise<LL
             outputTokens: data.usageMetadata?.candidatesTokenCount || 100
         }
     };
+}
+
+/**
+ * Adaptador Universal para cualquier endpoint compatible con OpenAI (Ollama, vLLM, etc.)
+ */
+async function callCustomOpenAI(config: any, system: string, user: string): Promise<LLMResponse> {
+    const baseUrl = config.baseUrl?.replace(/\/+$/, '') || 'http://localhost:11434/v1';
+
+    const res = await fetch(`${baseUrl}/chat/completions`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${config.apiKey || 'no-key'}`
+        },
+        body: JSON.stringify({
+            model: config.modelId === 'local-model' ? 'default' : config.modelId,
+            messages: [
+                { role: 'system', content: system },
+                { role: 'user', content: user }
+            ],
+            temperature: 0.7
+        })
+    });
+
+    if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: { message: res.statusText } }));
+        throw new Error(`Custom Endpoint Error: ${err.error?.message || res.statusText}`);
+    }
+
+    const data = await res.json();
+    return {
+        content: data.choices[0].message.content,
+        usage: {
+            inputTokens: data.usage?.prompt_tokens || 0,
+            outputTokens: data.usage?.completion_tokens || 0
+        }
+    };
+}
+
+/**
+ * Verifica si un endpoint sigue el estándar de OpenAI
+ */
+export async function verifyEndpoint(baseUrl: string, apiKey: string): Promise<{ success: boolean; message: string }> {
+    try {
+        const cleanUrl = baseUrl.replace(/\/+$/, '');
+        // Probamos una llamada mínima al endpoint de modelos para ver si responde
+        const res = await fetch(`${cleanUrl}/models`, {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${apiKey || 'no-key'}`
+            }
+        });
+
+        if (res.ok) {
+            return { success: true, message: "Endpoint verificado: Compatible con estándar OpenAI." };
+        } else {
+            return { success: false, message: `Error de verificación: El servidor respondió con status ${res.status}.` };
+        }
+    } catch (err) {
+        return { success: false, message: `Error de conexión: No se pudo contactar con el endpoint. Detalle: ${err instanceof Error ? err.message : String(err)}` };
+    }
 }

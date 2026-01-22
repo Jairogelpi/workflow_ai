@@ -391,20 +391,60 @@ phases:
         evidence_nodes: []
 
       - id: "4.2"
-        title: "Local Compiler"
-        description: "Disconnected mode for ultimate privacy."
-        status: "pending"
-        gate: "Local LLM fallback functional."
-        tasks: []
-        evidence_nodes: []
+        title: "Local Compiler (Universal BYOE)"
+        description: "Privacy Mode supporting local LLM endpoints (Ollama, vLLM) via OpenAI standards."
+        status: "done"
+        gate: "Gateway validates and routes to custom endpoints successfully."
+        tasks:
+          - "Implement baseUrl support in SettingsStore"
+          - "Implement callCustomOpenAI adapter in Gateway"
+          - "Implement Endpoint Verification logic"
+          - "Build Universal Endpoint Config UI"
+        evidence_nodes:
+          - "src/kernel/llm/gateway.ts"
+          - "documentacion/HITO_4.2_LOCAL_COMPILER.md"
 
       - id: "4.3"
-        title: "SIEM Audit"
-        description: "Complete traceability for external auditors."
-        status: "pending"
-        gate: "Audit log export active."
-        tasks: []
-        evidence_nodes: []
+        title: "Forensic UX (Internal Audit)"
+        description: "Circuit Breaker and X-Ray mode for radical transparency and logic enforcement."
+        status: "done"
+        gate: "Alt-key X-Ray and LogicCircuitBreakerError UI are functional."
+        tasks:
+          - "Implement LogicCircuitBreakerError (Kernel)"
+          - "Update Verifier to trigger CRITICAL halts"
+          - "Implement XRayOverlay & SmartViewer bridge"
+          - "Implement Red-Screen Circuit Breaker UI"
+        evidence_nodes:
+          - "src/components/ui/CircuitBreaker.tsx"
+          - "src/components/ui/XRayOverlay.tsx"
+          - "documentacion/HITO_4.3_FORENSIC_UX.md"
+
+      - id: "4.4"
+        title: "Authority Signature (Pact with AI)"
+        description: "Cryptographic human seals to protect ground truth and enforce AI obedience in RLM."
+        status: "done"
+        gate: "Assembler respects signed nodes and Verifier detects broken seals."
+        tasks:
+          - "Implement human_signature schema (IR)"
+          - "Update Assembler RLM loop with sanctity enforcement"
+          - "Implement Wax Seal UI in NodeEditor"
+          - "Add BROKEN_SIGNATURE_SEAL check to Verifier"
+        evidence_nodes:
+          - "src/components/editor/NodeEditor.tsx"
+          - "documentacion/HITO_4.4_AUTHORITY_SIGNATURE.md"
+
+      - id: "4.5"
+        title: "Audit & Public Observability"
+        description: "Expose AI machinery (tokens, cost, latency) per section via Engineer HUD."
+        status: "done"
+        gate: "HUD shows real-time job metrics in X-Ray mode."
+        tasks:
+          - "Implement AuditStore (Kernel)"
+          - "Integrate section metrics in Assembler loop"
+          - "Implement Engineer HUD in XRayOverlay"
+        evidence_nodes:
+          - "src/kernel/observability.ts"
+          - "documentacion/HITO_4.5_AUDIT_LOGS.md"
 
 operational_rules:
   sequential_execution: true # Mandatory: Hito N requires Hito N-1 as Done.

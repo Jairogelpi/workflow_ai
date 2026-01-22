@@ -2,9 +2,10 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
 export interface ModelConfig {
-    provider: 'openai' | 'gemini' | 'anthropic';
+    provider: 'openai' | 'gemini' | 'anthropic' | 'local';
     modelId: string;
     apiKey: string;
+    baseUrl?: string; // Optional for custom/local endpoints
 }
 
 export interface DualModelConfig {
@@ -36,6 +37,7 @@ export const useSettingsStore = create<SettingsState>()(
                 { id: 'gemini-1.5-pro', name: 'Gemini 1.5 Pro', provider: 'gemini' },
                 { id: 'gemini-1.5-flash', name: 'Gemini 1.5 Flash', provider: 'gemini' },
                 { id: 'claude-3-5-sonnet', name: 'Claude 3.5 Sonnet', provider: 'anthropic' },
+                { id: 'local-model', name: 'Custom / Local Model', provider: 'local' },
             ],
             setModelConfig: (updates) => set((state) => ({ modelConfig: { ...state.modelConfig, ...updates } as any })),
             updateReasoning: (update) => set((state) => ({

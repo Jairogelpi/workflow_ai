@@ -20,9 +20,11 @@ Arquitectura híbrida (Código + IA) que reduce costes en un 90% y permite longi
 - **Visual Diff Engine**: Evidencia forense de cambios lado a lado con Native Transitions API.
 - **Gobernanza Invisible**: El sistema impide romper reglas de negocio (PINs) antes de que ocurran.
 
-#### 3. Seguridad de Identidad
-- Sistema **RLS 2.0** (Row Level Security) que protege cada nodo a nivel de base de datos.
-- Extensión de navegador "LinkOS" para captura segura y análisis profundo de contexto.
+#### 3. Forensic UX & Seguridad
+- **Circuit Breaker**: Parada automática ante violaciones de la lógica del Canon.
+- **Modo Rayos X (X-Ray)**: Trazabilidad visual instantánea de evidencias (Alt-key).
+- **Identidad RLS 2.0**: Protección de nodos a nivel de base de datos.
+- **LinkOS Extension**: Captura segura y análisis profundo de contexto.
 
 ---
 
@@ -31,7 +33,7 @@ Arquitectura híbrida (Código + IA) que reduce costes en un 90% y permite longi
 - **Frontend**: React 19, TailwindCSS, Lucide Icons.
 - **Backend / Database**: Supabase (PostgreSQL + Vector).
 - **Kernel**: TypeScript, Logic Compiler, Merge Engine.
-- **AI**: Gateway de 3 capas con observabilidad obligatoria (`traceSpan`, `measureCost`).
+- **AI**: Gateway de 3 capas con observabilidad y soporte BYOE (Local).
 
 ## 📂 Estructura del Proyecto
 
@@ -39,23 +41,23 @@ Arquitectura híbrida (Código + IA) que reduce costes en un 90% y permite longi
 /src
   /canon        # Definiciones de Tipos y Esquemas (La Verdad)
   /compiler     # Verifier, Assembler & RLM (El Juez Lógico)
-  /kernel       # Logic Core (MergeEngine, LLM Gateway, MediatorAgent)
+  /kernel       # Logic Core (LLM Gateway, Forensic Errors)
   /components
     /collaboration # UI Premium (Inbox, Diff, Cards)
-    /settings      # Configuración BYOK
+    /ui            # Forensic UI (CircuitBreaker, XRay)
+    /settings      # Configuración BYOK/BYOE
   /lib/ingest   # Procesamiento de documentos
 /supabase
   /migrations   # Evolución del esquema DB (Gate 1 -> Gate 9)
-/tests          # Simulaciones de lógica y colaboración
 /documentacion  # Manuales detallados por Hito (The Source of Truth)
 ```
 
 ## 📖 Documentación
 
 Para entender la profundidad del sistema, consulta:
+- [📄 Hito 4.3: Forensic UX (Transparencia Radical)](./documentacion/HITO_4.3_FORENSIC_UX.md)
+- [📄 Hito 4.2: Local Compiler (Saturismo de Datos)](./documentacion/HITO_4.2_LOCAL_COMPILER.md)
 - [📄 Hito 3.7: Trasplante de Cerebro (Real LLM & RLM)](./documentacion/HITO_3.7_GATE9_EXTENSION_BRAIN.md)
-- [📄 Hito 3.6: Colaboración y Gobernanza](./documentacion/HITO_3.6_GATE9_COLLABORATION.md)
-- [📄 Hito 3.5: Identidad y Seguridad](./documentacion/HITO_3.5_GATE8_IDENTITY.md)
 - [📄 Manual Técnico Completo (2026)](./documentacion/DOCUMENTACION_TECNICA_2026.md)
 
 ---

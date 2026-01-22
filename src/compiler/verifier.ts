@@ -2,6 +2,8 @@ import { WorkGraph, WorkNode } from '../canon/schema/ir';
 import { CompilationReceipt, VerificationResult } from '../canon/schema/receipt';
 import { NodeId } from '../canon/schema/primitives';
 import { computeStableHash } from '../kernel/versioning';
+import { LogicCircuitBreakerError } from '../kernel/errors';
+import { traceSpan } from '../kernel/observability';
 
 export interface VerificationContext {
     goal: string;
@@ -12,19 +14,43 @@ export interface VerificationContext {
  * Checks a branch state (list of nodes) for integrity and PIN violations.
  */
 export async function verifyBranch(nodes: WorkNode[]): Promise<VerificationResult> {
-    const issues: Array<{ severity: 'error' | 'warn', message: string, code: string }> = [];
+    const issues: Array<{ severity: 'CRITICAL' | 'error' | 'warn', message: string, code: string }> = [];
     let passed = true;
 
     nodes.forEach(node => {
+        // 1. PIN CONFIDENCE CHECK
         if (node.metadata.pin && (node.metadata.confidence || 0) < 1.0) {
             issues.push({
-                severity: 'error',
+                severity: 'CRITICAL',
                 message: `Pinned node ${node.id} has low confidence rating.`,
                 code: 'PIN_CONFIDENCE_LOW'
             });
             passed = false;
         }
+
+        // 2. HUMAN SIGNATURE (SEAL) INTEGRITY CHECK (Hito 4.4)
+        if (node.metadata.human_signature) {
+            const currentHash = computeStableHash(node); // Assuming verifier has access or computeNodeHash
+            if (currentHash !== node.metadata.human_signature.hash_at_signing) {
+                issues.push({
+                    severity: 'CRITICAL',
+                    message: `FIRMA ROTA: El nodo ${node.id} ha sido alterado después del pacto humano.`,
+                    code: 'BROKEN_SIGNATURE_SEAL'
+                });
+                passed = false;
+            }
+        }
     });
+
+    if (!passed) {
+        const criticalErrors = issues.filter(i => i.severity === 'CRITICAL');
+        if (criticalErrors.length > 0) {
+            throw new LogicCircuitBreakerError(
+                "Incoherencia Lógica Detectada: Se ha violado una Invariante (PIN).",
+                criticalErrors as any
+            );
+        }
+    }
 
     return {
         passed,
@@ -38,18 +64,17 @@ export async function verifyBranch(nodes: WorkNode[]): Promise<VerificationResul
  * Deterministic checks on the generated Artifact.
  */
 export function verifyArtifact(artifact: any, context: VerificationContext): VerificationResult {
-    const issues: Array<{ severity: 'error' | 'warn', message: string, code: string }> = [];
+    const issues: Array<{ severity: 'CRITICAL' | 'error' | 'warn', message: string, code: string }> = [];
     let passed = true;
     let score = 1.0;
 
     // 0. Pre-check: Does it have a receipt?
     if (!artifact.receipt) {
-        return { passed: false, score: 0, issues: [{ severity: 'error', message: 'Missing Compilation Receipt', code: 'NO_RECEIPT' }] };
+        return { passed: false, score: 0, issues: [{ severity: 'CRITICAL', message: 'Missing Compilation Receipt', code: 'NO_RECEIPT' }] };
     }
     const receipt = artifact.receipt as CompilationReceipt;
 
     // 1. Check Integrity (Hash Match)
-    // Assembler logic: computeStableHash({ goal: plan.goal, contextIds: context.map(n => n.id).sort() })
     const expectedHash = computeStableHash({
         goal: context.goal,
         contextIds: context.retrieved_nodes.map(n => n.id).sort()
@@ -57,25 +82,17 @@ export function verifyArtifact(artifact: any, context: VerificationContext): Ver
 
     if (receipt.input_hash !== expectedHash) {
         issues.push({
-            severity: 'error',
+            severity: 'CRITICAL',
             message: `Context Hash Mismatch. Expected ${expectedHash}, got ${receipt.input_hash}`,
             code: 'INTEGRITY_FAIL'
         });
         passed = false;
-        score = 0; // Integrity violation is fatal
+        score = 0;
     }
 
     // 2. Check Structure (Broken Links in Assertion Map)
-    // For every ClaimID -> EvidenceID in map, do they exist in context?
-    // Note: In our current stub types, assertionMap keys are NodeIds.
-    // We strictly check if the claimed nodes exist in the graph (or context).
-    // The context passed here is what was retrieved. The assertions should point to nodes in that context.
-
-    // In a real scenario, we might check against the full graph, but RLM is usually context-bounded.
-    // Let's check against context for now.
     const contextMap = new Set(context.retrieved_nodes.map(n => n.id));
 
-    // Iterate entries
     for (const [claimId, evidenceId] of Object.entries(receipt.assertion_map)) {
         if (!contextMap.has(claimId as NodeId)) {
             issues.push({ severity: 'warn', message: `Claim ${claimId} not found in context`, code: 'ORPHAN_CLAIM' });
@@ -88,7 +105,6 @@ export function verifyArtifact(artifact: any, context: VerificationContext): Ver
     }
 
     // 3. Threshold (Confidence)
-    // Check if used context has low confidence
     const lowConfidenceNodes = context.retrieved_nodes.filter(n => (n.metadata.confidence || 0) < 0.5);
     if (lowConfidenceNodes.length > 0) {
         issues.push({
@@ -102,8 +118,14 @@ export function verifyArtifact(artifact: any, context: VerificationContext): Ver
     // Cap score
     score = Math.max(0, score);
 
-    // Final decision
-    if (!passed) score = 0; // Fail implies 0 score usually, or we keep it separte.
+    // CIRCUIT BREAKER TRIGGER
+    const criticalErrors = issues.filter(i => i.severity === 'CRITICAL');
+    if (criticalErrors.length > 0) {
+        throw new LogicCircuitBreakerError(
+            "Circuit Breaker: La IA ha intentado violar el Canon o la Integridad.",
+            criticalErrors as any
+        );
+    }
 
     return {
         passed,

@@ -140,18 +140,53 @@ class PriceRegistry {
     }
 }
 
+
+// --- Audit & Public Metrics System (Hito 4.5) ---
+
+interface AuditMetric {
+    jobId: string;
+    stepId: string;
+    model: string;
+    tokens: { input: number; output: number };
+    latency_ms: number;
+    cost_usd: number;
+    timestamp: string;
+}
+
+class AuditStore {
+    private static instance: AuditStore;
+    private metrics: AuditMetric[] = [];
+
+    private constructor() { }
+
+    public static getInstance() {
+        if (!AuditStore.instance) AuditStore.instance = new AuditStore();
+        return AuditStore.instance;
+    }
+
+    public recordMetric(metric: AuditMetric) {
+        this.metrics.push(metric);
+        console.log(`[Audit] Recorded metric for job ${metric.jobId}, step ${metric.stepId}`);
+    }
+
+    public getJobMetrics(jobId: string): AuditMetric[] {
+        return this.metrics.filter(m => m.jobId === jobId);
+    }
+
+    public getStepMetric(jobId: string, stepId: string): AuditMetric | undefined {
+        return this.metrics.find(m => m.jobId === jobId && m.stepId === stepId);
+    }
+}
+
+export const auditStore = AuditStore.getInstance();
+
 /**
  * Calculates generic cost based on token counts.
  * Uses PriceRegistry for real-time rates.
  */
 export async function measureCost(inputTokens: number, outputTokens: number, model: string = 'gpt-4o'): Promise<number> {
     const registry = PriceRegistry.getInstance();
-
-    // Trigger non-blocking sync if needed (lazy load)
-    // We don't await this to avoid latency hits on simple calcs, 
-    // but the first run might use fallbacks. Ideally, sync is called at app bootstrap.
-    registry.syncWithMarket().catch(e => console.error(e));
-
+    await registry.syncWithMarket().catch(e => console.error(e));
     const rates = registry.getPrice(model);
     return (inputTokens * rates.prompt) + (outputTokens * rates.completion);
 }

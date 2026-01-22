@@ -59,9 +59,12 @@ Para evitar alucinaciones, hemos reemplazado la selección arbitraria de nodos p
 - Esto garantiza que la IA siempre vea la información relevante, independientemente de su posición en el grafo.
 
 ### Control de Calidad (Fidelity Mode)
-Para mitigar el efecto "Teléfono Escacharrado" en documentos extremadamente largos:
-- **Modo Híbrido**: Máximo ahorro. Usa el motor barato para la compresión de "Memoria de Trabajo".
-- **Modo Fidelidad Máxima**: Máxima coherencia. Usa el motor potente para el 100% de la cadena RLM, asegurando que ni un solo matiz se pierda en la recursión.
+Para mitigar el efecto **"Teléfono Escacharrado"** o **"Amnesia de Alta Calidad"** en documentos extremadamente largos:
+- **Modo Híbrido**: "Un Ferrari (GPT-4) conducido por un profesional, pero con un copiloto que ha perdido las gafas (Gemini Flash) leyendo el mapa". Máximo ahorro. La sutileza puede perderse en los resúmenes acumulados.
+- **Modo Fidelidad Máxima**: "Dos pilotos expertos controlando cada metro de la pista". Máxima coherencia. Usa el motor potente para el 100% de la cadena RLM, asegurando que ni un solo matiz se pierda en la recursión.
+
+> [!WARNING]
+> En el Modo Híbrido, si el modelo eficiente no captura el matiz de una genialidad escrita por el modelo de razonamiento, esa información se pierde para los pasos posteriores del plan. Úsalo solo cuando la coherencia tonal absoluta no sea crítica.
 
 ---
 *Este hito cierra el ciclo de Gate 9, dotando a WorkGraph OS de autonomía cognitiva, eficiencia económica y estabilidad topológica.*
