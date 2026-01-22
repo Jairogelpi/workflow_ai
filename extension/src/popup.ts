@@ -8,21 +8,39 @@ const projectInput = document.getElementById('project') as HTMLInputElement;
 const saveBtn = document.getElementById('save') as HTMLButtonElement;
 const statusDiv = document.getElementById('status') as HTMLDivElement;
 
+declare const process: {
+    env: {
+        SUPABASE_URL: string;
+        SUPABASE_KEY: string;
+    }
+};
+
+// Show defaults as placeholders
+const defaultUrl = process.env.SUPABASE_URL || '';
+const defaultKey = process.env.SUPABASE_KEY || '';
+
+urlInput.placeholder = defaultUrl || 'https://your-project.supabase.co';
+keyInput.placeholder = 'Pre-configured (from .env)';
+
 // Load existing settings
 chrome.storage.local.get(['supabaseUrl', 'supabaseKey', 'projectId'], (result) => {
-    if (result.supabaseUrl) urlInput.value = result.supabaseUrl;
-    if (result.supabaseKey) keyInput.value = result.supabaseKey;
+    urlInput.value = result.supabaseUrl || defaultUrl;
+    keyInput.value = result.supabaseKey || (result.supabaseUrl ? result.supabaseKey : ''); // Only show key if manual URL is set or use empty for pre-conf
     if (result.projectId) projectInput.value = result.projectId;
+
+    if (!result.supabaseUrl && defaultUrl) {
+        statusDiv.textContent = 'Using environment defaults.';
+    }
 });
 
 // Save settings
 saveBtn.addEventListener('click', () => {
-    const url = urlInput.value.trim();
-    const key = keyInput.value.trim();
+    const url = urlInput.value.trim() || defaultUrl;
+    const key = keyInput.value.trim() || defaultKey;
     const project = projectInput.value.trim();
 
     if (!url || !key) {
-        alert('Please fill in both URL and Key');
+        alert('Supabase URL or Key missing in both settings and .env');
         return;
     }
 

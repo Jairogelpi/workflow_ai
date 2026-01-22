@@ -21,63 +21,91 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
     }
 });
 
+declare const process: {
+    env: {
+        SUPABASE_URL: string;
+        SUPABASE_KEY: string;
+    }
+};
+
 async function handleCapture(text: string, tab?: chrome.tabs.Tab) {
-    // 1. Get credentials from storage
-    const { supabaseUrl, supabaseKey, projectId } = await chrome.storage.local.get([
+    // 1. Get credentials from storage or use defaults from .env
+    const result = await chrome.storage.local.get([
         'supabaseUrl',
         'supabaseKey',
         'projectId'
     ]);
 
-    if (!supabaseUrl || !supabaseKey) {
-        showNotification('WorkGraph: Error', 'Please set your Supabase credentials in the extension popup.');
+    const supabaseUrl = result.supabaseUrl || process.env.SUPABASE_URL;
+    const supabaseKey = result.supabaseKey || process.env.SUPABASE_KEY;
+    const projectId = result.projectId;
+
+    if (!supabaseUrl || !supabaseUrl.startsWith('http')) {
+        showNotification('WorkGraph: Error', 'Supabase URL missing or invalid. Please check settings.');
         return;
     }
 
     const supabase = createClient(supabaseUrl, supabaseKey);
     const targetProjectId = projectId || '00000000-0000-0000-0000-000000000000';
 
-    // 2. Prepare WorkNode IR
+    console.log('WorkGraph: Capture starting...', { text, targetProjectId });
+
+    // 2. Prepare WorkNode IR (Internal Representation)
     const nodeId = uuidv4();
     const now = new Date().toISOString();
 
-    const node = {
+    // This matches the schema in src/canon/schema/ir.ts
+    const workNodeIR = {
+        id: nodeId,
+        type: 'note' as const,
+        content: text,
+        metadata: {
+            created_at: now,
+            updated_at: now,
+            origin: 'human' as const,
+            version_hash: 'signed-by-extension',
+            confidence: 1.0,
+            validated: false,
+            pin: false,
+            source: tab?.url || 'web-capture'
+        }
+    };
+
+    // 3. Prepare DB Record (Flattened for SQL columns)
+    const dbRecord = {
         id: nodeId,
         project_id: targetProjectId,
-        type: 'note', // Default type for web captures
-        content: {
-            id: nodeId,
-            type: 'note',
-            content: text,
-            metadata: {
-                created_at: now,
-                updated_at: now,
-                origin: 'human', // Captures are considered human intent
-                version_hash: 'signed-by-extension', // Placeholder for background signing
-                confidence: 1.0,
-                validated: false,
-                pin: false,
-                source: tab?.url || 'web-capture'
-            }
-        },
+        type: 'note',
+        content: workNodeIR, // Full IR stored in JSONB content column (as per sync.ts)
+        confidence: 1.0,
+        is_pinned: false,
+        is_validated: false,
+        origin: 'human',
         metadata: {
             source: tab?.url,
             title: tab?.title
         },
-        updated_at: now
+        current_version_hash: 'signed-by-extension',
+        updated_at: now,
+        deleted_at: null
     };
 
-    // 3. Upsert to Supabase
+    // 4. Upsert to Supabase
     try {
-        const { error } = await supabase
+        const { error, data } = await supabase
             .from('work_nodes')
-            .upsert(node);
+            .upsert(dbRecord);
 
-        if (error) throw error;
+        if (error) {
+            console.error('WorkGraph: Supabase Error', error);
+            throw error;
+        }
+
+        console.log('WorkGraph: Capture successful!', data);
         showNotification('WorkGraph: Saved', `Captured from: ${tab?.title || 'Web'}`);
     } catch (err: any) {
-        console.error('Capture failed:', err);
-        showNotification('WorkGraph: Sync Error', err.message);
+        console.error('WorkGraph: Capture failed:', err);
+        showNotification('WorkGraph: Sync Error', err.message || 'Check extension logs');
     }
 }
 

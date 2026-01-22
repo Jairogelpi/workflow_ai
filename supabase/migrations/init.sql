@@ -1,24 +1,35 @@
 -- 1. EXTENSIONS I CONFIGURACIÓ
 create extension if not exists vector;
 
--- 2. ENUMS
-create type node_type as enum (
-  'claim', 'evidence', 'decision', 'constraint', 'assumption', 
-  'plan', 'task', 'artifact', 'note', 'source', 'idea'
-);
+-- 2. ENUMS (Safe creation)
+do $$ 
+begin
+  if not exists (select 1 from pg_type where typname = 'node_type') then
+    create type node_type as enum (
+      'claim', 'evidence', 'decision', 'constraint', 'assumption', 
+      'plan', 'task', 'artifact', 'note', 'source', 'idea'
+    );
+  end if;
 
-create type relation_type as enum (
-  'supports', 'refutes', 'depends_on', 'contradicts', 
-  'refines', 'supersedes', 'relates_to', 'blocks'
-);
+  if not exists (select 1 from pg_type where typname = 'relation_type') then
+    create type relation_type as enum (
+      'supports', 'refutes', 'depends_on', 'contradicts', 
+      'refines', 'supersedes', 'relates_to', 'blocks'
+    );
+  end if;
 
-create type validation_status as enum (
-  'pending', 'verified', 'refuted', 'outdated'
-);
+  if not exists (select 1 from pg_type where typname = 'validation_status') then
+    create type validation_status as enum (
+      'pending', 'verified', 'refuted', 'outdated'
+    );
+  end if;
 
-create type node_origin as enum (
-  'human', 'ai_generated', 'hybrid'
-);
+  if not exists (select 1 from pg_type where typname = 'node_origin') then
+    create type node_origin as enum (
+      'human', 'ai_generated', 'hybrid'
+    );
+  end if;
+end $$;
 
 -- 3. TAULES BASE
 create table if not exists profiles (
@@ -29,9 +40,10 @@ create table if not exists profiles (
   updated_at timestamp with time zone default now()
 );
 
+-- 3. EL CONTINGUT (PROJECTES)
 create table if not exists projects (
   id uuid default gen_random_uuid() primary key,
-  owner_id uuid references auth.users(id) not null,
+  owner_id uuid references auth.users(id), -- Nullable for local/unauthenticated dev
   name text not null,
   description text,
   is_public boolean default false,
@@ -39,6 +51,14 @@ create table if not exists projects (
   created_at timestamp with time zone default now(),
   updated_at timestamp with time zone default now()
 );
+
+-- Ensure owner_id is nullable for existing tables
+alter table projects alter column owner_id drop not null;
+
+-- Register a default project for local dev / unauthenticated captures
+insert into projects (id, name, description)
+values ('00000000-0000-0000-0000-000000000000', 'Default Project', 'Knowledge capture landing project')
+on conflict (id) do nothing;
 
 -- 4. EL NUCLI DEL GRAF
 create table if not exists work_nodes (
@@ -113,16 +133,30 @@ alter table projects enable row level security;
 alter table work_nodes enable row level security;
 alter table work_edges enable row level security;
 
--- Policies (Simplified for development)
-create policy "Users can see their own projects" on projects
-  for all using (auth.uid() = owner_id);
-
-create policy "Users can see nodes of their projects" on work_nodes
+-- Policies (Allow access to default project or owned projects)
+drop policy if exists "Users can see default or own projects" on projects;
+create policy "Users can see default or own projects" on projects
   for all using (
+    id = '00000000-0000-0000-0000-000000000000' or auth.uid() = owner_id
+  );
+
+drop policy if exists "Users can see nodes of default or own projects" on work_nodes;
+create policy "Users can see nodes of default or own projects" on work_nodes
+  for select using (
+    project_id = '00000000-0000-0000-0000-000000000000' or 
     exists (select 1 from projects where id = work_nodes.project_id and owner_id = auth.uid())
   );
 
-create policy "Users can see edges of their projects" on work_edges
+drop policy if exists "Users can modify nodes of default or own projects" on work_nodes;
+create policy "Users can modify nodes of default or own projects" on work_nodes
   for all using (
+    project_id = '00000000-0000-0000-0000-000000000000' or 
+    exists (select 1 from projects where id = work_nodes.project_id and owner_id = auth.uid())
+  );
+
+drop policy if exists "Users can see edges of default or own projects" on work_edges;
+create policy "Users can see edges of default or own projects" on work_edges
+  for all using (
+    project_id = '00000000-0000-0000-0000-000000000000' or 
     exists (select 1 from projects where id = work_edges.project_id and owner_id = auth.uid())
   );
