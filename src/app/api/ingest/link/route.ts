@@ -23,10 +23,21 @@ export async function POST(req: NextRequest) {
 
         const supabase = await createClient();
 
-        // 1. Verify Authentication
+        // 1. Verify Authentication (SSR Context)
         const { data: { user }, error: authError } = await supabase.auth.getUser();
         if (authError || !user) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
+
+        // 2. Explicit Security Check (Gate 8): Verify project ownership
+        const { data: project } = await supabase
+            .from('projects')
+            .select('id')
+            .eq('id', projectId)
+            .maybeSingle();
+
+        if (!project) {
+            return NextResponse.json({ error: 'Project not found or access denied' }, { status: 403 });
         }
 
         const nodeId = uuidv4();
@@ -92,6 +103,9 @@ export async function POST(req: NextRequest) {
                 }
             }
         }
+
+        // 5. Observability (Hito 3.5 Fix)
+        console.log(`[Ingest] User ${user.id} materialized knowledge to project ${projectId}. Size: ${content.length} chars.`);
 
         return NextResponse.json({
             success: true,

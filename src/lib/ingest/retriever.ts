@@ -12,6 +12,7 @@ interface SearchResult {
     content: any;
     type: string;
     similarity: number;
+    owner_id: string;
 }
 
 /**

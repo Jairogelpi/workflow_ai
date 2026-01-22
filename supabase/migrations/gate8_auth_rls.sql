@@ -48,6 +48,8 @@ CREATE INDEX IF NOT EXISTS idx_nodes_project ON work_nodes(project_id);
 -- 6. Secure Vector Search (RPC)
 -- This function allows searching for nodes by embedding similarity,
 -- but enforces project-level isolation via a join with work_nodes.
+DROP FUNCTION IF EXISTS match_node_embeddings(vector, float, int, uuid);
+
 CREATE OR REPLACE FUNCTION match_node_embeddings (
   query_embedding vector(1536),
   match_threshold float,
@@ -59,7 +61,8 @@ RETURNS TABLE (
   project_id uuid,
   content jsonb,
   type text,
-  similarity float
+  similarity float,
+  owner_id uuid
 )
 LANGUAGE plpgsql
 AS $$
@@ -70,10 +73,13 @@ BEGIN
     wn.project_id,
     wn.content,
     wn.type,
-    1 - (ne.embedding <=> query_embedding) AS similarity
+    1 - (ne.embedding <=> query_embedding) AS similarity,
+    p.owner_id
   FROM node_embeddings ne
   JOIN work_nodes wn ON ne.node_id = wn.id
+  JOIN projects p ON wn.project_id = p.id
   WHERE wn.project_id = target_project_id
+    AND p.owner_id = auth.uid() -- CRITICAL: Hard isolation even in RPC
     AND 1 - (ne.embedding <=> query_embedding) > match_threshold
   ORDER BY ne.embedding <=> query_embedding
   LIMIT match_count;

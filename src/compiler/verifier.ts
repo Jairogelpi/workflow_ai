@@ -16,6 +16,31 @@ export interface VerificationContext {
 }
 
 /**
+ * Checks a branch state (list of nodes) for integrity and PIN violations.
+ */
+export async function verifyBranch(nodes: WorkNode[]): Promise<VerificationResult> {
+    const issues: Array<{ severity: 'error' | 'warn', message: string, code: string }> = [];
+    let passed = true;
+
+    nodes.forEach(node => {
+        if (node.metadata.pin && (node.metadata.confidence || 0) < 1.0) {
+            issues.push({
+                severity: 'error',
+                message: `Pinned node ${node.id} has low confidence rating.`,
+                code: 'PIN_CONFIDENCE_LOW'
+            });
+            passed = false;
+        }
+    });
+
+    return {
+        passed,
+        score: passed ? 1.0 : 0.5,
+        issues: issues.length > 0 ? issues : undefined
+    };
+}
+
+/**
  * The Verifier Logic.
  * Deterministic checks on the generated Artifact.
  */
