@@ -1,35 +1,92 @@
-/// <reference types="chrome" />
-console.log('[WorkGraph] Background service worker initialized.');
+import { createClient } from '@supabase/supabase-js';
+import { v4 as uuidv4 } from 'uuid';
 
+/**
+ * WorkGraph Ingestor - Background Script (MV3)
+ */
+
+// Context Menu Initialization
 chrome.runtime.onInstalled.addListener(() => {
     chrome.contextMenus.create({
-        id: 'capture-to-workgraph',
-        title: 'Capture to WorkGraph',
+        id: 'save-to-workgraph',
+        title: 'Save to WorkGraph',
         contexts: ['selection']
     });
 });
 
-chrome.contextMenus.onClicked.addListener((info, _tab) => {
-    if (info.menuItemId === 'capture-to-workgraph' && info.selectionText) {
-        handleCapture(info.selectionText, _tab?.url || '');
+// Listener for Context Menu Clicks
+chrome.contextMenus.onClicked.addListener(async (info, tab) => {
+    if (info.menuItemId === 'save-to-workgraph' && info.selectionText) {
+        await handleCapture(info.selectionText, tab);
     }
 });
 
-chrome.runtime.onMessage.addListener((message) => {
-    if (message.type === 'CAPTURE_SELECTION') {
-        handleCapture(message.text, message.url);
+async function handleCapture(text: string, tab?: chrome.tabs.Tab) {
+    // 1. Get credentials from storage
+    const { supabaseUrl, supabaseKey, projectId } = await chrome.storage.local.get([
+        'supabaseUrl',
+        'supabaseKey',
+        'projectId'
+    ]);
+
+    if (!supabaseUrl || !supabaseKey) {
+        showNotification('WorkGraph: Error', 'Please set your Supabase credentials in the extension popup.');
+        return;
     }
-});
 
-async function handleCapture(text: string, url: string) {
-    console.log('[WorkGraph] Capturing:', { text, url });
+    const supabase = createClient(supabaseUrl, supabaseKey);
+    const targetProjectId = projectId || '00000000-0000-0000-0000-000000000000';
 
-    // TODO: Post to Kernel API (e.g. localhost:3000/api/capture)
+    // 2. Prepare WorkNode IR
+    const nodeId = uuidv4();
+    const now = new Date().toISOString();
+
+    const node = {
+        id: nodeId,
+        project_id: targetProjectId,
+        type: 'note', // Default type for web captures
+        content: {
+            id: nodeId,
+            type: 'note',
+            content: text,
+            metadata: {
+                created_at: now,
+                updated_at: now,
+                origin: 'human', // Captures are considered human intent
+                version_hash: 'signed-by-extension', // Placeholder for background signing
+                confidence: 1.0,
+                validated: false,
+                pin: false,
+                source: tab?.url || 'web-capture'
+            }
+        },
+        metadata: {
+            source: tab?.url,
+            title: tab?.title
+        },
+        updated_at: now
+    };
+
+    // 3. Upsert to Supabase
     try {
-        chrome.action.setBadgeText({ text: 'OK' });
-        setTimeout(() => chrome.action.setBadgeText({ text: '' }), 2000);
-    } catch (err) {
-        console.error('[WorkGraph] Capture error:', err);
-        chrome.action.setBadgeText({ text: 'ERR' });
+        const { error } = await supabase
+            .from('work_nodes')
+            .upsert(node);
+
+        if (error) throw error;
+        showNotification('WorkGraph: Saved', `Captured from: ${tab?.title || 'Web'}`);
+    } catch (err: any) {
+        console.error('Capture failed:', err);
+        showNotification('WorkGraph: Sync Error', err.message);
     }
+}
+
+function showNotification(title: string, message: string) {
+    chrome.notifications.create({
+        type: 'basic',
+        iconUrl: 'public/icon128.png',
+        title,
+        message,
+        priority: 2
+    });
 }

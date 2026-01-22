@@ -215,11 +215,19 @@ phases:
 
       - id: "2.6"
         title: "Chrome MV3 Extension"
-        description: "Ingestion from URLs, Local Files, and Chat Export."
-        status: "pending"
-        gate: "Multi-format parser operational."
-        tasks: []
-        evidence_nodes: []
+        description: "Explicit selection capture for the web."
+        status: "done"
+        gate: "MV3 extension communicating with Supabase."
+        tasks: 
+          - "Initialize extension scaffold (Vite + TS)"
+          - "Implement Background Worker (Sync logic)"
+          - "Implement Context Menu Capture"
+          - "Implement Configuration Popup"
+        evidence_nodes: 
+          - "extension/dist/manifest.json"
+          - "extension/src/background/index.ts"
+          - "extension/src/popup.ts"
+          - "documentacion/HITO_2.6_SUMMARY.md"
 
       - id: "2.7"
         title: "BYOK Secrets Management"
