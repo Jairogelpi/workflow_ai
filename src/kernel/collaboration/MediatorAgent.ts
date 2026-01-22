@@ -122,25 +122,21 @@ export class MediatorAgent {
     /**
      * Executes an inference task with Smart Routing and Budget Control.
      */
-    private async performInferenceTask(prompt: string, complexity: TaskComplexity): Promise<string> {
+    /**
+     * Executes an inference task with support for tools (Swarm Agency).
+     */
+    public async performInferenceWithTools(prompt: string, complexity: TaskComplexity, tools: any[]): Promise<{ content: string; toolCalls?: any[] }> {
         const modelId = SmartRouter.getOptimalModel(complexity);
-        const { modelConfig } = useSettingsStore.getState();
-
-        // 1. Pre-flight Cost Prediction
         const estimatedCost = predictCost("", prompt, modelId);
 
-        // 2. Budget Circuit Breaker
-        if (estimatedCost > modelConfig.maxCostPerTask) {
-            console.warn(`[MEDIATOR] Budget Circuit Breaker triggered: $${estimatedCost.toFixed(4)} > $${modelConfig.maxCostPerTask}`);
-            // In a real flow, this would trigger: this.negotiator.requestSpendingApproval(estimatedCost);
-            // For now, we proceed to allow development but log the event.
-        }
-
-        // 3. Trace and Execute
-        return await traceSpan('mediator.inference', { modelId, complexity, estimatedCost }, async () => {
-            // Mapping complexity to Gateway tiers
+        return await traceSpan('mediator.agency', { modelId, complexity, estimatedCost }, async () => {
             const tier = complexity === TaskComplexity.HIGH ? 'REASONING' : 'EFFICIENCY';
-            return await generateText("You are the Mediator Agent for WorkGraph OS.", prompt, tier);
+            return await generateText("You are the Mediator Agent for WorkGraph OS. You have tools available to interact with the system.", prompt, tier, tools);
         });
+    }
+
+    private async performInferenceTask(prompt: string, complexity: TaskComplexity): Promise<string> {
+        const result = await this.performInferenceWithTools(prompt, complexity, []);
+        return result.content;
     }
 }

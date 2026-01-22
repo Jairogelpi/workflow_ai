@@ -111,7 +111,7 @@ interface GraphState {
     // Interaction
     setSelectedNode: (id: string | null) => void;
     updateNodeContent: (id: string, content: string) => void;
-    addNode: (type: WorkNode['type'], position?: { x: number, y: number }) => void;
+    addNode: (payload: WorkNode['type'] | WorkNode, position?: { x: number, y: number }) => void;
     mutateNodeType: (id: string, newType: WorkNode['type']) => void;
     deleteNode: (id: string) => Promise<void>;
 
@@ -126,6 +126,10 @@ interface GraphState {
     setSearchQuery: (query: string) => void;
     centerNode: (id: string) => void;
 
+    // Spatial Magnetism (Phase 21)
+    cursorPosition: { x: number, y: number } | null;
+    setCursorPosition: (pos: { x: number, y: number } | null) => void;
+
     // Shadow Storage Actions
     proposeNode: (node: WorkNode, position?: { x: number, y: number }) => void;
     addGhostNode: (node: WorkNode, position?: { x: number, y: number }) => void;
@@ -133,19 +137,21 @@ interface GraphState {
     commitDraft: (id: string) => Promise<void>;
     discardDraft: (id: string) => void;
 
-    // --- WINDOW MANAGER STATE ---
-    activeWindow: {
-        id: string;
-        title: string;
+    // --- WINDOW MANAGER STATE (Phase 22) ---
+    windows: Record<string, {
+        id: string,
+        title: string,
+        isOpen: boolean,
+        zIndex: number,
         contentUrl?: string;
         contentType: 'pdf' | 'web' | 'text' | 'editor';
         nodeData?: any;
         mimeType?: string;
         textContent?: string;
-    } | null;
-
-    openWindow: (window: GraphState['activeWindow']) => void;
-    closeWindow: () => void;
+    }>;
+    toggleWindow: (id: string, isOpen: boolean, data?: any) => void;
+    focusWindow: (id: string) => void;
+    closeWindow: (id: string) => void;
 
     // --- AUTHORITY SIGNATURE ACTIONS (Hito 4.4) ---
     signNode: (id: string, signerId: string) => Promise<void>;
@@ -166,7 +172,6 @@ export const useGraphStore = create<GraphState>((set, get) => ({
     edges: [],
     selectedNodeId: null,
     searchQuery: '',
-    activeWindow: null,
     isLoading: false,
     isSyncing: false,
     currentUser: {
@@ -177,7 +182,6 @@ export const useGraphStore = create<GraphState>((set, get) => ({
     draftNodes: [],
     ghostNodes: [],
     healProposals: [],
-    isXRayActive: false,
 
     // Antigravity Initial State (Fricción Cero: On by default)
     isAntigravityActive: true,
@@ -192,7 +196,47 @@ export const useGraphStore = create<GraphState>((set, get) => ({
 
     logicalTension: {},
     setLogicalTension: (tension) => set({ logicalTension: tension }),
+    isXRayActive: false,
     setXRayActive: (active) => set({ isXRayActive: active }),
+
+    cursorPosition: null,
+    setCursorPosition: (pos) => set({ cursorPosition: pos }),
+
+    windows: {},
+    toggleWindow: (id, isOpen, data) => set((state) => {
+        const existing = state.windows[id];
+        const now = existing || data || {};
+        return {
+            windows: {
+                ...state.windows,
+                [id]: {
+                    id,
+                    title: now.title || 'System Window',
+                    isOpen,
+                    zIndex: isOpen ? Math.max(...Object.values(state.windows).map(w => w.zIndex), 0) + 1 : 0,
+                    contentType: now.contentType || 'text',
+                    contentUrl: now.contentUrl,
+                    nodeData: now.nodeData,
+                    mimeType: now.mimeType,
+                    textContent: now.textContent
+                }
+            }
+        };
+    }),
+    focusWindow: (id) => set((state) => {
+        const existing = state.windows[id];
+        if (!existing) return state;
+        return {
+            windows: {
+                ...state.windows,
+                [id]: { ...existing, zIndex: Math.max(...Object.values(state.windows).map(w => w.zIndex), 0) + 1 }
+            }
+        };
+    }),
+    closeWindow: (id) => set((state) => {
+        const { [id]: closed, ...remaining } = state.windows;
+        return { windows: remaining };
+    }),
 
     rlmThoughts: [],
     addRLMThought: (thought) => set((state) => ({
@@ -227,8 +271,6 @@ export const useGraphStore = create<GraphState>((set, get) => ({
     setNodes: (nodes) => set({ nodes }),
     setEdges: (edges) => set({ edges }),
     setSearchQuery: (searchQuery) => set({ searchQuery }),
-    openWindow: (window) => set({ activeWindow: window }),
-    closeWindow: () => set({ activeWindow: null }),
     setCurrentUser: (currentUser) => set({ currentUser }),
 
     voteOnNode: (nodeId, agentId, vote) => set((state) => {
@@ -365,10 +407,13 @@ export const useGraphStore = create<GraphState>((set, get) => ({
         }
     },
 
-    addNode: async (type, position) => {
-        const id = uuidv4() as NodeId;
+    addNode: async (payload, position) => {
+        const isFullNode = typeof payload === 'object';
+        const type = isFullNode ? payload.type : payload;
+
+        const id = isFullNode ? payload.id : uuidv4() as NodeId;
         const now = new Date().toISOString();
-        const baseNode: any = {
+        const baseNode: any = isFullNode ? { ...payload } : {
             id,
             type,
             metadata: {
@@ -386,17 +431,19 @@ export const useGraphStore = create<GraphState>((set, get) => ({
             }
         };
 
-        if (type === 'note') baseNode.content = 'New Note';
-        else if (type === 'claim') baseNode.statement = 'New Claim';
-        else if (type === 'evidence') baseNode.content = 'New Evidence';
-        else if (type === 'decision') { baseNode.rationale = 'New Decision'; baseNode.chosen_option = ''; }
-        else if (type === 'idea') baseNode.summary = 'New Idea';
-        else if (type === 'task') { baseNode.title = 'New Task'; baseNode.status = 'todo'; }
-        else if (type === 'artifact') { baseNode.name = 'New Artifact'; baseNode.uri = 'http://localhost'; }
-        else if (type === 'assumption') { baseNode.premise = 'New Assumption'; baseNode.risk_level = 'medium'; }
-        else if (type === 'constraint') { baseNode.rule = 'New Constraint'; baseNode.enforcement_level = 'strict'; }
+        if (!isFullNode) {
+            if (type === 'note') baseNode.content = 'New Note';
+            else if (type === 'claim') baseNode.statement = 'New Claim';
+            else if (type === 'evidence') baseNode.content = 'New Evidence';
+            else if (type === 'decision') { baseNode.rationale = 'New Decision'; baseNode.chosen_option = ''; }
+            else if (type === 'idea') baseNode.summary = 'New Idea';
+            else if (type === 'task') { baseNode.title = 'New Task'; baseNode.status = 'todo'; }
+            else if (type === 'artifact') { baseNode.name = 'New Artifact'; baseNode.uri = 'http://localhost'; }
+            else if (type === 'assumption') { baseNode.premise = 'New Assumption'; baseNode.risk_level = 'medium'; }
+            else if (type === 'constraint') { baseNode.rule = 'New Constraint'; baseNode.enforcement_level = 'strict'; }
+        }
 
-        const signedMetadata = createVersion(baseNode as WorkNode);
+        const signedMetadata = isFullNode ? baseNode.metadata : createVersion(baseNode as WorkNode);
         const finalNode: WorkNode = { ...baseNode, metadata: signedMetadata };
         const flowNode = backendToFlow(finalNode, position || { x: Math.random() * 400, y: Math.random() * 400 });
 

@@ -40,7 +40,7 @@ function GraphContent() {
     const setNodes = useGraphStore(state => state.setNodes);
     const setSelectedNode = useGraphStore(state => state.setSelectedNode);
     const addNode = useGraphStore(state => state.addNode);
-    const openWindow = useGraphStore(state => state.openWindow);
+    const toggleWindow = useGraphStore(state => state.toggleWindow);
     const isAntigravityActive = useGraphStore(state => state.isAntigravityActive);
     const toggleAntigravity = useGraphStore(state => state.toggleAntigravity);
     const draftNodes = useGraphStore(state => state.draftNodes);
@@ -50,6 +50,19 @@ function GraphContent() {
     const clearGhosts = useGraphStore(state => state.clearGhosts);
 
     const { screenToFlowPosition, fitView } = useReactFlow();
+    const setCursorPosition = useGraphStore(state => state.setCursorPosition);
+
+    const onPaneMouseMove = useCallback((event: React.MouseEvent) => {
+        const position = screenToFlowPosition({
+            x: event.clientX,
+            y: event.clientY,
+        });
+        setCursorPosition(position);
+    }, [setCursorPosition, screenToFlowPosition]);
+
+    const onPaneMouseLeave = useCallback(() => {
+        setCursorPosition(null);
+    }, [setCursorPosition]);
 
     // Alt-key X-Ray State
     const [isXRayMode, setIsXRayMode] = React.useState(false);
@@ -125,14 +138,14 @@ function GraphContent() {
             padding: 0.5
         });
 
-        openWindow({
+        toggleWindow(node.id, true, {
             id: node.id,
             title: `${(node.data as any).label || (node.data as any).content?.slice(0, 30) || 'Untitled'}`,
             contentType: 'editor',
             nodeData: node,
             contentUrl: `/editor?nodeId=${node.id}`
         });
-    }, [setSelectedNode, openWindow, fitView, nodes, edges]);
+    }, [setSelectedNode, toggleWindow, fitView, nodes, edges]);
 
     const allNodesComp = React.useMemo(() => {
         return [...nodes, ...draftNodes, ...ghostNodes];
@@ -165,6 +178,8 @@ function GraphContent() {
             onConnect={onConnect}
             onNodeClick={handleNodeClick}
             onPaneClick={onPaneClick}
+            onPaneMouseMove={onPaneMouseMove}
+            onPaneMouseLeave={onPaneMouseLeave}
             zoomOnDoubleClick={false}
             fitView
             className={`dot-grid transition-all duration-500 ${isXRayMode ? 'brightness-90 grayscale-[0.3]' : ''}`}

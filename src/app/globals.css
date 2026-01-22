@@ -76,65 +76,62 @@ textarea,
   background: rgb(var(--outline) / 0.8) !important;
 }
 
-/* Glass Panel - Enhanced */
+/* Glass Panel - Enhanced Neural OS */
 @utility glass-panel {
-  background-color: rgb(255 255 255 / 0.75);
-  backdrop-filter: blur(40px) saturate(180%);
-  border: 1px solid rgb(255 255 255 / 0.5);
-  box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.05);
+  background-color: rgb(255 255 255 / 0.85);
+  backdrop-filter: blur(50px) saturate(190%);
+  border: 1px solid rgb(255 255 255 / 0.7);
+  box-shadow:
+    0 4px 6px -1px rgb(0 0 0 / 0.05),
+    0 20px 25px -5px rgb(0 0 0 / 0.05),
+    0 0 0 1px rgb(255 255 255 / 0.4) inset;
 }
 
 .dark .glass-panel {
-  background-color: rgb(30 30 35 / 0.65);
-  border: 1px solid rgb(255 255 255 / 0.05);
-  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.4);
+  background-color: rgb(24 24 27 / 0.75);
+  border: 1px solid rgb(255 255 255 / 0.08);
+  box-shadow:
+    0 10px 15px -3px rgb(0 0 0 / 0.3),
+    0 4px 6px -4px rgb(0 0 0 / 0.3),
+    0 0 0 1px rgb(255 255 255 / 0.03) inset;
 }
 
-/* Glass Button */
-@utility glass-button {
-  background-color: rgb(var(--primary) / 0.08);
-  border: 1px solid rgb(var(--primary) / 0.15);
-  color: rgb(var(--primary));
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-
-  &:hover {
-    background-color: rgb(var(--primary) / 0.15);
-    border-color: rgb(var(--primary) / 0.25);
-    transform: translateY(-1px);
-  }
-
-  &:active {
-    transform: translateY(0);
-  }
-}
-
-/* Floating Island */
+/* Floating Island - Dock Style */
 @utility floating-island {
-  background-color: rgb(255 255 255 / 0.9);
-  backdrop-filter: blur(25px) saturate(150%);
-  border-radius: 9999px;
-  box-shadow: 0 10px 40px -10px rgba(0, 0, 0, 0.1), 0 0 0 1px rgba(255, 255, 255, 0.2);
+  background-color: rgb(255 255 255 / 0.95);
+  backdrop-filter: blur(30px) saturate(160%);
+  border-radius: 20px;
+  box-shadow:
+    0 20px 25px -5px rgb(0 0 0 / 0.1),
+    0 8px 10px -6px rgb(0 0 0 / 0.1),
+    0 0 0 1px rgb(0 0 0 / 0.02);
 }
 
 .dark .floating-island {
-  background-color: rgb(30 30 35 / 0.85);
-  box-shadow: 0 10px 40px -10px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.05);
+  background-color: rgb(39 39 42 / 0.9);
+  box-shadow:
+    0 20px 25px -5px rgb(0 0 0 / 0.5),
+    0 8px 10px -6px rgb(0 0 0 / 0.5),
+    0 0 0 1px rgb(255 255 255 / 0.05);
 }
 
-/* Node Card Base */
-@utility node-card {
-  border-radius: 1.25rem;
-  padding: 0.875rem 1rem;
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-  cursor: pointer;
+/* Neural Card - Minimalist & Deep */
+@utility neural-card {
+  background-color: rgb(255 255 255);
+  border-radius: 24px;
+  border: 1px solid rgb(0 0 0 / 0.03);
+  box-shadow:
+    0 10px 15px -3px rgb(0 0 0 / 0.03),
+    0 4px 6px -4px rgb(0 0 0 / 0.03);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
 
-  &:hover {
-    transform: translateY(-2px) scale(1.02);
-  }
-
-  &:active {
-    transform: scale(0.98);
-  }
+.dark .neural-card {
+  background-color: rgb(24 24 27);
+  border: 1px solid rgb(255 255 255 / 0.05);
+  box-shadow:
+    0 10px 15px -3px rgb(0 0 0 / 0.2),
+    0 4px 6px -4px rgb(0 0 0 / 0.2);
 }
 
 /* Animations - Smoother for OS feel */

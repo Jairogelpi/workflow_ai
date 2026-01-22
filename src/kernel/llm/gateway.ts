@@ -6,6 +6,7 @@ import { sanitizeLogs } from '../guards';
 interface LLMResponse {
     content: string;
     usage: { inputTokens: number; outputTokens: number };
+    toolCalls?: any[];
 }
 
 // RLM Core (Python) client configuration
@@ -137,8 +138,10 @@ export function predictCost(system: string, user: string, modelId: string): numb
 export async function generateText(
     systemPrompt: string,
     userPrompt: string,
-    tier: TaskTier = 'REASONING'
-): Promise<string> {
+    tier: TaskTier = 'REASONING',
+    tools?: any[],
+    images?: string[] // Base64 or URIs
+): Promise<{ content: string; toolCalls?: any[] }> {
     const { modelConfig } = useSettingsStore.getState();
 
     // Smart Routing Logic
@@ -164,11 +167,11 @@ export async function generateText(
 
         // Router de proveedores
         if (activeConfig.provider === 'openai') {
-            response = await callOpenAI(activeConfig, systemPrompt, userPrompt);
+            response = await callOpenAI(activeConfig, systemPrompt, userPrompt, tools, images);
         } else if (activeConfig.provider === 'gemini') {
             response = await callGemini(activeConfig, systemPrompt, userPrompt);
         } else if (activeConfig.provider === 'local') {
-            response = await callCustomOpenAI(activeConfig, systemPrompt, userPrompt);
+            response = await callCustomOpenAI(activeConfig, systemPrompt, userPrompt, tools);
         } else {
             throw new Error(`Proveedor ${activeConfig.provider} no implementado aún.`);
         }
@@ -183,13 +186,16 @@ export async function generateText(
         const logMsg = `[LLM GATEWAY] Coste estimado (${tier}): $${cost.toFixed(6)} | Tokens: ${response.usage.inputTokens}in/${response.usage.outputTokens}out`;
         console.log(sanitizeLogs(logMsg));
 
-        return response.content;
+        return {
+            content: response.content,
+            toolCalls: (response as any).toolCalls
+        };
     });
 }
 
 // --- Adaptadores Específicos (Minimalistas para no depender de SDKs pesados) ---
 
-async function callOpenAI(config: any, system: string, user: string): Promise<LLMResponse> {
+async function callOpenAI(config: any, system: string, user: string, tools?: any[], images?: string[]): Promise<LLMResponse> {
     const { encryptedKeys, masterSecret } = useSettingsStore.getState();
     const apiKeyEncrypted = encryptedKeys[config.modelId];
 
@@ -220,8 +226,11 @@ async function callOpenAI(config: any, system: string, user: string): Promise<LL
     }
 
     const data = await res.json();
+    const message = data.choices[0].message;
+
     return {
-        content: data.choices[0].message.content,
+        content: message.content || "",
+        toolCalls: message.tool_calls,
         usage: {
             inputTokens: data.usage.prompt_tokens,
             outputTokens: data.usage.completion_tokens
@@ -229,7 +238,7 @@ async function callOpenAI(config: any, system: string, user: string): Promise<LL
     };
 }
 
-async function callGemini(config: any, system: string, user: string): Promise<LLMResponse> {
+async function callGemini(config: any, system: string, user: string, images?: string[]): Promise<LLMResponse> {
     const { encryptedKeys, masterSecret } = useSettingsStore.getState();
     const apiKeyEncrypted = encryptedKeys[config.modelId];
 
@@ -245,7 +254,15 @@ async function callGemini(config: any, system: string, user: string): Promise<LL
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
             contents: [{
-                parts: [{ text: `${system}\n\nUser Task: ${user}` }]
+                parts: [
+                    { text: `${system}\n\nUser Task: ${user}` },
+                    ...(images || []).map(img => ({
+                        inline_data: {
+                            mime_type: "image/jpeg", // Assume JPEG or detect from URI
+                            data: img.split(',')[1] || img // Simple base64 extraction
+                        }
+                    }))
+                ]
             }]
         })
     });
@@ -266,11 +283,10 @@ async function callGemini(config: any, system: string, user: string): Promise<LL
 /**
  * Adaptador Universal para cualquier endpoint compatible con OpenAI (Ollama, vLLM, etc.)
  */
-async function callCustomOpenAI(config: any, system: string, user: string): Promise<LLMResponse> {
+async function callCustomOpenAI(config: any, system: string, user: string, tools?: any[], images?: string[]): Promise<LLMResponse> {
     const { encryptedKeys, masterSecret } = useSettingsStore.getState();
     const apiKeyEncrypted = encryptedKeys[config.modelId];
 
-    // Decrypt JIT
     const apiKey = apiKeyEncrypted
         ? await Vault.decryptKey(apiKeyEncrypted, masterSecret)
         : (config.apiKey || 'no-key');
@@ -287,8 +303,17 @@ async function callCustomOpenAI(config: any, system: string, user: string): Prom
             model: config.modelId === 'local-model' ? 'default' : config.modelId,
             messages: [
                 { role: 'system', content: system },
-                { role: 'user', content: user }
+                {
+                    role: 'user',
+                    content: images?.length
+                        ? [
+                            { type: 'text', text: user },
+                            ...images.map(img => ({ type: 'image_url', image_url: { url: img } }))
+                        ] as any
+                        : user
+                }
             ],
+            tools: tools?.length ? tools.map(t => ({ type: 'function', function: t })) : undefined,
             temperature: 0.7
         })
     });
@@ -299,8 +324,11 @@ async function callCustomOpenAI(config: any, system: string, user: string): Prom
     }
 
     const data = await res.json();
+    const message = data.choices[0].message;
+
     return {
-        content: data.choices[0].message.content,
+        content: message.content || "",
+        toolCalls: message.tool_calls,
         usage: {
             inputTokens: data.usage?.prompt_tokens || 0,
             outputTokens: data.usage?.completion_tokens || 0

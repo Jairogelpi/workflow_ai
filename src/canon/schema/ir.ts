@@ -46,6 +46,9 @@ export const NodeMetadataSchema = z.object({
         skeptics_count: z.number().default(0),
         voters: z.array(z.string()).default([]),
     }).optional(),
+    // Vision 2026: Multimodal and Network Awareness
+    image_url: z.string().optional(),
+    network_source: z.string().optional(), // ISP source swarm ID
 });
 export type NodeMetadata = z.infer<typeof NodeMetadataSchema>;
 

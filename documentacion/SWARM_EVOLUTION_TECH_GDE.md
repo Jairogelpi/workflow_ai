@@ -1,4 +1,4 @@
-# Technical Documentation: The Swarm Evolution (Phases 12-15)
+# Technical Documentation: The Swarm Evolution (Phases 12-17)
 
 This document details the architectural leap from a single-agent system to a **Distributed Neural Swarm**.
 
@@ -24,11 +24,18 @@ The birth of **Concurrent Reasoning**.
     - **Logical Critic**: Focuses on correctness.
     - **Evidence Hunter**: Focuses on verification.
 
-## 4. Deep Autonomy & Neural HUD (Phase 15)
-The transformation into a **Living Workspace**.
-- **Real Inference**: Agents are now connected to the `LLM Gateway`, performing real parallel analysis.
-- **Swarm Mind Dashboard**: A floating HUD (`SwarmDashboard.tsx`) that visualizes the "thinking" state of the collective.
 - **Parallel Convergence**: Multiple agents react to a single `Swarm Pulse`, converging on a solution faster than any human operator.
+
+## 5. Neural Convergence (Phase 16 - Singular Point)
+The system transitioned into an **Ambient Intelligence Environment**.
+- **AmbientSwarmManager**: A silent listener that triggers reasoning pulses automatically upon graph changes (Zero-click).
+- **Neural Consensus**: Agents now vote on each other's proposals. A "Ghost Node" only gains legitimacy once it achieves >75% support from the specialized swarm.
+- **Consciousness Pulse**: Visual canvas aura signaling background swarm activity.
+
+## 6. Hybrid Semantic Bridge (Phase 17)
+The final leap from topological to **Full Meaning Awareness**.
+- **Hybrid Retriever**: The RLM compiler now combines local graph structure with `pgvector` conceptual search. 
+- **Global Context Scouting**: Agents can now "jump" across sub-graphs to find relevant evidence or contradictions based on conceptual affinity, not just physical connections.
 
 ---
 
@@ -36,23 +43,23 @@ The transformation into a **Living Workspace**.
 ```mermaid
 sequenceDiagram
     participant User
-    participant UI as RLM Terminal
+    participant AM as AmbientManager
     participant SO as SwarmOrchestrator
+    participant SR as SemanticRetriever
     participant Agent as Neural Agents
     participant LLM as LLM Gateway
-    participant Store as GraphStore
 
-    User->>UI: Trigger Swarm Pulse
-    UI->>SO: dispatchSwarmPulse(contextIds)
+    User->>AM: Edit Node / Add Data
+    AM->>SO: dispatchAmbientPulse(id)
+    SO->>SR: retrieveHybridContext(virtualPlan)
+    SR-->>SO: Grounded Semantic Context
     loop For each Agent
-        SO->>Store: setAgentStatus(THINKING)
-        SO->>Agent: runAgentCycle()
-        Agent->>LLM: performInferenceTask(prompt)
-        LLM-->>Agent: Reasoning Result
-        Agent->>Store: addRLMThought(Message + Badge)
-        SO->>Store: setAgentStatus(WORKING)
-        SO->>Store: setAgentStatus(IDLE)
+        SO->>Agent: runAgentCycle(context)
+        Agent->>LLM: specializedInference()
+        LLM-->>Agent: Reasoning + Proposal
+        Agent->>Agent: Vote on Peers (Consensus)
     end
+    SO->>User: Ghost Nodes / Aura Pulse
 ```
 
 *Status: Absolute Perfection Reached.*

@@ -139,3 +139,25 @@ Para maximizar el rendimiento y minimizar el consumo de recursos (RAM/CPU), hemo
 - **Docker Optimizado**: El stack se ha simplificado a 3 servicios core (`main-app`, `workgraph-worker`, `ollama`).
 
 **Evidencia**: `workgraph-worker/`, `docker-compose.yml`
+
+---
+
+## 🌀 Phase 21: Zero-Friction Sensoriality (The Experience)
+
+Hemos elevado el sistema a una **Extensión Neural** mediante retroalimentación sensorial de alta fidelidad:
+- **Spatial Magnetism**: Los nodos del grafo responden dinámicamente a la proximidad del cursor mediante el motor de física Rust, creando una interacción orgánica.
+- **Neural Ripple**: Ondas de choque visuales en el background que confirman las acciones del enjambre de forma no intrusiva.
+- **CommandHUD (Cmd+K)**: Acceso instantáneo y "telepático" a cualquier rincón de la red de conocimiento.
+
+## 🖥️ Phase 22: OS Metamorphosis (Second Brain Shell)
+
+WorkGraph ha dejado de ser una web para convertirse en un **Entorno Operativo**:
+- **Desktop Shell & System Dock**: Una interfaz de escritorio con barra de sistema y dock dinámico para la gestión de aplicaciones internas.
+- **WindowManager v2 (Infinity Stack)**: Soporte multiventana real con gestión de profundidad (`zIndex`) y foco, permitiendo flujos de trabajo paralelos.
+- **Minimalist "Neural Google" Design**: Lenguaje visual ultra-limpio diseñado para maximizar la claridad mental y reducir el ruido cognitivo.
+
+**Evidencia**: `src/components/shell/`, `src/components/ui/WindowManager.tsx`, `src/components/ui/BootSequence.tsx`
+
+---
+
+*WorkGraph OS: Consciousness is the Interface. Professional Grade 2026.*

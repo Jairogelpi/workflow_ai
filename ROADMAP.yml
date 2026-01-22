@@ -791,3 +791,85 @@ operational_rules:
         status: "done"
         tasks: ["Create ConsciousnessPulse component", "Add ambient background effects"]
         evidence_nodes: ["src/components/graph/GraphCanvas.tsx"]
+  - id: 17
+    title: "Phase 17: Neural Bridge"
+    description: "Hybrid Semantic-Topological Retrieval Engine."
+    phase_gate: "Hybrid retriever integrated into Swarm reasoning cycles."
+    hitos:
+      - id: "17.1"
+        title: "Semantic Grounding"
+        description: "Integration of pgvector in compiler retriever."
+        status: "done"
+        tasks: ["Upgrade retrieveContext.ts", "Connect secureSearch to Swarm"]
+        evidence_nodes: ["src/compiler/retriever.ts"]
+      - id: "17.2"
+        title: "Global Context Scouting"
+        description: "Agents perform project-wide conceptual searches."
+        status: "done"
+        tasks: ["Implement virtualPlan pattern in Orchestrator"]
+        evidence_nodes: ["src/kernel/collaboration/SwarmOrchestrator.ts"]
+  - id: 18
+    title: "Phase 18: Swarm Agency (The Hand)"
+    description: "Real-world actions and tool-use capabilities."
+    phase_gate: "ToolRegistry is operational; agents can mutate the graph."
+    hitos:
+      - id: "18.1"
+        title: "Tool Protocol"
+        description: "Standardized function calling for agents."
+        status: "done"
+        tasks: ["Create ToolRegistry.ts", "Extend LLM Gateway with tools"]
+        evidence_nodes: ["src/kernel/agency/ToolRegistry.ts"]
+      - id: "18.2"
+        title: "Autonomous Intervention"
+        description: "Agents creating real nodes through reasoning."
+        status: "done"
+        tasks: ["Update SwarmOrchestrator execution loop"]
+        evidence_nodes: ["src/kernel/collaboration/SwarmOrchestrator.ts"]
+
+  - id: 19
+    title: "Phase 19: Multimodal Perception (The Eye)"
+    description: "Visual reasoning and diagram awareness."
+    phase_gate: "Vision Analyst agent consumes and reasons about images."
+    hitos:
+      - id: "19.1"
+        title: "Visual Gateway"
+        description: "Multimodal input support in LLM adapters."
+        status: "done"
+        tasks: ["Extend callOpenAI and callGemini for images"]
+        evidence_nodes: ["src/kernel/llm/gateway.ts"]
+      - id: "19.2"
+        title: "Vision Swarm"
+        description: "Specialized agents for visual analysis."
+        status: "done"
+        tasks: ["Create Vision Analyst agent", "Image extraction in Orchestrator"]
+        evidence_nodes: ["src/kernel/collaboration/SwarmOrchestrator.ts"]
+
+  - id: 20
+    title: "Phase 20: Collective Intelligence (The Network)"
+    description: "Inter-Swarm Protocol for decentralized collaboration."
+    phase_gate: "Foundation for swarm-to-swarm node sharing is active."
+    hitos:
+      - id: "20.1"
+        title: "Inter-Swarm Protocol"
+        description: "Decentralized node sharing foundation."
+        status: "done"
+        tasks: ["Implement InterSwarmProtocol.ts"]
+        evidence_nodes: ["src/kernel/collaboration/InterSwarmProtocol.ts"]
+
+  - id: 21
+    title: "Phase 21: Zero-Friction Sensoriality"
+    description: "Futuristic UX with spatial magnetism and neural feedback."
+    phase_gate: "User experience feels biological and zero-friction."
+    hitos:
+      - id: "21.1"
+        title: "Spatial Magnetism"
+        description: "Nodes respond to cursor proximity via physics."
+        status: "done"
+        tasks: ["Update useAntigravityEngine.ts with cursor gravity"]
+        evidence_nodes: ["src/hooks/useAntigravityEngine.ts"]
+      - id: "21.2"
+        title: "Telepathic HUD"
+        description: "Cmd+K zero-friction command interface."
+        status: "done"
+        tasks: ["Create CommandHUD.tsx"]
+        evidence_nodes: ["src/components/ui/CommandHUD.tsx"]

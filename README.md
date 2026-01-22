@@ -1,8 +1,6 @@
-# WorkGraph OS
+# WorkGraph OS: The Thinking Operating System 🖥️🧠
 
-**Sistema Operativo de Pensamiento de Alto Rendimiento**
-
-Una arquitectura híbrida TypeScript + Rust diseñada para transformar conocimiento desestructurado en **Estructura Ejecutable** con integridad verificable.
+**WorkGraph OS** is a futuristic, high-performance environment designed to transform unstructured knowledge into **Executable Structure** with verifiable integrity. It is not just an app; it is a "Second Brain" operating system.
 
 ---
 
@@ -15,15 +13,15 @@ Una arquitectura híbrida TypeScript + Rust diseñada para transformar conocimie
 │                                                                 │
 │  ┌──────────────┐    ┌──────────────┐    ┌──────────────┐      │
 │  │   Extension  │    │   Next.js    │    │   Supabase   │      │
-│  │  (X-Ray HUD) │◄──►│   Frontend   │◄──►│  (SQL+pgvec) │      │
+│  │  (X-Ray HUD) │◄──►│  (OS Shell)  │◄──►│  (SQL+pgvec) │      │
 │  └──────────────┘    └──────────────┘    └──────────────┘      │
 │         │                   │                   │               │
 │         ▼                   ▼                   ▼               │
 │  ┌─────────────────────────────────────────────────────────┐   │
-│  │                    KERNEL (TypeScript)                   │   │
+│  │              OS KERNEL & SENSORIALITY LAYER              │   │
 │  │  ┌─────────┐  ┌──────────┐  ┌──────────┐  ┌──────────┐  │   │
-│  │  │ Guards  │  │ Digest   │  │ LLM      │  │ Observa- │  │   │
-│  │  │         │  │ Engine   │  │ Gateway  │  │ bility   │  │   │
+│  │  │ Window  │  │ Boot     │  │ Command  │  │ Neural   │  │   │
+│  │  │ Manager │  │ Sequence │  │ HUD      │  │ Ripple   │  │   │
 │  │  └─────────┘  └──────────┘  └──────────┘  └──────────┘  │   │
 │  └─────────────────────────────────────────────────────────┘   │
 │                            │                                    │

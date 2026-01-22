@@ -21,15 +21,36 @@ export function useAntigravityEngine() {
             try {
                 // Observability Trace [Hito 4.5]
                 await traceSpan('antigravity.wasm_tick', { count: nodes.length }, async () => {
+                    const { cursorPosition } = useGraphStore.getState();
+
                     // Note: In production, init() is called once at app startup
                     await init();
 
-                    const nodesForWasm = nodes.map(n => ({
-                        id: n.id,
-                        x: n.position.x,
-                        y: n.position.y,
-                        is_pin: n.data.metadata.pin
-                    }));
+                    const nodesForWasm = nodes.map(n => {
+                        let x = n.position.x;
+                        let y = n.position.y;
+
+                        // Phase 21: Spatial Magnetism (TypeScript-side pre-processing)
+                        if (cursorPosition) {
+                            const dx = x - cursorPosition.x;
+                            const dy = y - cursorPosition.y;
+                            const dist = Math.sqrt(dx * dx + dy * dy);
+
+                            if (dist < 300) {
+                                // Pull nodes slightly towards cursor
+                                const force = (300 - dist) / 5000;
+                                x -= dx * force;
+                                y -= dy * force;
+                            }
+                        }
+
+                        return {
+                            id: n.id,
+                            x,
+                            y,
+                            is_pin: n.data.metadata.pin
+                        };
+                    });
 
                     const updatedPositions = apply_forces(nodesForWasm, []);
 

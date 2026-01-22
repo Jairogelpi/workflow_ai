@@ -35,7 +35,8 @@ export async function createPlan(goal: string, depth: number = 0): Promise<Plan>
         ? `El objetivo del usuario es: "${goal}"`
         : `SUB-PLANIFICACIÓN: Desglosa el siguiente paso complejo en sub-tareas: "${goal}"`;
 
-      const jsonOutput = await generateText(PLANNER_SYSTEM_PROMPT, prompt);
+      const result = await generateText(PLANNER_SYSTEM_PROMPT, prompt);
+      const jsonOutput = result.content;
 
       // Limpieza básica
       const cleanJson = jsonOutput.replace(/```json/g, '').replace(/```/g, '').trim();

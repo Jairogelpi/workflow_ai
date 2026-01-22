@@ -1,6 +1,9 @@
 import { useGraphStore } from '../../store/useGraphStore';
 import { MediatorAgent } from './MediatorAgent';
 import { TaskComplexity } from '../llm/gateway';
+import { retrieveContext } from '../../compiler/retriever';
+import { Plan } from '../../compiler/types';
+import { ToolRegistry } from '../agency/ToolRegistry';
 
 export type AgentPersonality = 'critic' | 'refiner' | 'expansionist' | 'validator' | 'harvester' | 'librarian';
 
@@ -17,6 +20,7 @@ export class SwarmOrchestrator {
         { id: 'builder-01', name: 'Expansionist', personality: 'expansionist', color: '#22d3ee' },
         { id: 'critic-01', name: 'Logical Critic', personality: 'critic', color: '#f87171' },
         { id: 'validator-01', name: 'Evidence Hunter', personality: 'validator', color: '#c084fc' },
+        { id: 'vision-01', name: 'Vision Analyst', personality: 'harvester', color: '#ec4899' },
         { id: 'librarian-01', name: 'G-Librarian', personality: 'librarian', color: '#4ade80' }
     ];
     private static mediator = new MediatorAgent();
@@ -39,46 +43,72 @@ export class SwarmOrchestrator {
     }
 
     private static async runAgentCycle(agent: SwarmAgent, contextNodeIds: string[]) {
-        const { addRLMThought, nodes, setAgentStatus } = useGraphStore.getState();
+        const { addRLMThought, setAgentStatus, nodes, edges } = useGraphStore.getState();
 
         // Stage 1: Recognition & Contextualization
         setAgentStatus(agent.id, 'THINKING');
         addRLMThought({
-            message: `[RECOGNITION] Ingesting context for ${agent.personality} reasoning...`,
+            message: `[RECOGNITION] Ingesting semantic context for ${agent.personality} reasoning...`,
             type: 'reasoning',
             agentId: agent.id,
             agentName: agent.name
         });
 
-        const contextNodes = nodes.filter(n => contextNodeIds.includes(n.id));
-        const contextString = JSON.stringify(contextNodes.map(n => ({ type: n.data.type, content: (n.data as any).content || (n.data as any).statement })));
+        // Phase 2.7: Semantic retrieval for agent persona
+        const virtualPlan: Plan = {
+            goal: `swarm-query-${agent.id}`,
+            steps: [{
+                id: '1',
+                description: `Agent ${agent.name} is looking for ${agent.personality} patterns across the project.`,
+                required_context_keys: []
+            }]
+        };
+
+        const semanticContext = await retrieveContext(virtualPlan, { nodes: nodes as any, edges: edges as any });
+        const contextString = JSON.stringify(semanticContext.map((n: any) => ({
+            type: n.type,
+            content: n.raw || n.digest,
+            mode: n.selection_mode
+        })));
 
         try {
-            // Stage 2: Neural Inference (Real LLM Call)
+            // Stage 2: Neural Inference with Agency (Phase 18)
             const prompt = `Persona: ${agent.name} (${agent.personality})
 Context Nodes: ${contextString}
-Objective: Performe a specialized analysis or proposal based on your personality.
-Rules: Be concise, technical, and focused on logical integrity or expansion.`;
+Objective: Perform a specialized analysis or proposal. You have tools available.
+Rules: Be concise, technical, and use tools if needed to expand the graph or fetch data.`;
 
-            const reasoning = await (this.mediator as any).performInferenceTask(prompt, TaskComplexity.MEDIUM);
+            // Initialize Tools for this cycle
+            ToolRegistry.initialize();
+            const tools = ToolRegistry.getToolsForLLM();
+
+            // Phase 19: Multimodal detection
+            const images = agent.id === 'vision-01'
+                ? semanticContext.map((n: any) => n.metadata?.image_url).filter(url => !!url)
+                : [];
+
+            const { content, toolCalls } = await (this.mediator as any).performInferenceWithTools(prompt, TaskComplexity.MEDIUM, tools, images);
 
             setAgentStatus(agent.id, 'WORKING');
 
             addRLMThought({
-                message: reasoning,
+                message: content || `[ACTION] Executing ${toolCalls?.length} tools...`,
                 type: agent.personality === 'critic' ? 'warn' : 'success',
                 agentId: agent.id,
                 agentName: agent.name
             });
 
-            // Stage 3: Autonomous Action (Hito 15.2 Placeholder)
-            if (agent.personality === 'expansionist' && reasoning.includes('PROPOSE_NODE')) {
-                addRLMThought({
-                    message: "Proposed autonomous expansion projecting via Ghost Nodes.",
-                    type: 'info',
-                    agentId: agent.id,
-                    agentName: agent.name
-                });
+            // Stage 3: Autonomous Action (Agency Execution)
+            if (toolCalls && toolCalls.length > 0) {
+                for (const call of toolCalls) {
+                    const result = await ToolRegistry.call(call.function.name, JSON.parse(call.function.arguments));
+                    addRLMThought({
+                        message: `Tool ${call.function.name} executed: ${JSON.stringify(result)}`,
+                        type: 'info',
+                        agentId: agent.id,
+                        agentName: agent.name
+                    });
+                }
             }
         } catch (error) {
             addRLMThought({
