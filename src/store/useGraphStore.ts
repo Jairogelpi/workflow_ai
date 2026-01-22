@@ -52,18 +52,25 @@ interface GraphState {
     setSearchQuery: (query: string) => void;
     centerNode: (id: string) => void;
 
-    // WINDOW MANAGER
+    // --- WINDOW MANAGER STATE ---
+    /** The currently active floating window (if any) */
     activeWindow: {
         id: string;
         title: string;
         contentUrl?: string;
+        /** The type of content to render inside the window */
         contentType: 'pdf' | 'web' | 'text' | 'editor';
+        /** Optional data passed to the editor component */
         nodeData?: any;
+        /** MIME type of the file, used for SmartViewer */
         mimeType?: string;
+        /** Extracted text content for fallback viewing */
         textContent?: string;
     } | null;
 
+    /** Opens a floating window with the specified configuration */
     openWindow: (window: GraphState['activeWindow']) => void;
+    /** Closes the currently active floating window */
     closeWindow: () => void;
 }
 
@@ -71,7 +78,7 @@ export const useGraphStore = create<GraphState>((set, get) => ({
     nodes: [],
     edges: [],
     selectedNodeId: null,
-    selectedNodeId: null,
+
     searchQuery: '',
     activeWindow: null,
     isLoading: false,

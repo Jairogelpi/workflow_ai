@@ -4,14 +4,28 @@ import React, { useState, useEffect, useRef } from 'react';
 // Añadimos el icono ExternalLink
 import { X, Maximize2, Minimize2, GripHorizontal, ExternalLink } from 'lucide-react';
 
+/**
+ * FloatingPanel Component
+ * 
+ * A draggable, resizable (minimize/maximize) window component that floats above the graph.
+ * It provides a "desktop-like" experience for viewing content while maintaining context of the graph.
+ * 
+ * Features:
+ * - Glassmorphism UI (Backdrop Blur)
+ * - Draggable Header
+ * - Minimize / Maximize / Close controls
+ * - "Pop Out" functionality to open content in a new tab/window
+ */
 interface FloatingPanelProps {
   title: string;
   isOpen: boolean;
   onClose: () => void;
-  // Añadimos prop para la URL y la función de pop-out
-  contentUrl?: string;
+  /** URL of the content, used for the Pop Out feature */
+  contentUrl?: string | undefined;
+  /** Callback triggered when the user clicks the "Pop Out" button */
   onPopOut?: () => void;
   children: React.ReactNode;
+  /** Initial position of the window {x, y} */
   initialPos?: { x: number; y: number };
 }
 

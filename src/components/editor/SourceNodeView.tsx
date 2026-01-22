@@ -2,6 +2,12 @@
 import { useGraphStore } from '../../store/useGraphStore';
 import { Eye, FileText } from 'lucide-react';
 
+/**
+ * SourceNodeView
+ * 
+ * Renders a 'resource' node (PDF, Text, etc.) within the NodeEditor.
+ * It provides a preview card and an "OPEN IN OS" button that triggers the Floating Window.
+ */
 export default function SourceNodeView({ node }: { node: any }) {
     const openWindow = useGraphStore(s => s.openWindow);
 

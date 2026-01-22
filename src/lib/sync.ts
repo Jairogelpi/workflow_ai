@@ -42,7 +42,7 @@ export const syncService = {
                 metadata: node.metadata,
                 current_version_hash: node.metadata.version_hash,
                 updated_at: new Date().toISOString(),
-                deleted_at: null // Reset deleted_at if re-upserted
+                deleted_at: null
             });
 
         if (error) throw error;
@@ -95,7 +95,6 @@ export const syncService = {
      * Batch upsert for initializing/saving large changes
      */
     async syncAll(projectId: string, nodes: WorkNode[], edges: WorkEdge[]) {
-        // Simple sequential or ideally bulk upsert
         for (const node of nodes) await this.upsertNode(projectId, node);
         for (const edge of edges) await this.upsertEdge(projectId, edge);
     }

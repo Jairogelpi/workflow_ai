@@ -14,6 +14,13 @@ chrome.runtime.onInstalled.addListener(() => {
     });
 });
 
+// TOGGLE OVERLAY: Click on extension icon → inject/toggle overlay
+chrome.action.onClicked.addListener((tab) => {
+    if (tab.id) {
+        chrome.tabs.sendMessage(tab.id, { type: 'TOGGLE_OVERLAY' });
+    }
+});
+
 // Listener for Context Menu Clicks
 chrome.contextMenus.onClicked.addListener(async (info, tab) => {
     if (info.menuItemId === 'save-to-workgraph' && info.selectionText) {

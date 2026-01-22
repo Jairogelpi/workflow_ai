@@ -1,79 +1,35 @@
 /// <reference types="chrome" />
-import { createRoot } from 'react-dom/client';
+import { createRoot, Root } from 'react-dom/client';
 import ExtensionOverlay from './ExtensionOverlay';
 
-console.log('[WorkGraph] Content script injected.');
+console.log('[WorkGraph] Content script loaded (dormant).');
 
 /**
- * WorkGraph OS - Content Script Injection
+ * WorkGraph OS - Smart Overlay Injection
  * 
- * This script runs on every page visited by the user (as per <all_urls> permission).
- * It acts as the bridge between the browser page and the WorkGraph Extension.
- * 
- * Strategy: "The Shadow Injection"
- * We create a Shadow DOM root to isolate our extension's UI (The Overlay)
- * from the host page's CSS. This prevents style bleeding in both directions.
+ * Strategy: "On-Demand Injection"
+ * - NO automatic injection on page load (no resource waste)
+ * - Click extension icon → TOGGLE_OVERLAY message → inject/show/hide
+ * - Shadow DOM isolates styles from host page
+ * - Position persists via chrome.storage
  */
-function injectOverlay() {
-    // 1. Create the Host Container
-    // This div sits in the main DOM but is invisible (width/height 0)
-    const host = document.createElement('div');
-    host.id = 'workgraph-os-host';
-    host.style.position = 'fixed';
-    host.style.top = '0';
-    host.style.left = '0';
-    host.style.width = '0'; // Cero para no bloquear clicks cuando está cerrado
-    host.style.height = '0';
-    host.style.zIndex = '2147483647'; // El número más alto permitido en CSS (Max Z-Index)
 
-    document.body.appendChild(host);
+let root: Root | null = null;
+let overlayContainer: HTMLElement | null = null;
 
-    // 2. Create the Shadow DOM (The Isolated Bubble)
-    // mode: 'open' allows us to access the shadow entries if needed
-    const shadow = host.attachShadow({ mode: 'open' });
-
-    // 3. Inject Styles
-    // We inject a style reset or Tailwind styles specific to our shadow root
-    // :host refers to the shadow host element itself
-    const style = document.createElement('style');
-    style.textContent = `
-    :host {
-      all: initial; 
-      font-family: sans-serif;
+// Listen for TOGGLE_OVERLAY from background script
+chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+    if (message.type === 'TOGGLE_OVERLAY') {
+        toggleOverlay();
+        sendResponse({ success: true });
     }
-    div {
-      box-sizing: border-box;
-    }
-  `;
-    shadow.appendChild(style);
-
-    // 4. Mount React Root
-    // We create a div *inside* the shadow options to mount our React app
-    const rootDiv = document.createElement('div');
-    shadow.appendChild(rootDiv);
-
-    const root = createRoot(rootDiv);
-
-    // Renderizar el Overlay
-    root.render(<ExtensionOverlay />);
-}
-
-// Ejecutar al cargar
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', injectOverlay);
-} else {
-    injectOverlay();
-}
-
-// Mantenemos los listeners de contexto originales (opcional, si queremos mantener la funcionalidad de captura click derecho)
-chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
-    if (request.type === 'GET_SELECTION_CONTEXT') {
+    
+    if (message.type === 'GET_SELECTION_CONTEXT') {
         const selection = window.getSelection();
         if (selection && selection.rangeCount > 0) {
             const range = selection.getRangeAt(0);
             const container = range.commonAncestorContainer;
             const parentElement = container.nodeType === 1 ? (container as HTMLElement) : container.parentElement;
-
             sendResponse({
                 context: parentElement?.innerText || null,
                 title: document.title
@@ -84,3 +40,68 @@ chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
     }
     return true;
 });
+
+function toggleOverlay() {
+    // If already mounted, toggle visibility
+    if (overlayContainer) {
+        const isHidden = overlayContainer.style.display === 'none';
+        overlayContainer.style.display = isHidden ? 'block' : 'none';
+        console.log(`[WorkGraph] Overlay ${isHidden ? 'shown' : 'hidden'}`);
+        return;
+    }
+
+    // First time: mount the overlay
+    mountOverlay();
+}
+
+function mountOverlay() {
+    console.log('[WorkGraph] Mounting overlay...');
+
+    // 1. Create Host Container (fixed, full viewport, click-through)
+    overlayContainer = document.createElement('div');
+    overlayContainer.id = 'workgraph-os-host';
+    overlayContainer.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        z-index: 2147483647;
+        pointer-events: none;
+    `;
+    document.body.appendChild(overlayContainer);
+
+    // 2. Attach Shadow DOM (style isolation)
+    const shadow = overlayContainer.attachShadow({ mode: 'open' });
+
+    // 3. Inject base styles into Shadow
+    const style = document.createElement('style');
+    style.textContent = `
+        :host {
+            all: initial;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        }
+        *, *::before, *::after {
+            box-sizing: border-box;
+        }
+        .overlay-panel {
+            pointer-events: auto;
+        }
+    `;
+    shadow.appendChild(style);
+
+    // 4. Mount React
+    const rootDiv = document.createElement('div');
+    shadow.appendChild(rootDiv);
+
+    root = createRoot(rootDiv);
+    root.render(
+        <ExtensionOverlay 
+            onClose={() => {
+                if (overlayContainer) overlayContainer.style.display = 'none';
+            }} 
+        />
+    );
+
+    console.log('[WorkGraph] Overlay mounted successfully.');
+}

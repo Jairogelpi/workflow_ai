@@ -34,8 +34,9 @@ export function WorkNodeComponent({ data, selected, id }: NodeProps<WorkNodeIR>)
     const config = (NODE_TYPE_CONFIG[data.type] || NODE_TYPE_CONFIG.note)!;
     const Icon = config.icon;
 
-    // Content preview logic
-    const content = (data as any).content || (data as any).statement || (data as any).rationale || (data as any).summary || (data as any).description || (data as any).name || (data as any).rule || '';
+    // Content preview logic - handle both string and object content
+    const rawContent = (data as any).content || (data as any).statement || (data as any).rationale || (data as any).summary || (data as any).description || (data as any).name || (data as any).rule || '';
+    const content = typeof rawContent === 'object' ? (rawContent.name || rawContent.content || JSON.stringify(rawContent)) : String(rawContent);
     const preview = content.replace(/<[^>]*>?/gm, '').slice(0, 50) + (content.length > 50 ? '...' : '');
 
     return (

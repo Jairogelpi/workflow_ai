@@ -1,13 +1,14 @@
 {
     "manifest_version": 3,
-    "name": "WorkGraph Ingestor",
+    "name": "WorkGraph OS Layer",
     "version": "1.0.0",
-    "description": "Capture knowledge from the web directly into your WorkGraph.",
+    "description": "Inject WorkGraph OS directly into any webpage.",
     "permissions": [
         "activeTab",
         "contextMenus",
         "storage",
-        "notifications"
+        "notifications",
+        "scripting"
     ],
     "host_permissions": [
         "<all_urls>"
@@ -39,12 +40,11 @@
         "type": "module"
     },
     "action": {
-        "default_popup": "index.html",
-        "default_title": "WorkGraph Settings"
+        "default_title": "Toggle WorkGraph OS Overlay"
     },
     "icons": {
-        "16": "public/icon16.png",
-        "48": "public/icon48.png",
-        "128": "public/icon128.png"
+        "16": "icon16.png",
+        "48": "icon48.png",
+        "128": "icon128.png"
     }
 }

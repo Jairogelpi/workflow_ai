@@ -4,6 +4,14 @@ import { useSearchParams } from 'next/navigation';
 import NodeEditor from '@/components/editor/NodeEditor';
 import { Suspense } from 'react';
 
+/**
+ * Editor Page (Focus Mode)
+ * 
+ * A distraction-free editing environment that runs in a separate tab.
+ * It is triggered via the "Pop Out" button in the FloatingPanel.
+ * 
+ * It reuses the `NodeEditor` component but renders it full-screen.
+ */
 function EditorPageContent() {
     const searchParams = useSearchParams();
     const nodeId = searchParams.get('nodeId');
