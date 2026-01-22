@@ -281,18 +281,29 @@ phases:
       - id: "3.1"
         title: "Hierarchical Digests"
         description: "Branch/Project summarization logic."
-        status: "pending"
+        status: "done"
         gate: "Automatic summary generation for nested nodes."
-        tasks: []
-        evidence_nodes: []
+        tasks: 
+          - "Implement Digest Schema (digests table)"
+          - "Implement Digest Engine (Raw-on-Demand retrieval)"
+          - "Implement Context Selector (RAW vs DIGEST)"
+        evidence_nodes: 
+          - "src/kernel/digest_engine.ts"
+          - "src/canon/migrations/001_gate7_schema.sql"
+          - "documentacion/HITO_3.1_HIERARCHICAL_DIGESTS.md"
 
       - id: "3.2"
         title: "Staleness Detection"
         description: "Evidence expiration and invalidation warnings."
-        status: "pending"
+        status: "done"
         gate: "Evidence age tracking active."
-        tasks: []
-        evidence_nodes: []
+        tasks: 
+          - "Implement is_stale flag in table"
+          - "Implement markStale logic in Kernel"
+          - "Implement Observability Tracing"
+        evidence_nodes: 
+          - "src/kernel/digest_engine.ts"
+          - "src/kernel/observability.ts"
 
       - id: "3.3"
         title: "Collaborative Governance"

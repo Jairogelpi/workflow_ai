@@ -95,25 +95,14 @@ export const useGraphStore = create<GraphState>((set, get) => ({
         try {
             const { nodes: rawNodes, edges: rawEdges } = await syncService.fetchGraph(projectId);
 
-            // Map raw DB nodes back to AppNodes
-            const flowNodes = rawNodes.map(node => {
-                // The DB stores the WorkNode IR partially in 'content' and metadata
-                // We reconstruct it to ensure strict IR compliance
-                const irNode: WorkNode = node.content;
-                return backendToFlow(irNode);
-            });
+            // Map Domain Nodes (WorkNode) to React Flow Nodes (AppNode)
+            const flowNodes = rawNodes.map(node => backendToFlow(node));
 
             const flowEdges = rawEdges.map(edge => ({
                 id: edge.id,
-                source: edge.source_node_id,
-                target: edge.target_node_id,
-                data: {
-                    id: edge.id,
-                    source: edge.source_node_id,
-                    target: edge.target_node_id,
-                    relation: edge.relation,
-                    metadata: edge.metadata
-                } as WorkEdge
+                source: edge.source,
+                target: edge.target,
+                data: edge // WorkEdge is the data
             }));
 
             set({ nodes: flowNodes, edges: flowEdges, isLoading: false });

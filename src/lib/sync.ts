@@ -2,7 +2,7 @@ import { supabase } from './supabase';
 import { WorkNode, WorkEdge } from '../canon/schema/ir';
 
 /**
- * Sync Bridge: Interfaces with Supabase SQL Tables
+ * Sync Bridge: Interfaces with Supabase SQL Tables (Existing Schema)
  */
 
 export const syncService = {
@@ -18,29 +18,96 @@ export const syncService = {
         if (nodesRes.error) throw nodesRes.error;
         if (edgesRes.error) throw edgesRes.error;
 
-        return {
-            nodes: nodesRes.data as any[],
-            edges: edgesRes.data as any[]
-        };
+        // Re-hydrate WorkNode
+        const nodes: WorkNode[] = (nodesRes.data || []).map((row: any) => {
+            // 1. Extract JSON Content
+            const coreContent = row.content || {};
+
+            // 2. Reconstruct Metadata
+            const metadata = {
+                created_at: row.created_at,
+                updated_at: row.updated_at,
+                version_hash: row.current_version_hash || '0000',
+                origin: row.origin || 'human',
+                confidence: row.confidence ?? 1.0,
+                // Adapting existing columns to IR
+                validated: row.is_validated ?? false,
+                pin: row.is_pinned ?? false,
+
+                // Metadata extras
+                source: row.metadata?.source,
+                source_title: row.metadata?.source_title,
+                accessed_at: row.metadata?.accessed_at,
+                snippet_context: row.metadata?.snippet_context,
+            };
+
+            // 3. Assemble Object
+            return {
+                id: row.id,
+                type: row.type,
+                metadata,
+                ...coreContent // Spread content (statement, rationale, etc.)
+            } as WorkNode;
+        });
+
+        const edges: WorkEdge[] = (edgesRes.data || []).map((row: any) => ({
+            // If ID is UUID (from existing table), use it. 
+            // Logic assumes row.id exists in work_edges
+            id: row.id,
+            source: row.source_node_id,
+            target: row.target_node_id,
+            relation: row.relation,
+            metadata: {
+                created_at: row.created_at,
+                updated_at: row.created_at,
+                version_hash: '0000',
+                origin: 'human',
+                confidence: 1.0,
+                validated: true,
+                pin: false,
+                ...row.metadata // Spread any additional metadata from the DB
+            }
+        })) as unknown as WorkEdge[];
+
+        return { nodes, edges };
     },
 
     /**
      * Atomic Upsert for a WorkNode
      */
     async upsertNode(projectId: string, node: WorkNode) {
+        const { id, type, metadata, ...contentSpecifics } = node as any;
+
+        // Payload for 'content' JSONB column
+        const contentPayload = {
+            ...contentSpecifics
+        };
+
+        // Payload for 'metadata' JSONB column (extras only)
+        const metadataPayload = {
+            source: metadata.source,
+            source_title: metadata.source_title,
+            accessed_at: metadata.accessed_at,
+            snippet_context: metadata.snippet_context
+        };
+
         const { error } = await supabase
-            .from('work_nodes')
+            .from('work_nodes') // Using EXISTING table
             .upsert({
-                id: node.id,
+                id: id,
                 project_id: projectId,
-                type: node.type,
-                content: node,
-                confidence: node.metadata.confidence,
-                is_pinned: node.metadata.pin,
-                is_validated: node.metadata.validated,
-                origin: node.metadata.origin,
-                metadata: node.metadata,
-                current_version_hash: node.metadata.version_hash,
+                type: type,
+                content: contentPayload,
+
+                // Mapping IR -> DB Columns
+                is_pinned: metadata.pin,
+                is_validated: metadata.validated,
+                current_version_hash: metadata.version_hash,
+                confidence: metadata.confidence,
+                origin: metadata.origin,
+
+                metadata: metadataPayload,
+
                 updated_at: new Date().toISOString(),
                 deleted_at: null
             });
@@ -53,7 +120,7 @@ export const syncService = {
      */
     async upsertEdge(projectId: string, edge: WorkEdge) {
         const { error } = await supabase
-            .from('work_edges')
+            .from('work_edges') // Using EXISTING table
             .upsert({
                 id: edge.id,
                 project_id: projectId,
@@ -61,6 +128,7 @@ export const syncService = {
                 target_node_id: edge.target,
                 relation: edge.relation,
                 metadata: edge.metadata,
+                created_at: new Date().toISOString(),
                 deleted_at: null
             });
 
@@ -80,7 +148,7 @@ export const syncService = {
     },
 
     /**
-     * Soft Delete (Archive) for an edge
+     * Soft Delete Edge
      */
     async archiveEdge(edgeId: string) {
         const { error } = await supabase
@@ -92,7 +160,7 @@ export const syncService = {
     },
 
     /**
-     * Batch upsert for initializing/saving large changes
+     * Batch upsert
      */
     async syncAll(projectId: string, nodes: WorkNode[], edges: WorkEdge[]) {
         for (const node of nodes) await this.upsertNode(projectId, node);
