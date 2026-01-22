@@ -1,8 +1,20 @@
+'use client';
+
+import { useEffect } from 'react';
 import GraphCanvas from '../../components/graph/GraphCanvas';
 import NodeEditor from '../../components/editor/NodeEditor';
 import Sidebar from '../../components/layout/Sidebar';
+import { useGraphStore } from '../../store/useGraphStore';
+
+const DEFAULT_PROJECT_ID = '00000000-0000-0000-0000-000000000000';
 
 export default function EditorPage() {
+    const loadProject = useGraphStore((state) => state.loadProject);
+
+    useEffect(() => {
+        loadProject(DEFAULT_PROJECT_ID);
+    }, [loadProject]);
+
     return (
         <main className="flex h-screen w-screen overflow-hidden bg-slate-950 text-slate-200 font-sans">
             {/* Sidebar - Browser & Discovery */}
