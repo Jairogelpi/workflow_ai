@@ -19,7 +19,12 @@ Se ha implementado el **MediatorAgent** utilizando la arquitectura **RLM (Recurs
 ### 3. El Guardian Lógico (Verifier.ts)
 - **`verifyBranch()`**: Nueva capacidad para validar estados de rama arbitrarios antes de la fusión, garantizando que los contratos de invariancia se respeten matemáticamente.
 
-### 4. Presencia en Tiempo Real
+### 4. Visual Diff Engine: Evidencia Forense
+Se ha integrado un motor de comparación visual (`src/components/collaboration/VisualDiffView.tsx`):
+- **Resaltado de Cambios**: Muestra exactamente qué palabras o párrafos han cambiado en cada nodo.
+- **Transparencia Total**: El usuario puede ver la "Eficacia del Cambio" antes de aprobar, comparando la rama propuesta con la principal en tiempo real.
+
+### 5. Presencia en Tiempo Real
 - **`PresenceIndicator.tsx`**: Componente de baja latencia para visualización de co-ediciónactiva.
 
 ## 🚀 Impacto en el Producto
