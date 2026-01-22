@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import { ArrowRight, ExternalLink, Save, Check, Loader2 } from 'lucide-react';
-import { supabase } from '../lib/supabase';
 
 interface ArticleData {
     title: string;
