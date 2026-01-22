@@ -306,6 +306,34 @@ phases:
           - "src/kernel/observability.ts"
 
       - id: "3.3"
+        title: "Dynamic Pricing Oracle"
+        description: "Real-time pricing for LLM calls via OpenRouter API."
+        status: "done"
+        gate: "measureCost updates dynamically based on market rates."
+        tasks:
+          - "Implement PriceRegistry (Singleton)"
+          - "Integrate OpenRouter models API"
+          - "Implement 24h caching and fallback safety"
+        evidence_nodes:
+          - "src/kernel/observability.ts"
+          - "documentacion/HITO_3.3_DYNAMIC_PRICING.md"
+
+      - id: "3.4"
+        title: "Link-OS (Extension V3)"
+        description: "Side Panel and Offscreen Parser architecture for deep link analysis."
+        status: "done"
+        gate: "Extension can parse links into Side Panel and insert into Chat."
+        tasks:
+          - "Implement Offscreen Document (Readability.js)"
+          - "Implement Side Panel UI (React)"
+          - "Implement Content Script 🧠 Trigger"
+          - "Implement Insert-to-Chat automation"
+        evidence_nodes:
+          - "extension/src/background/index.ts"
+          - "extension/src/sidepanel/SidePanelViewer.tsx"
+          - "documentacion/HITO_3.4_LINK_OS_EXTENSION.md"
+
+      - id: "3.5"
         title: "Collaborative Governance"
         description: "Propose/Approve workflows (Human-led)."
         status: "pending"

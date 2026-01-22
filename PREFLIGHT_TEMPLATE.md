@@ -29,6 +29,9 @@
 - [ ] No `any` types.
 - [ ] No business logic in UI components.
 - [ ] All data structures defined via Zod.
+- [ ] **Oracle Safety**: External price fetch overrides fallback?
+- [ ] **Extension Isolation**: Logic verified in Offscreen context?
+- [ ] **Data Hygiene**: Content sanitized with DOMPurify?
 
 ## 4. Verification Plan (The Gate)
 ### 4.1 Automated Tests

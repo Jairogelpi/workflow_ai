@@ -18,6 +18,8 @@ Before any code generation or planning, the Assistant MUST:
 - **Strict Typing**: TypeScript `strict` mode is the baseline. `any` is a system failure.
 - **Kernel Isolation**: The WorkGraph IR remains pure and decoupled from UI or AI providers.
 - **Data Sovereignty**: The system must ensure zero vendor lock-in; exports must be available at all times.
+- **Market-Linked Pricing**: Costs must be calculated against live market rates (e.g., OpenRouter) to ensure user transparency.
+
 
 ## 3. Conflict Resolution (The PIN Protocol)
 If a task conflicts with a **PIN node** or an **Invariant**:
