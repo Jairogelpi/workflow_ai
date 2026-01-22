@@ -22,6 +22,9 @@ CREATE TABLE IF NOT EXISTS digests (
     dependency_hash TEXT NOT NULL, 
     is_stale BOOLEAN DEFAULT FALSE,
     
+    -- Warnings (Contradictions, Low Confidence, etc.)
+    warnings JSONB DEFAULT '[]'::jsonb,
+
     -- Observabilidad persistida (Opcional, pero útil para auditoría rápida)
     token_cost_input INTEGER,
     last_generated_at TIMESTAMPTZ DEFAULT NOW()

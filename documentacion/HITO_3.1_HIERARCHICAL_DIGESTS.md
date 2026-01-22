@@ -54,3 +54,18 @@ TRANSFORMATION: `Website` -> `Native App`
 ## 4. Next Steps
 - Activate the **Staleness Worker** (Hito 3.2 real-time triggers).
 - Connect the **Digest Generator** to the LLM Pipeline.
+
+## 5. The "Brain" of Gate 7
+We integrated the **System Prompt**, **Serializer**, and **Worker Logic** into a single, self-contained kernel module: `src/kernel/digest_engine.ts`. 
+
+### 5.1 Architecture
+- **Self-Contained**: No external prompt files. The `DIGEST_SYSTEM_PROMPT` is constant within the engine.
+- **Data Hydration**: The engine automatically maps raw SQL rows (`work_nodes`) to Domain Objects (`WorkNode`) before processing, ensuring type safety.
+- **Canon Compliance**: Implicit enforcement of PINs and Validated status via the System Prompt.
+
+### 5.2 Key Components
+1.  **Serializer (`serializeBranchForLLM`)**: Flattens polymorphic nodes into dense text.
+2.  **System Prompt**: Enforces "Hierarchy of Truth" and "Reference Integrity".
+3.  **Retrieve Context**: Automatically decides between `RAW` and `DIGEST` strategies.
+
+
