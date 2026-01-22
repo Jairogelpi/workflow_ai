@@ -113,11 +113,18 @@ export const CollaborationInbox = ({ projectId }: { projectId: string }) => {
                         crs.map(cr => (
                             <div
                                 key={cr.id}
-                                onClick={() => setSelectedCr(cr)}
+                                onClick={() => {
+                                    if (document.startViewTransition) {
+                                        document.startViewTransition(() => setSelectedCr(cr));
+                                    } else {
+                                        setSelectedCr(cr);
+                                    }
+                                }}
                                 className={`p-5 rounded-2xl mb-2 cursor-pointer transition-all duration-300 group
                                 ${selectedCr?.id === cr.id ?
                                         'bg-white shadow-lg border-l-4 border-l-blue-500 ring-1 ring-gray-100' :
                                         'hover:bg-white hover:shadow-md border-l-4 border-l-transparent'}`}
+                                style={{ viewTransitionName: selectedCr?.id === cr.id ? 'sidebar-item' : 'none' }}
                             >
                                 <h4 className={`font-bold text-sm mb-3 truncate transition-colors ${selectedCr?.id === cr.id ? 'text-blue-600' : 'text-gray-700 group-hover:text-gray-900'}`}>
                                     {cr.title}
@@ -139,7 +146,10 @@ export const CollaborationInbox = ({ projectId }: { projectId: string }) => {
             <div className="flex-1 flex flex-col bg-white overflow-hidden">
                 {selectedCr ? (
                     <>
-                        <div className="p-10 border-b border-gray-50 bg-gradient-to-r from-gray-50/50 to-white">
+                        <div
+                            className="p-10 border-b border-gray-50 bg-gradient-to-r from-gray-50/50 to-white"
+                            style={{ viewTransitionName: 'detail-header' }}
+                        >
                             <div className="flex items-center gap-2 mb-4">
                                 <span className="bg-blue-50 text-blue-600 text-[10px] font-black px-3 py-1 rounded-full uppercase">Change Request #{selectedCr.id.slice(0, 4)}</span>
                             </div>

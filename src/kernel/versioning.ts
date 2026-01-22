@@ -35,9 +35,18 @@ function canonicalizeNode(node: WorkNode): string {
 }
 
 /**
+ * Computes a stable hash of any object by sorting keys recursively.
+ * Used for integrity checks (Receipts).
+ */
+export function computeStableHash(obj: any): string {
+    const canonical = stableStringify(obj);
+    return crypto.createHash('sha256').update(canonical).digest('hex');
+}
+
+/**
  * Simple stable JSON stringify (sorts keys recursively)
  */
-function stableStringify(obj: any): string {
+export function stableStringify(obj: any): string {
     if (obj === null || typeof obj !== 'object') {
         return JSON.stringify(obj);
     }

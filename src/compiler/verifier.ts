@@ -1,14 +1,7 @@
 import { WorkGraph, WorkNode } from '../canon/schema/ir';
 import { CompilationReceipt, VerificationResult } from '../canon/schema/receipt';
 import { NodeId } from '../canon/schema/primitives';
-// import { calculateParamsHash } from '../kernel/versioning'; // Not exported yet, using local simpleHash
-
-// Helper (should verify if this is exposed or local logic)
-// For now, simple object hash logic as placeholder for exact kernel match
-function simpleHash(obj: any): string {
-    return JSON.stringify(obj); // MUST match Assembler's logic for now
-    // In production, this should import the exact same hashing function used by Assembler
-}
+import { computeStableHash } from '../kernel/versioning';
 
 export interface VerificationContext {
     goal: string;
@@ -56,8 +49,8 @@ export function verifyArtifact(artifact: any, context: VerificationContext): Ver
     const receipt = artifact.receipt as CompilationReceipt;
 
     // 1. Check Integrity (Hash Match)
-    // Assembler logic: JSON.stringify({ goal: plan.goal, contextIds: context.map(n => n.id).sort() })
-    const expectedHash = JSON.stringify({
+    // Assembler logic: computeStableHash({ goal: plan.goal, contextIds: context.map(n => n.id).sort() })
+    const expectedHash = computeStableHash({
         goal: context.goal,
         contextIds: context.retrieved_nodes.map(n => n.id).sort()
     });
