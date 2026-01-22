@@ -222,11 +222,15 @@ phases:
           - "Initialize extension scaffold (Vite + TS)"
           - "Implement Background Worker (Sync logic)"
           - "Implement Context Menu Capture"
-          - "Implement Configuration Popup"
+          - "Implement Context extraction (Content Script)"
+          - "Implement Rich Metadata enrichment (accessed_at, source_title)"
+          - "Implement Inbox triage UX in Web App"
+          - "Implement Zero-Touch Config (.env injection)"
         evidence_nodes: 
-          - "extension/dist/manifest.json"
           - "extension/src/background/index.ts"
-          - "extension/src/popup.ts"
+          - "extension/src/content/index.ts"
+          - "src/components/editor/NodeEditor.tsx"
+          - "src/canon/schema/ir.ts"
           - "documentacion/HITO_2.6_SUMMARY.md"
 
       - id: "2.7"
