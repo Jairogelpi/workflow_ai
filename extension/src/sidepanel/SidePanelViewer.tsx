@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { ArrowRight, ExternalLink, Save, Check, Loader2 } from 'lucide-react';
+import { ArrowRight, ExternalLink, Save, Check, Loader2, Settings } from 'lucide-react';
+import { ModelSelector } from '../../../src/components/settings/ModelSelector';
 
 interface ArticleData {
     title: string;
@@ -15,6 +16,7 @@ export const SidePanelViewer = () => {
     const [loading, setLoading] = useState(false);
     const [saving, setSaving] = useState(false);
     const [saved, setSaved] = useState(false);
+    const [showSettings, setShowSettings] = useState(false);
 
     useEffect(() => {
         // Listen for parsed content from Background
@@ -108,6 +110,7 @@ export const SidePanelViewer = () => {
 
     return (
         <div className="flex h-screen flex-col bg-white text-gray-900">
+
             {/* Header */}
             <div className="flex flex-col border-b bg-white shadow-sm sticky top-0 z-10">
                 <div className="flex items-center justify-between px-4 py-3">
@@ -117,28 +120,40 @@ export const SidePanelViewer = () => {
                             {new URL(article.url).hostname} <ExternalLink className="ml-1 h-3 w-3" />
                         </a>
                     </div>
-                </div>
-
-                <div className="flex gap-2 px-4 pb-3">
                     <button
-                        onClick={handleSaveToGraph}
-                        disabled={saving || saved}
-                        className={`flex flex-1 items-center justify-center rounded-md px-3 py-1.5 text-xs font-medium transition ${saved
-                            ? 'bg-green-50 text-green-700 border border-green-200'
-                            : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                            }`}
+                        onClick={() => setShowSettings(!showSettings)}
+                        className={`ml-2 p-1.5 rounded-full transition-colors ${showSettings ? 'bg-blue-100 text-blue-600' : 'text-gray-400 hover:bg-gray-100'}`}
                     >
-                        {saving ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : saved ? <Check className="mr-1.5 h-3.5 w-3.5" /> : <Save className="mr-1.5 h-3.5 w-3.5" />}
-                        {saved ? 'Saved' : 'Save to Graph'}
-                    </button>
-
-                    <button
-                        onClick={handleInsertToChat}
-                        className="flex flex-1 items-center justify-center rounded-md bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-700 transition"
-                    >
-                        Insert to Chat <ArrowRight className="ml-1.5 h-3 w-3" />
+                        <Settings className="w-4 h-4" />
                     </button>
                 </div>
+
+                {showSettings ? (
+                    <div className="px-4 pb-4 border-b border-gray-100 bg-gray-50/50">
+                        <ModelSelector />
+                    </div>
+                ) : (
+                    <div className="flex gap-2 px-4 pb-3">
+                        <button
+                            onClick={handleSaveToGraph}
+                            disabled={saving || saved}
+                            className={`flex flex-1 items-center justify-center rounded-md px-3 py-1.5 text-xs font-medium transition ${saved
+                                ? 'bg-green-50 text-green-700 border border-green-200'
+                                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                                }`}
+                        >
+                            {saving ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : saved ? <Check className="mr-1.5 h-3.5 w-3.5" /> : <Save className="mr-1.5 h-3.5 w-3.5" />}
+                            {saved ? 'Saved' : 'Save to Graph'}
+                        </button>
+
+                        <button
+                            onClick={handleInsertToChat}
+                            className="flex flex-1 items-center justify-center rounded-md bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-700 transition"
+                        >
+                            Insert to Chat <ArrowRight className="ml-1.5 h-3 w-3" />
+                        </button>
+                    </div>
+                )}
             </div>
 
             {/* Content (Prose) */}
