@@ -25,6 +25,12 @@ We transformed the Chrome Extension from a simple "Selection Capture" tool into 
     - **Reference Preservation**: Maintains the original source URL and metadata.
     - **Visual Extraction**: Galleries for images found in the article.
 
+### 2.4 Knowledge Materialization (Persistence)
+- **Supabase Integration**: The extension is now a first-class citizen in the WorkGraph ecosystem.
+- **Save to WorkGraph**: Allows one-click persistence of research articles.
+- **Automatic Inbox**: Articles are saved as `source` nodes in the Default Project for immediate triage.
+- **Environment Safety**: Uses Vite-injected credentials to securely connect to the shared backend.
+
 ## 3. Technical Evidence
 - **Build**: Vite-powered production build (`extension/dist`).
 - **Orchestration**: `extension/src/background/index.ts` (Message Relay).

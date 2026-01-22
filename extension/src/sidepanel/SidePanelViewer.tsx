@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react';
-import { ArrowRight, ExternalLink } from 'lucide-react';
+import { ArrowRight, ExternalLink, Save, Check, Loader2 } from 'lucide-react';
+import { supabase } from '../lib/supabase';
 
 interface ArticleData {
     title: string;
     content: string; // Plain text
     html: string;    // Sanitzed HTML from Parser
+    excerpt: string | null;
     images: string[];
     url: string;
 }
@@ -12,6 +14,8 @@ interface ArticleData {
 export const SidePanelViewer = () => {
     const [article, setArticle] = useState<ArticleData | null>(null);
     const [loading, setLoading] = useState(false);
+    const [saving, setSaving] = useState(false);
+    const [saved, setSaved] = useState(false);
 
     useEffect(() => {
         // Listen for parsed content from Background
@@ -19,15 +23,47 @@ export const SidePanelViewer = () => {
             if (msg.type === 'SHOW_ARTICLE') {
                 setArticle(msg.data);
                 setLoading(false);
+                setSaved(false);
             }
             if (msg.type === 'PARSING_START') {
                 setLoading(true);
                 setArticle(null);
+                setSaved(false);
             }
         };
         chrome.runtime.onMessage.addListener(listener);
         return () => chrome.runtime.onMessage.removeListener(listener);
     }, []);
+
+    const handleSaveToGraph = async () => {
+        if (!article || saving || saved) return;
+
+        setSaving(true);
+        try {
+            const serverUrl = import.meta.env.VITE_SERVER_URL || 'http://localhost:3000';
+            const response = await fetch(`${serverUrl}/api/ingest/link`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    url: article.url,
+                    title: article.title,
+                    content: article.content, // Text for vectorization
+                    images: article.images,
+                    projectId: '00000000-0000-0000-0000-000000000000'
+                })
+            });
+
+            const result = await response.json();
+            if (!result.success) throw new Error(result.error);
+
+            setSaved(true);
+        } catch (err) {
+            console.error('[WorkGraph] Ingestion failed:', err);
+            alert(`Error saving: ${err instanceof Error ? err.message : String(err)}`);
+        } finally {
+            setSaving(false);
+        }
+    };
 
     const handleInsertToChat = () => {
         if (!article) return;
@@ -74,19 +110,36 @@ export const SidePanelViewer = () => {
     return (
         <div className="flex h-screen flex-col bg-white text-gray-900">
             {/* Header */}
-            <div className="flex items-center justify-between border-b bg-white px-4 py-3 shadow-sm sticky top-0 z-10">
-                <div className="flex-1 overflow-hidden">
-                    <h2 className="truncate text-sm font-bold" title={article.title}>{article.title}</h2>
-                    <a href={article.url} target="_blank" rel="noopener noreferrer" className="flex items-center text-xs text-gray-400 hover:text-blue-500">
-                        {new URL(article.url).hostname} <ExternalLink className="ml-1 h-3 w-3" />
-                    </a>
+            <div className="flex flex-col border-b bg-white shadow-sm sticky top-0 z-10">
+                <div className="flex items-center justify-between px-4 py-3">
+                    <div className="flex-1 overflow-hidden">
+                        <h2 className="truncate text-sm font-bold" title={article.title}>{article.title}</h2>
+                        <a href={article.url} target="_blank" rel="noopener noreferrer" className="flex items-center text-xs text-gray-400 hover:text-blue-500">
+                            {new URL(article.url).hostname} <ExternalLink className="ml-1 h-3 w-3" />
+                        </a>
+                    </div>
                 </div>
-                <button
-                    onClick={handleInsertToChat}
-                    className="ml-2 flex items-center rounded-md bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-700 transition"
-                >
-                    Insert to Chat <ArrowRight className="ml-1.5 h-3 w-3" />
-                </button>
+
+                <div className="flex gap-2 px-4 pb-3">
+                    <button
+                        onClick={handleSaveToGraph}
+                        disabled={saving || saved}
+                        className={`flex flex-1 items-center justify-center rounded-md px-3 py-1.5 text-xs font-medium transition ${saved
+                            ? 'bg-green-50 text-green-700 border border-green-200'
+                            : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                            }`}
+                    >
+                        {saving ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : saved ? <Check className="mr-1.5 h-3.5 w-3.5" /> : <Save className="mr-1.5 h-3.5 w-3.5" />}
+                        {saved ? 'Saved' : 'Save to Graph'}
+                    </button>
+
+                    <button
+                        onClick={handleInsertToChat}
+                        className="flex flex-1 items-center justify-center rounded-md bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-700 transition"
+                    >
+                        Insert to Chat <ArrowRight className="ml-1.5 h-3 w-3" />
+                    </button>
+                </div>
             </div>
 
             {/* Content (Prose) */}
@@ -115,3 +168,4 @@ export const SidePanelViewer = () => {
         </div>
     );
 };
+
