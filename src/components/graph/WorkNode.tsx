@@ -150,10 +150,13 @@ export function WorkNodeComponent({ data, selected, id }: NodeProps<WorkNodeIR>)
                     transition-all duration-300 ease-out
                     ${selected ? 'scale-105 shadow-elevation-5' : 'shadow-elevation-3'}
                     ${tensionLevel > 0 ? 'animate-pulse' : ''}
+                    ${data.metadata.origin === 'ai' ? 'opacity-70 border-dashed border-gray-400 grayscale-[0.5]' : ''}
                 `}
                 style={{
                     backgroundColor: colors.bg,
-                    border: `2px solid ${selected ? colors.text : colors.border}`,
+                    border: data.metadata.origin === 'ai'
+                        ? `2px dashed ${colors.text}50`
+                        : `2px solid ${selected ? colors.text : colors.border}`,
                     transform: isAntigravityActive ? `scale(${zDepth})` : undefined,
                     boxShadow: tensionLevel > 0
                         ? `0 0 ${10 + tensionLevel * 5}px rgba(239, 68, 68, ${0.3 + tensionLevel * 0.1})`

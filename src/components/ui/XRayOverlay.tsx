@@ -1,14 +1,22 @@
+'use client';
 
 import React from 'react';
 import { CompilationReceipt } from '../../canon/schema/receipt';
 import { useGraphStore } from '../../store/useGraphStore';
 import { auditStore } from '../../kernel/observability';
+import { ForensicHUD } from './ForensicHUD';
 
 interface XRayOverlayProps {
-    receipt?: CompilationReceipt;
+    receipt: CompilationReceipt | undefined;
     isActive: boolean;
 }
 
+/**
+ * X-Ray Overlay
+ * 
+ * Renders the "Architectural Wireframe" over the SmartViewer content.
+ * Displays forensic metrics and traces assertions back to the Canon.
+ */
 export const XRayOverlay: React.FC<XRayOverlayProps> = ({ receipt, isActive }) => {
     const nodes = useGraphStore(state => state.nodes);
     const physicsStats = useGraphStore(state => state.physicsStats);
@@ -17,73 +25,73 @@ export const XRayOverlay: React.FC<XRayOverlayProps> = ({ receipt, isActive }) =
     if (!isActive || !receipt) return null;
 
     const jobMetrics = auditStore.getJobMetrics(receipt.job_id);
+    const totalLatency = jobMetrics.reduce((acc: number, m: any) => acc + m.latency_ms, 0);
+    const totalCost = jobMetrics.reduce((acc: number, m: any) => acc + m.cost_usd, 0);
+    const assertionCount = Object.keys(receipt.assertion_map || {}).length;
 
     return (
         <div className="absolute inset-0 z-40 pointer-events-none overflow-hidden">
-            {/* 1. Capa de Atenuación (Dimmer) */}
-            <div className="absolute inset-0 bg-slate-900/10 backdrop-grayscale-[0.5]" />
+            {/* 1. Reality Attenuation (Dimmer) */}
+            <div className="absolute inset-0 bg-slate-950/20 backdrop-blur-[1px] backdrop-grayscale-[0.3]" />
 
-            {/* 2. Visualización de Estructura (Wireframe) */}
-            <div className="relative w-full h-full max-w-4xl mx-auto mt-10">
+            {/* 2. Structural Traces (Assertion Map) */}
+            <div className="relative w-full h-full max-w-5xl mx-auto mt-16 px-12">
                 {Object.entries(receipt.assertion_map || {}).map(([claimId, evidenceId], index) => {
                     const evidenceNode = nodes.find(n => n.id === evidenceId);
-                    if (!evidenceNode || !evidenceNode.data) return null;
+                    if (!evidenceNode) return null;
 
-                    const data = evidenceNode.data as any; // Cast to avoid discriminated union property access issues
+                    const data = evidenceNode.data as any;
                     const topPos = 15 + (index * 12);
 
                     return (
                         <div key={claimId} className="absolute w-full flex items-center group" style={{ top: `${topPos}%` }}>
-
-                            {/* La "Caja Verde" (Evidence Node) flotando a la izquierda */}
-                            <div className="w-64 -ml-72 bg-emerald-950/90 border border-emerald-500/50 p-3 rounded text-xs font-mono text-emerald-400 shadow-[0_0_15px_rgba(16,185,129,0.2)] transform transition-transform group-hover:scale-105">
-                                <div className="font-bold border-b border-emerald-800 mb-1 pb-1">
-                                    SOURCE: {data.type?.toUpperCase() || 'UNKNOWN'}
+                            {/* Evidence Trace (Floating left) */}
+                            <div className="w-64 -ml-72 bg-emerald-950/90 border border-emerald-500/50 p-4 rounded-2xl text-xs font-mono text-emerald-400 shadow-[0_0_20px_rgba(16,185,129,0.2)] transform transition-transform group-hover:scale-105 pointer-events-auto cursor-help">
+                                <div className="font-bold border-b border-emerald-800/50 mb-2 pb-2 flex justify-between items-center">
+                                    <span>SOURCE_NODE</span>
+                                    <span className="text-[10px] bg-emerald-500/20 px-1.5 py-0.5 rounded italic opacity-70">
+                                        {data.type?.toUpperCase()}
+                                    </span>
                                 </div>
-                                <div className="truncate opacity-80">
-                                    {data.id.slice(0, 8)}...
+                                <div className="truncate opacity-80 mb-2">
+                                    ID: {String(evidenceId).slice(0, 8)}...
                                 </div>
-                                <div className="mt-1 text-[10px] text-emerald-600">
-                                    CONFIDENCE: {Math.round((data.metadata?.confidence || 0) * 100)}%
+                                <div className="text-emerald-300 line-clamp-2 italic mb-2">
+                                    "{(data as any).statement || (data as any).content || (data as any).rationale}"
+                                </div>
+                                <div className="flex justify-between items-center text-[10px] text-emerald-500/70 pt-2 border-t border-emerald-800/10">
+                                    <span>CONFIDENCE</span>
+                                    <span className="font-bold text-emerald-400">
+                                        {Math.round((data.metadata?.confidence || 0) * 100)}%
+                                    </span>
                                 </div>
                             </div>
 
-                            {/* El "Cable" (Wire) conectando al texto */}
-                            <div className="flex-1 h-px bg-gradient-to-r from-emerald-500/50 to-transparent mx-4 relative">
-                                <div className="absolute left-0 -top-1 w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
+                            {/* Nerve (Wire Connection) */}
+                            <div className="flex-1 h-[2px] bg-gradient-to-r from-emerald-500/40 to-transparent mx-6 relative">
+                                <div className="absolute left-0 -top-[3px] w-2 h-2 bg-emerald-500 rounded-full animate-pulse shadow-[0_0_8px_#10b981]" />
                             </div>
 
-                            {/* El Highlight sobre el texto (simulado) */}
-                            <div className="w-2/3 h-24 border-2 border-dashed border-emerald-500/20 bg-emerald-500/5 rounded" />
+                            {/* Text Highlight (Simulated position for now) */}
+                            <div className="w-2/3 h-1 bg-emerald-500/10 border-b border-emerald-500/20 rounded-full blur-[1px]" />
                         </div>
                     );
                 })}
             </div>
 
-            {/* 3. HUD de Ingeniero (Esquina inferior) */}
-            <div className="absolute bottom-4 right-4 bg-black/80 text-emerald-500 font-mono text-[10px] p-3 rounded border border-emerald-500/30 space-y-1 shadow-[0_0_15px_rgba(16,185,129,0.1)]">
-                <p className="border-b border-emerald-500/30 pb-1 mb-1 font-bold">ENGINEER HUD: ACTIVE</p>
-                <div className="grid grid-cols-2 gap-x-4">
-                    <span className="opacity-60">JOB_ID:</span> <span>{receipt.job_id.slice(0, 8)}</span>
-                    <span className="opacity-60">ASSERTIONS:</span> <span>{Object.keys(receipt.assertion_map || {}).length}</span>
-                    <span className="opacity-60">AUDIT_COST:</span> <span>${jobMetrics.reduce((acc: number, m: any) => acc + m.cost_usd, 0).toFixed(4)}</span>
-                    <span className="opacity-60">AVG_LATENCY:</span> <span>{Math.round(jobMetrics.reduce((acc: number, m: any) => acc + m.latency_ms, 0) / (jobMetrics.length || 1))}ms</span>
-                </div>
-
-                <div className="pt-2 mt-2 border-t border-emerald-500/30">
-                    <p className="font-bold text-sky-400">ANTIGRAVITY ENGINE: {isAntigravityActive ? 'FLIGHT' : 'STATIONARY'}</p>
-                    <div className="grid grid-cols-2 gap-x-4">
-                        <span className="opacity-60">CYCLE_TIME:</span> <span>{physicsStats.latency_ms}ms</span>
-                        <span className="opacity-60">COST_ABSTR:</span> <span className={physicsStats.latency_ms > 20 ? 'text-orange-400' : 'text-emerald-400'}>
-                            {(physicsStats.latency_ms * 0.0001).toFixed(4)} AU
-                        </span>
-                    </div>
-                    <div className="text-[8px] opacity-40 mt-1 uppercase italic">
-                        Forces: Attraction(Evidence) / Repulsion(Contradicts)
-                    </div>
-                </div>
-
-                <p className="pt-1 mt-1 border-t border-emerald-500/30 text-emerald-600">HASH: {receipt.input_hash.slice(0, 10)}</p>
+            {/* 3. Forensic HUD (Operative Brain) */}
+            <div className="absolute bottom-6 right-6 w-80">
+                <ForensicHUD
+                    jobId={receipt.job_id}
+                    metrics={{
+                        latency_ms: totalLatency,
+                        cost_usd: totalCost,
+                        assertionCount: assertionCount,
+                        nodeLinks: nodes.length
+                    }}
+                    isAntigravityActive={isAntigravityActive}
+                    physicsLatency={physicsStats.latency_ms}
+                />
             </div>
         </div>
     );

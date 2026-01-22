@@ -12,6 +12,7 @@ import {
 import { v4 as uuidv4 } from 'uuid';
 import { WorkNode, WorkEdge } from '../canon/schema/ir';
 import { NodeId, EdgeId } from '../canon/schema/primitives';
+import { ChangeProposal } from '../kernel/collaboration/Negotiator';
 import { createVersion, computeNodeHash } from '../kernel/versioning';
 import { backendToFlow } from '../lib/adapters';
 import { syncService } from '../lib/sync';
@@ -40,6 +41,11 @@ interface GraphState {
     selectedNodeId: string | null;
     isLoading: boolean;
     isSyncing: boolean;
+
+    // AI Mediator Proposals
+    proposals: ChangeProposal[];
+    addProposal: (proposal: ChangeProposal) => void;
+    resolveProposal: (id: string, decision: 'accept' | 'reject') => Promise<void>;
 
     // Shadow Storage
     draftNodes: AppNode[];
@@ -117,6 +123,7 @@ export const useGraphStore = create<GraphState>((set, get) => ({
     activeWindow: null,
     isLoading: false,
     isSyncing: false,
+    proposals: [],
     draftNodes: [],
 
     // Antigravity Initial State (Fricción Cero: On by default)
@@ -401,6 +408,46 @@ export const useGraphStore = create<GraphState>((set, get) => ({
 
     discardDraft: (id) => {
         set({ draftNodes: get().draftNodes.filter(n => n.id !== id) });
+    },
+
+    // --- MEDIATOR PROPOSAL ACTIONS ---
+
+    addProposal: (proposal: ChangeProposal) => {
+        set({ proposals: [...get().proposals, proposal] });
+        if (proposal.type === 'CREATE_ARTIFACT' && proposal.content) {
+            const newNode: any = {
+                id: proposal.id as any,
+                type: 'artifact',
+                name: proposal.content.title || 'Proposed Artifact',
+                metadata: {
+                    created_at: new Date().toISOString(),
+                    updated_at: new Date().toISOString(),
+                    origin: 'ai',
+                    confidence: 0.8,
+                    validated: false,
+                    pin: false
+                }
+            };
+            get().proposeNode(newNode, { x: 100, y: 100 });
+        }
+    },
+
+    resolveProposal: async (id: string, decision: 'accept' | 'reject') => {
+        const { proposals } = get();
+        const proposal = proposals.find((p: ChangeProposal) => p.id === id);
+        if (!proposal) return;
+
+        if (decision === 'accept') {
+            if (proposal.type === 'CREATE_ARTIFACT') {
+                await get().commitDraft(id);
+            }
+        } else {
+            if (proposal.type === 'CREATE_ARTIFACT') {
+                get().discardDraft(id);
+            }
+        }
+
+        set({ proposals: proposals.filter((p: ChangeProposal) => p.id !== id) });
     },
 
     // --- INTERACTIVE EDITING ACTIONS ---

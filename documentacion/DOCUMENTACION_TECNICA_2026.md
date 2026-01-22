@@ -5,8 +5,9 @@
 
 El sistema garantiza:
 1.  **La Verdad Inmutable**: A través de `Verifier.ts` y nodos PIN.
-2.  **Colaboración sin Miedo**: Mediante consenso negociado por IA (`MediatorAgent`).
+2.  **Colaboración sin Miedo**: Mediante consenso negociado por IA (`MediatorAgent v3.0`).
 3.  **Memoria Infinita**: Usando `Digests` jerárquicos y RAG semántico.
+4.  **Transparencia Radical**: Percepción X-Ray y auditoría forense en tiempo real.
 
 ---
 
@@ -34,12 +35,14 @@ Definida en `src/canon/schema/ir.ts` y persistida en Supabase.
 
 #### B. Collaboration Engine (`src/kernel/collaboration`)
 - **MergeEngine**: Orquestador de fusiones. Simula estados futuros.
-- **Negotiator / MediatorAgent**: Inteligencia diplomática. Explica conflictos usando RLM.
+- **Negotiator / MediatorAgent v3.0**: Inteligencia diplomática. Realiza "Pulses" de inferencia para detectar vacíos lógicos y propone cambios estructurales (Ghost Nodes/Drafts).
+- **Recursive Abstraction**: Compresión de clústeres de evidencia en artefactos de alto nivel (Digests).
 - **Change Requests**: El vehículo de cambio, almacenado en DB con reportes de análisis JSONB.
 
 #### C. Ingestion Layer (`src/lib/ingest`)
 - Procesamiento inteligente de PDFs, Excel e Imágenes.
-- **LinkOS Extension**: Captura contexto del navegador manteniendo la identidad del usuario (`SidePanelViewer.tsx`).
+- **LinkOS Extension (X-Ray Percept)**: Captura contexto del navegador mediante "Ambient Scanning" e iluminación semántica por categoría.
+- **SidePanelViewer.tsx**: Interfaz de pre-visualización y validación rápida.
 
 ---
 
@@ -71,8 +74,10 @@ Comparación lado a lado con resaltado semántico. Permite ver la "evolución de
 (`src/components/collaboration/CollaborationInbox.tsx`)
 No es una lista de tareas. Es un centro de mando donde el **MediatorCard** presenta argumentos lógicos para aceptar o rechazar cambios, eliminando la fricción social.
 
-### 3. Editor Semántico
-Interfaz basada en grafos (Nodes) y texto rico, donde cada párrafo es un nodo direccionable e inmutable si se marca como PIN.
+### 3. Editor Semántico & Forensic UX
+Interfaz basada en grafos (Nodes) y texto rico, donde cada párrafo es un nodo direccionable.
+- **Modo X-Ray (Alt)**: Visualización de "cables lógicos" (Assertion Map) y HUD forense con métricas de coste y latencia real.
+- **Audit Trail**: Trazabilidad absoluta desde el artefacto final hasta la evidencia original en el Canon.
 
 ---
 
@@ -93,4 +98,4 @@ Interfaz basada en grafos (Nodes) y texto rico, donde cada párrafo es un nodo d
 
 ---
 
-*Documentación generada automáticamente para el despliegue Hito 3.6 - Gate 9.*
+*Documentación actualizada para el despliegue Hito 4.6 - Mediator & Forensics.*

@@ -108,6 +108,12 @@ export class XRaySystem {
             // Store classified blocks
             this.classifiedBlocks.push(...classified);
 
+            // Update detailed metrics
+            const claims = classified.filter(b => b.classification?.type === 'claim').length;
+            const evidence = classified.filter(b => b.classification?.type === 'evidence').length;
+            this.hud.increment('claimCount', claims);
+            this.hud.increment('evidenceCount', evidence);
+
             // Render highlights if X-Ray is active
             if (xrayState.isActive) {
                 this.renderHighlights();

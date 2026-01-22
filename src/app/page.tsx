@@ -7,6 +7,7 @@ import { SmartViewer } from '../components/ui/SmartViewer';
 import NodeEditor from '../components/editor/NodeEditor';
 import { useGraphStore } from '../store/useGraphStore';
 import { useTheme } from '../components/providers/ThemeProvider';
+import { MediatorHUD } from '../components/ui/MediatorHUD';
 
 export default function Home() {
     const { activeWindow, closeWindow } = useGraphStore();
@@ -63,6 +64,7 @@ export default function Home() {
                 {/* Graph Canvas */}
                 <div className="w-full h-full">
                     <GraphCanvas />
+                    <MediatorHUD />
                 </div>
 
                 {/* Floating Editor Panel */}
@@ -81,9 +83,8 @@ export default function Home() {
                             </div>
                         ) : (
                             <SmartViewer
-                                url={activeWindow.contentUrl || ''}
-                                type={activeWindow.mimeType || activeWindow.contentType}
-                                textContent={activeWindow.textContent}
+                                content={activeWindow.textContent || activeWindow.nodeData?.content || ''}
+                                receipt={activeWindow.nodeData?.receipt}
                             />
                         )}
                     </FloatingPanel>

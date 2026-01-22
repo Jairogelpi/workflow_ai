@@ -1,9 +1,12 @@
 /**
  * Gate 9: AI Mediator (Negotiator)
+ * 
  * Translates technical conflicts and logical breakages into human-readable explanations.
+ * Now supports autonomous Change Proposals from the Mediator Agent.
  */
 
 import { MergePreflight } from './MergeEngine';
+import { v4 as uuidv4 } from 'uuid';
 
 export interface AIAnalysis {
     summary: string;
@@ -11,15 +14,26 @@ export interface AIAnalysis {
     criticalNodes: string[];
 }
 
+export type ChangeProposalType = 'ADD_RELATION' | 'REFINE_RELATION' | 'CREATE_ARTIFACT' | 'MARK_STALE';
+
+export interface ChangeProposal {
+    id: string;
+    type: ChangeProposalType;
+    reason: string;
+    sourceNodeId?: string;
+    targetNodeId?: string;
+    relation?: string;
+    content?: any;
+    status: 'draft' | 'accepted' | 'rejected';
+}
+
 export class Negotiator {
+    private proposals: ChangeProposal[] = [];
 
     /**
      * Analyzes merge conflicts and invariant breaks to generate a human-centric report.
      */
     static async analyzeConflict(report: MergePreflight): Promise<AIAnalysis> {
-        // In a production 2026 environment, this would call an LLM (e.g. Gemini/GPT-4)
-        // providing the context of the nodes, their types, and the nature of the conflict.
-
         const summaryParts: string[] = [];
         const criticalNodes: string[] = [];
 
@@ -33,7 +47,6 @@ export class Negotiator {
             report.brokenInvariants.forEach(c => criticalNodes.push(c.nodeId));
         }
 
-        // AI Negotiation Simulation
         let suggestion = "Revisa los cambios en los nodos marcados. ";
         if (report.brokenInvariants.length > 0) {
             suggestion += "El sistema sugiere proponer una 'Excepción de Invariante' si el cambio es necesario para la nueva dirección del proyecto.";
@@ -49,10 +62,47 @@ export class Negotiator {
     }
 
     /**
+     * Proposes a structural change to the graph.
+     * These proposals appear as "Ghost Nodes" in the UI.
+     */
+    async proposeChange(proposal: Omit<ChangeProposal, 'id' | 'status'>): Promise<ChangeProposal> {
+        const fullProposal: ChangeProposal = {
+            id: uuidv4(),
+            status: 'draft',
+            ...proposal
+        };
+
+        this.proposals.push(fullProposal);
+        console.log(`[NEGOTIATOR] New Proposal: ${fullProposal.type} - ${fullProposal.reason}`);
+
+        // Notify Store or Hook to trigger UI render
+        // This will be connected to useGraphStore in the next steps
+
+        return fullProposal;
+    }
+
+    /**
+     * Retrieves all active proposals.
+     */
+    getProposals(): ChangeProposal[] {
+        return this.proposals.filter(p => p.status === 'draft');
+    }
+
+    /**
+     * Accepts or rejects a proposal based on user feedback.
+     */
+    async resolveProposal(id: string, action: 'accept' | 'reject'): Promise<void> {
+        const proposal = this.proposals.find(p => p.id === id);
+        if (proposal) {
+            proposal.status = action === 'accept' ? 'accepted' : 'rejected';
+            console.log(`[NEGOTIATOR] Proposal ${id} ${action}ed`);
+        }
+    }
+
+    /**
      * Explains a specific logical break to a user.
      */
     static async explainBrokenInvariant(nodeId: string, reason: string): Promise<string> {
-        // Simulated AI explanation
-        return `El cambio en el nodo [${nodeId}] contradice una regla de negocio establecida (${reason}). Esto suele ocurrir cuando la nueva información choca con decisiones de diseño previas que fueron marcadas como inamovibles.`;
+        return `El cambio en el nodo [${nodeId}] contradice una regla de estableceida (${reason}). Esto ocurre cuando la nueva información choca con PINs previos.`;
     }
 }

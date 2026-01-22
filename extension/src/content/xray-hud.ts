@@ -9,6 +9,8 @@ export interface XRayMetrics {
     totalCost: number;
     avgLatency: number;
     activeHighlights: number;
+    claimCount: number;
+    evidenceCount: number;
 }
 
 export class XRayHUD {
@@ -18,7 +20,9 @@ export class XRayHUD {
         blocksClassified: 0,
         totalCost: 0,
         avgLatency: 0,
-        activeHighlights: 0
+        activeHighlights: 0,
+        claimCount: 0,
+        evidenceCount: 0
     };
 
     /**
@@ -138,6 +142,20 @@ export class XRayHUD {
                     <div style="font-weight: 600; font-size: 18px; margin-top: 2px;">${Math.round(this.metrics.avgLatency)}<span style="font-size: 11px; opacity: 0.7;">ms</span></div>
                 </div>
             </div>
+
+            <div style="margin-top: 12px; padding: 12px; background: rgba(255,255,255,0.05); border-radius: 12px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                    <div style="color: rgba(255,255,255,0.5); font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px;">Sentiment Density</div>
+                    <div style="font-weight: 700; color: #10b981;">${((this.metrics.evidenceCount / (this.metrics.claimCount || 1)) * 10).toFixed(1)} <span style="font-size: 10px; opacity: 0.5;">index</span></div>
+                </div>
+                <div style="height: 4px; width: 100%; background: #ef4444; border-radius: 2px; overflow: hidden; display: flex;">
+                    <div style="height: 100%; width: ${(this.metrics.evidenceCount / (this.metrics.claimCount + this.metrics.evidenceCount || 1)) * 100}%; background: #10b981;"></div>
+                </div>
+                <div style="display: flex; justify-content: space-between; margin-top: 4px; font-size: 9px; opacity: 0.6;">
+                    <span>${this.metrics.claimCount} Claims</span>
+                    <span>${this.metrics.evidenceCount} Evidence</span>
+                </div>
+            </div>
             
             <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid rgba(255,255,255,0.1);">
                 <div style="color: rgba(255,255,255,0.5); font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px;">Total Cost</div>
@@ -164,7 +182,9 @@ export class XRayHUD {
             blocksClassified: 0,
             totalCost: 0,
             avgLatency: 0,
-            activeHighlights: 0
+            activeHighlights: 0,
+            claimCount: 0,
+            evidenceCount: 0
         };
         this.render();
     }
