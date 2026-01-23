@@ -39,7 +39,8 @@ services:
     name: workgraph-worker
     runtime: rust
     plan: starter
-    buildCommand: cargo build --release --manifest-path workgraph-worker/Cargo.toml
+    rootDir: workgraph-worker
+    buildCommand: cargo build --release
     startCommand: ./target/release/workgraph-worker
     envVars:
       - key: DATABASE_URL
