@@ -5,7 +5,7 @@
  * Consolidates Ingestion, Assembly, and RLM Reasoning (migrated from Python).
  */
 use axum::{
-    extract::{Json, Query, Multipart},
+    extract::{Json, Multipart},
     routing::{get, post},
     Router,
     response::IntoResponse,
