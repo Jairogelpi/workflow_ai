@@ -5,7 +5,7 @@
  * Uses Yrs (Yjs Rust port) for automatic merge without conflicts.
  */
 use wasm_bindgen::prelude::*;
-use yrs::{Doc, Text, Transact, ReadTxn, GetString, updates::encoder::Encode};
+use yrs::{Doc, Text, Transact, ReadTxn, GetString, updates::encoder::Encode, updates::decoder::Decode};
 use serde::{Serialize, Deserialize};
 
 #[derive(Serialize, Deserialize)]
@@ -79,9 +79,7 @@ pub fn merge_remote_update(local_state_b64: &str, remote_update_b64: &str) -> St
     
     {
         let mut txn = doc.transact_mut();
-        if let Err(e) = txn.apply_update(yrs::Update::decode_v1(&remote_update).unwrap()) {
-            return serde_json::json!({"success": false, "error": format!("{:?}", e)}).to_string();
-        }
+        let _ = txn.apply_update(yrs::Update::decode_v1(&remote_update).unwrap());
     }
     
     // Get merged content
