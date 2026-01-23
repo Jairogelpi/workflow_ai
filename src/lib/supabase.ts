@@ -9,6 +9,12 @@ const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
  */
 export const supabase = createSupabaseClient(supabaseUrl, supabaseAnonKey);
 
+/**
+ * Helper to get the browser-side Supabase client.
+ * Returns the same singleton instance.
+ */
+export const createClient = () => supabase;
+
 // Legacy export for compatibility
 export { supabase as default };
 
