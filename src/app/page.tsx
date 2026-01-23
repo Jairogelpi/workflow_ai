@@ -46,6 +46,13 @@ export default function Home() {
         };
 
         // Initial session check
+        console.log('[Home Page] Mount - Initializing session check...');
+        console.log('[Home Page] RAW COOKIES:', document.cookie ? 'Present' : 'NONE');
+        if (document.cookie) {
+            const cookieNames = document.cookie.split(';').map(c => c.trim().split('=')[0]);
+            console.log('[Home Page] Cookie Names:', cookieNames.filter(n => n.includes('sb-')));
+        }
+
         supabase.auth.getSession().then(({ data: { session }, error }) => {
             if (error) console.error('[Home Page] getSession error:', error);
             console.log('[Home Page] Initial session check result:', JSON.stringify({
@@ -57,6 +64,7 @@ export default function Home() {
             setUser(session?.user ?? null);
             setAuthLoading(false);
         });
+
 
         // Listen for auth changes
         const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
