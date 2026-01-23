@@ -117,6 +117,7 @@ interface GraphState {
     } | null;
     initProjectSwarm: (name: string, description: string, roles: Record<string, UserRole>) => Promise<void>;
     openManifest: () => void;
+    openWindow: (idOrConfig: any, title?: string, contentType?: any) => void;
 
     // Core Actions
     setNodes: (nodes: AppNode[]) => void;
@@ -259,6 +260,15 @@ export const useGraphStore = create<GraphState>((set, get) => ({
         const { [id]: closed, ...remaining } = state.windows;
         return { windows: remaining };
     }),
+    openWindow: (idOrConfig, title, contentType) => {
+        const { toggleWindow } = get();
+        if (typeof idOrConfig === 'object') {
+            const { id, ...data } = idOrConfig;
+            toggleWindow(id, true, data);
+        } else {
+            toggleWindow(idOrConfig, true, { title, contentType });
+        }
+    },
 
     rlmThoughts: [],
     addRLMThought: (thought) => set((state) => ({
@@ -308,7 +318,7 @@ export const useGraphStore = create<GraphState>((set, get) => ({
 
     // [Hito 4.1] Open Manifest if uninitialized
     openManifest: () => {
-        const { openWindow, projectManifest } = get() as any;
+        const { openWindow, projectManifest } = get();
         if (!projectManifest) {
             openWindow('project-manifest', 'Gate 8: Project Manifest', 'manifest');
         }
