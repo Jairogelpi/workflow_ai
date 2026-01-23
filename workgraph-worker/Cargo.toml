@@ -18,6 +18,9 @@ printpdf = "0.6"
 lopdf = "0.32"
 scraper = "0.18"
 anyhow = "1.0"
+# Database connectivity
+sqlx = { version = "0.7", features = ["runtime-tokio-native-tls", "postgres", "uuid", "chrono", "json"] }
+dotenv = "0.15"
 
 [profile.release]
 opt-level = "z"
