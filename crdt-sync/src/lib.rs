@@ -5,7 +5,7 @@
  * Uses Yrs (Yjs Rust port) for automatic merge without conflicts.
  */
 use wasm_bindgen::prelude::*;
-use yrs::{Doc, Text, Transact, ReadTxn, WriteTxn, updates::encoder::Encode};
+use yrs::{Doc, Text, Transact, ReadTxn, GetString, updates::encoder::Encode};
 use serde::{Serialize, Deserialize};
 
 #[derive(Serialize, Deserialize)]
@@ -37,7 +37,7 @@ pub fn create_document(initial_content: &str) -> String {
     
     {
         let mut txn = doc.transact_mut();
-        text.insert(&mut txn, 0, initial_content);
+        let _ = text.insert(&mut txn, 0, initial_content);
     }
     
     let state = doc.transact().state_vector().encode_v1();
@@ -47,13 +47,13 @@ pub fn create_document(initial_content: &str) -> String {
 /// Applies a local update to the document.
 /// Returns the update as a base64-encoded binary diff.
 #[wasm_bindgen]
-pub fn apply_local_update(state_vector_b64: &str, content: &str, position: u32) -> String {
+pub fn apply_local_update(_state_vector_b64: &str, content: &str, position: u32) -> String {
     let doc = Doc::new();
     let text = doc.get_or_insert_text("content");
     
     {
         let mut txn = doc.transact_mut();
-        text.insert(&mut txn, position, content);
+        let _ = text.insert(&mut txn, position, content);
     }
     
     let update = doc.transact_mut().encode_update_v1();

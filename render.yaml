@@ -20,8 +20,6 @@ services:
       echo "Building logic-engine..." && (cd logic-engine && wasm-pack build --target bundler) && \
       echo "Building signer-core..." && (cd signer-core && wasm-pack build --target bundler) && \
       echo "Building crdt-sync..." && (cd crdt-sync && wasm-pack build --target bundler) && \
-      # Install Node dependencies and build
-      # npm install will now resolve the "file:./.../pkg" dependencies
       echo "Installing Node dependencies..." && npm install --legacy-peer-deps && \
       echo "Building Next.js application..." && npm run build
     startCommand: node .next/standalone/server.js
