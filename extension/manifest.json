@@ -1,15 +1,16 @@
 {
     "manifest_version": 3,
-    "name": "WorkGraph OS Extension",
-    "version": "1.1.0",
-    "description": "Inject WorkGraph OS directly into any webpage with Side Panel & AI Integration.",
+    "name": "Axiom GraphOs Extension",
+    "version": "1.2.0",
+    "description": "Tu conocimiento, organizado en un grafo semántico. Captura la web con Axiom.",
     "permissions": [
         "sidePanel",
         "offscreen",
         "activeTab",
         "scripting",
         "contextMenus",
-        "storage"
+        "storage",
+        "identity"
     ],
     "host_permissions": [
         "<all_urls>"

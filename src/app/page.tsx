@@ -16,9 +16,43 @@ import { BootSequence } from '../components/ui/BootSequence';
 import { Desktop } from '../components/shell/Desktop';
 import { WindowManager } from '../components/ui/WindowManager';
 
+import { WebLogin } from '../components/ui/WebLogin';
+import { supabase } from '../lib/supabase';
+import { User } from '@supabase/supabase-js';
+
 export default function Home() {
+    const [user, setUser] = React.useState<User | null>(null);
+    const [authLoading, setAuthLoading] = React.useState(true);
     const [hasBooted, setHasBooted] = React.useState(false);
     const { toggleTheme, theme } = useTheme();
+
+    React.useEffect(() => {
+        // Initial session check
+        supabase.auth.getSession().then(({ data: { session } }) => {
+            setUser(session?.user ?? null);
+            setAuthLoading(false);
+        });
+
+        // Listen for auth changes
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+            setUser(session?.user ?? null);
+            setAuthLoading(false);
+        });
+
+        return () => subscription.unsubscribe();
+    }, []);
+
+    if (authLoading) {
+        return (
+            <div className="fixed inset-0 bg-white flex items-center justify-center">
+                <div className="w-16 h-16 border-4 border-blue-500/20 border-t-blue-500 rounded-full animate-spin" />
+            </div>
+        );
+    }
+
+    if (!user) {
+        return <WebLogin />;
+    }
 
     if (!hasBooted) {
         return <BootSequence onComplete={() => setHasBooted(true)} />;
