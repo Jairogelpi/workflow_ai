@@ -14,6 +14,10 @@
         "check": "npm run lint && npm run typecheck && npm run format"
     },
     "dependencies": {
+        "antigravity-engine": "file:./antigravity-engine/pkg",
+        "logic-engine": "file:./logic-engine/pkg",
+        "signer-core": "file:./signer-core/pkg",
+        "crdt-sync": "file:./crdt-sync/pkg",
         "@supabase/ssr": "^0.8.0",
         "@supabase/supabase-js": "^2.91.0",
         "@tailwindcss/postcss": "^4.1.18",

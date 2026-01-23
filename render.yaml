@@ -13,12 +13,13 @@ services:
       cargo install wasm-pack
       
       # Build WASM modules
-      cd antigravity-engine && wasm-pack build --target bundler && cd ..
-      cd logic-engine && wasm-pack build --target bundler && cd ..
-      cd signer-core && wasm-pack build --target bundler && cd ..
-      cd crdt-sync && wasm-pack build --target bundler && cd ..
+      (cd antigravity-engine && wasm-pack build --target bundler)
+      (cd logic-engine && wasm-pack build --target bundler)
+      (cd signer-core && wasm-pack build --target bundler)
+      (cd crdt-sync && wasm-pack build --target bundler)
       
       # Install Node dependencies and build
+      # npm install will now resolve the "file:./.../pkg" dependencies
       npm install --legacy-peer-deps
       npm run build
     startCommand: npm start

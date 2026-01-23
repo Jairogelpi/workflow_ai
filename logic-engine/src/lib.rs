@@ -74,12 +74,16 @@ pub fn check_pin_consistency(graph_json: &str) -> String {
         match edge.relation.as_str() {
             "supports" => {
                 // If source is true, target should be true: ¬source ∨ target
-                formula.add_clause(&[Lit::negative(source_var as i32), Lit::positive(target_var as i32)]);
+                let s = varisat::Var::from_index(source_var);
+                let t = varisat::Var::from_index(target_var);
+                formula.add_clause(&[Lit::negative(s), Lit::positive(t)]);
                 constraint_count += 1;
             }
             "contradicts" => {
                 // source and target cannot both be true: ¬source ∨ ¬target
-                formula.add_clause(&[Lit::negative(source_var as i32), Lit::negative(target_var as i32)]);
+                let s = varisat::Var::from_index(source_var);
+                let t = varisat::Var::from_index(target_var);
+                formula.add_clause(&[Lit::negative(s), Lit::negative(t)]);
                 constraint_count += 1;
                 
                 // Check if target is a PIN (violation!)
@@ -94,12 +98,16 @@ pub fn check_pin_consistency(graph_json: &str) -> String {
             }
             "blocks" => {
                 // If source is true, target must be false: source → ¬target
-                formula.add_clause(&[Lit::negative(source_var as i32), Lit::negative(target_var as i32)]);
+                let s = varisat::Var::from_index(source_var);
+                let t = varisat::Var::from_index(target_var);
+                formula.add_clause(&[Lit::negative(s), Lit::negative(t)]);
                 constraint_count += 1;
             }
             "depends_on" => {
                 // target must be true for source to be valid: ¬source ∨ target
-                formula.add_clause(&[Lit::negative(source_var as i32), Lit::positive(target_var as i32)]);
+                let s = varisat::Var::from_index(source_var);
+                let t = varisat::Var::from_index(target_var);
+                formula.add_clause(&[Lit::negative(s), Lit::positive(t)]);
                 constraint_count += 1;
             }
             _ => {}
@@ -109,8 +117,9 @@ pub fn check_pin_consistency(graph_json: &str) -> String {
     // Force all PIN nodes to be true (they are invariants)
     for node in &graph.nodes {
         if node.is_pin {
-            if let Some(&var) = node_map.get(&node.id) {
-                formula.add_clause(&[Lit::positive(var as i32)]);
+            if let Some(&var_idx) = node_map.get(&node.id) {
+                let v = varisat::Var::from_index(var_idx);
+                formula.add_clause(&[Lit::positive(v)]);
                 constraint_count += 1;
             }
         }
