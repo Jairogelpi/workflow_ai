@@ -26,6 +26,10 @@ export default function Home() {
     const [hasBooted, setHasBooted] = React.useState(false);
     const { toggleTheme, theme } = useTheme();
 
+    const handleBootComplete = React.useCallback(() => {
+        setHasBooted(true);
+    }, []);
+
     React.useEffect(() => {
         // Initial session check
         supabase.auth.getSession().then(({ data: { session } }) => {
@@ -55,7 +59,7 @@ export default function Home() {
     }
 
     if (!hasBooted) {
-        return <BootSequence onComplete={() => setHasBooted(true)} />;
+        return <BootSequence onComplete={handleBootComplete} />;
     }
 
     return (

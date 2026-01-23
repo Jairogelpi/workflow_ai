@@ -30,18 +30,18 @@ export function BootSequence({ onComplete }: { onComplete: () => void }) {
     }, [onComplete]);
 
     return (
-        <div className="fixed inset-0 z-[10000] bg-white flex items-center justify-center text-slate-900 font-sans overflow-hidden">
+        <div className="fixed inset-0 z-[10000] bg-white overflow-hidden">
             {/* Soft background aura - Cinematic Bloom */}
             <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[1200px] h-[1200px] bg-gradient-to-tr from-blue-50/30 via-white to-yellow-50/30 rounded-full blur-[150px] pointer-events-none opacity-80 animate-pulse-slow" />
 
             {/* Axiom Logo - The Protagonist */}
-            <div className="relative z-10 flex flex-col items-center">
+            <div className="relative z-10 flex flex-col items-center justify-start min-h-screen pt-40 md:pt-60">
                 <div className="relative"
                     style={{
                         animation: 'axiom-epic-reveal 3.5s cubic-bezier(0.16, 1, 0.3, 1) forwards',
                         opacity: 0,
                     }}>
-                    <div className="w-[800px] md:w-[1000px] h-auto">
+                    <div className="w-[600px] md:w-[800px] lg:w-[950px] h-auto">
                         <img src="/logo.png" alt="Axiom Logo" className="w-full h-auto drop-shadow-[0_40px_100px_rgba(0,0,0,0.12)]" />
                     </div>
 
@@ -49,10 +49,10 @@ export function BootSequence({ onComplete }: { onComplete: () => void }) {
                     <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/60 to-transparent -translate-x-[100%] animate-[shimmer_4s_infinite_ease-in-out] pointer-events-none mix-blend-overlay" />
                 </div>
 
-                {/* Subtle Progress HUD - Won't push the logo */}
-                <div className="absolute bottom-[-150px] left-1/2 -translate-x-1/2 w-64 space-y-6 animate-fade-in" style={{ animationDelay: '2s', opacity: 0, animationFillMode: 'forwards' }}>
+                {/* Subtle Progress HUD - Positioned Lower */}
+                <div className="mt-20 w-64 space-y-6 animate-fade-in" style={{ animationDelay: '1.5s', opacity: 0, animationFillMode: 'forwards' }}>
                     <div className="space-y-4 text-center">
-                        <h1 className="text-[12px] tracking-[0.6em] font-extrabold opacity-20 uppercase leading-none text-slate-400">
+                        <h1 className="text-[10px] tracking-[0.6em] font-extrabold opacity-30 uppercase leading-none text-slate-400">
                             {status}
                         </h1>
 
@@ -64,11 +64,11 @@ export function BootSequence({ onComplete }: { onComplete: () => void }) {
                         </div>
                     </div>
 
-                    <div className="flex justify-center gap-8 opacity-20">
-                        <div className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-bounce" style={{ animationDelay: '0s' }} />
-                        <div className="w-1.5 h-1.5 rounded-full bg-red-500 animate-bounce" style={{ animationDelay: '0.1s' }} />
-                        <div className="w-1.5 h-1.5 rounded-full bg-yellow-400 animate-bounce" style={{ animationDelay: '0.2s' }} />
-                        <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-bounce" style={{ animationDelay: '0.3s' }} />
+                    <div className="flex justify-center gap-6 opacity-30">
+                        <div className="w-1 h-1 rounded-full bg-blue-500 animate-bounce" style={{ animationDelay: '0s' }} />
+                        <div className="w-1 h-1 rounded-full bg-red-500 animate-bounce" style={{ animationDelay: '0.1s' }} />
+                        <div className="w-1 h-1 rounded-full bg-yellow-400 animate-bounce" style={{ animationDelay: '0.2s' }} />
+                        <div className="w-1 h-1 rounded-full bg-green-500 animate-bounce" style={{ animationDelay: '0.3s' }} />
                     </div>
                 </div>
             </div>
