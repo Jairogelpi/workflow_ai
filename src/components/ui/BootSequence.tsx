@@ -16,14 +16,19 @@ export function BootSequence({ onComplete }: { onComplete: () => void }) {
     useEffect(() => {
         let currentStep = 0;
         const interval = setInterval(() => {
+            console.log(`[BootSequence] Tick: Step ${currentStep}/${steps.length}, Progress ${progress}%`);
             if (currentStep < steps.length) {
                 const nextStatus = steps[currentStep];
                 if (nextStatus) setStatus(nextStatus);
                 setProgress((prev) => Math.min(prev + 25, 100));
                 currentStep++;
             } else {
+                console.log('[BootSequence] Boot sequence finished. Triggering onComplete in 800ms...');
                 clearInterval(interval);
-                setTimeout(onComplete, 800);
+                setTimeout(() => {
+                    console.log('[BootSequence] Calling onComplete()');
+                    onComplete();
+                }, 800);
             }
         }, 700);
         return () => clearInterval(interval);

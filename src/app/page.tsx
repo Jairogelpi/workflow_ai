@@ -26,7 +26,10 @@ export default function Home() {
     const [hasBooted, setHasBooted] = React.useState(false);
     const { toggleTheme, theme } = useTheme();
 
+    console.log('[Home Page] Render State:', { authLoading, hasUser: !!user, hasBooted });
+
     const handleBootComplete = React.useCallback(() => {
+        console.log('[Home Page] handleBootComplete triggered. Setting hasBooted = true');
         setHasBooted(true);
     }, []);
 
