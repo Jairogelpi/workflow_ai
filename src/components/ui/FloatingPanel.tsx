@@ -130,7 +130,7 @@ export function FloatingPanel({
 
   return (
     <div
-      className={`${panelStyle} flex flex-col glass-panel rounded-3xl overflow-hidden transition-all duration-300 ease-out animate-scale-in ${dropState !== 'idle' ? 'ring-2 ring-primary ring-offset-2' : ''
+      className={`${panelStyle} flex flex-col bg-white border border-slate-200 shadow-2xl rounded-3xl overflow-hidden transition-all duration-300 ease-out animate-scale-in ${dropState !== 'idle' ? 'ring-2 ring-primary ring-offset-2' : ''
         }`}
       style={dragStyle}
       onDragOver={handleDragOver}
@@ -139,12 +139,12 @@ export function FloatingPanel({
     >
       {/* Header Bar */}
       <div
-        className={`h-12 flex items-center justify-between px-4 select-none border-b border-outline-variant/20 dark:border-white/5 bg-surface-container/50 dark:bg-surface-dark-container-high/50 ${!isMaximized ? 'cursor-move' : ''}`}
+        className={`h-14 flex items-center justify-between px-6 select-none border-b border-slate-100 bg-slate-50/50 ${!isMaximized ? 'cursor-grab active:cursor-grabbing' : ''}`}
         onMouseDown={handleMouseDown}
       >
-        <div className="flex items-center gap-3 text-on-surface dark:text-white">
-          <GripHorizontal size={16} className="opacity-40" />
-          <span className="font-medium text-sm truncate max-w-[200px]">{title}</span>
+        <div className="flex items-center gap-4 text-slate-800">
+          <div className="w-1.5 h-1.5 rounded-full bg-primary" />
+          <span className="font-semibold text-xs tracking-wider uppercase text-slate-400">{title}</span>
         </div>
 
         {/* Window Controls */}

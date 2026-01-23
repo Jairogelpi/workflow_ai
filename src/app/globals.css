@@ -1,44 +1,36 @@
 @import "tailwindcss";
 
 :root {
-  /* Material Design 3 Light Theme */
+  /* Axiom Light Theme - Apple/Google AI Style */
   --surface: 255 255 255;
-  --surface-container: 243 237 247;
-  --on-surface: 29 27 32;
-  --on-surface-variant: 73 69 79;
-  --outline: 121 116 126;
-  --outline-variant: 202 196 208;
-  --primary: 11 87 208;
-  --primary-container: 211 227 253;
-  --on-primary-container: 4 30 73;
-}
+  --surface-container: 248 249 250;
+  /* Google Grey 50 */
+  --on-surface: 32 33 36;
+  /* Google Grey 900 */
+  --on-surface-variant: 95 99 104;
+  /* Google Grey 500 */
+  --outline: 218 220 224;
+  /* Google Grey 300 */
+  --outline-variant: 232 234 237;
+  /* Google Grey 200 */
 
-.dark {
-  --surface: 20 18 24;
-  --surface-container: 33 31 38;
-  --on-surface: 230 224 233;
-  --on-surface-variant: 202 196 208;
-  --outline: 147 143 153;
-  --outline-variant: 73 69 79;
-  --primary: 168 199 250;
-  --primary-container: 0 74 119;
-  --on-primary-container: 211 227 253;
+  --primary: 66 133 244;
+  /* Google Blue */
+  --primary-container: 232 240 254;
+  --on-primary-container: 23 78 166;
+
+  /* Axiom Accent Colors */
+  --accent-red: 234 67 53;
+  --accent-yellow: 251 188 4;
+  --accent-green: 52 168 83;
 }
 
 body {
   background-color: rgb(var(--surface));
   color: rgb(var(--on-surface));
-
-  /* System Fonts - Native Feel */
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
-
+  font-family: 'Google Sans', 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
   -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-
   overflow: hidden;
-  /* No global scroll */
-
-  /* Native App Feel: User cannot select UI text */
   user-select: none;
   cursor: default;
 }
