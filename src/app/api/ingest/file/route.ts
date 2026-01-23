@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '../../../../lib/supabase-server';
-import { uploadFile, digestFile } from '../../../../lib/ingest';
+import { createClient } from '@/lib/supabase-server';
+import { uploadFile, digestFile } from '@/lib/ingest';
 
 /**
  * File Ingestion Endpoint

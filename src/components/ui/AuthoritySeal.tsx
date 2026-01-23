@@ -45,7 +45,7 @@ export const AuthoritySeal: React.FC<AuthoritySealProps> = ({
 
                 // [Phase 7] Integrate with Rust Authority Signer
                 try {
-                    const signerCore = await import('../../../signer-core/pkg');
+                    const signerCore = await import('signer-core');
                     await signerCore.default?.(); // Initialize WASM
 
                     // Note: In production, nodeHash and privateKey would come from props/store

@@ -1,7 +1,7 @@
 'use client';
 
 import { useSearchParams } from 'next/navigation';
-import NodeEditor from '../../components/editor/NodeEditor';
+import NodeEditor from '@/components/editor/NodeEditor';
 import { Suspense } from 'react';
 
 /**

@@ -19,7 +19,7 @@ export function useAntigravityEngine() {
     useEffect(() => {
         // Initialize WASM module once
         if (!wasmInitialized) {
-            import('../../antigravity-engine/pkg')
+            import('antigravity-engine')
                 .then(module => {
                     wasmModule = module;
                     wasmInitialized = true;
