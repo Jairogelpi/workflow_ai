@@ -5,24 +5,21 @@ import { NextResponse } from 'next/server'
 export async function GET(request: Request) {
     const { searchParams, origin } = new URL(request.url)
     const code = searchParams.get('code')
-    // if "next" is in param, use it as the redirect URL
     const next = searchParams.get('next') ?? '/'
 
     // Use configured site URL, or hardcoded production URL if env is missing.
-    // We explicitly avoid using 'origin' because on Render it resolves to internal container IPs (srv-...).
     let siteUrl = process.env.NEXT_PUBLIC_APP_URL;
-
     if (!siteUrl) {
-        if (origin.includes('localhost')) {
-            siteUrl = 'http://localhost:3000';
-        } else {
-            siteUrl = 'https://workgraph-os.onrender.com';
-        }
+        siteUrl = origin.includes('localhost') ? 'http://localhost:3000' : 'https://workgraph-os.onrender.com';
     }
 
     if (code) {
-        console.log(`[Auth Callback] Code received: ${code.slice(0, 5)}...`);
+        console.log(`[Auth Callback] Code received. Exchange initiating...`);
         const cookieStore = await cookies()
+
+        // We create the response FIRST so we can attach cookies to it
+        const response = NextResponse.redirect(`${siteUrl}${next}`)
+
         const supabase = createServerClient(
             process.env.NEXT_PUBLIC_SUPABASE_URL!,
             process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -32,23 +29,13 @@ export async function GET(request: Request) {
                         return cookieStore.get(name)?.value
                     },
                     set(name: string, value: string, options: CookieOptions) {
-                        cookieStore.set({
-                            name,
-                            value,
-                            ...options,
-                            path: '/',
-                            sameSite: 'lax',
-                            secure: siteUrl.startsWith('https')
-                        })
+                        // Attach to both the store and the response to be safe
+                        cookieStore.set({ name, value, ...options })
+                        response.cookies.set({ name, value, ...options })
                     },
                     remove(name: string, options: CookieOptions) {
-                        cookieStore.delete({
-                            name,
-                            ...options,
-                            path: '/',
-                            sameSite: 'lax',
-                            secure: siteUrl.startsWith('https')
-                        })
+                        cookieStore.set({ name, value: '', ...options })
+                        response.cookies.set({ name, value: '', ...options })
                     },
                 },
             }
@@ -56,14 +43,13 @@ export async function GET(request: Request) {
 
         const { data, error } = await supabase.auth.exchangeCodeForSession(code)
         if (!error) {
-            console.log(`[Auth Callback] Session exchange successful for user: ${data.user?.email}`);
-            console.log(`[Auth Callback] Redirecting to: ${siteUrl}${next}`);
-            return NextResponse.redirect(`${siteUrl}${next}`)
+            console.log(`[Auth Callback] Session exchange successful for: ${data.user?.email}`);
+            return response
         } else {
             console.error('[Auth Callback] Session exchange error:', error.message);
         }
     }
 
-    // return the user to an error page with instructions
     return NextResponse.redirect(`${siteUrl}/auth/auth-code-error`)
 }
+
