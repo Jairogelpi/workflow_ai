@@ -2,6 +2,13 @@ import { createServerClient, type CookieOptions } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
 export async function middleware(request: NextRequest) {
+    const cookieNames = request.cookies.getAll().map(c => c.name)
+    const sbCookies = cookieNames.filter(n => n.includes('sb-'))
+
+    // We can't log to the browser console from here, so we log to server logs
+    // which the user can hopefully see in Render if we ask.
+    // For now, let's just make it fast.
+
     let response = NextResponse.next({
         request: {
             headers: request.headers,

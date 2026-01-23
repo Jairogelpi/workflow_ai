@@ -47,7 +47,15 @@ export default function Home() {
 
         // Initial session check
         console.log('[Home Page] Mount - Initializing session check...');
+        const urlParams = new URLSearchParams(window.location.search);
+        const authError = urlParams.get('auth_error');
+        if (authError) {
+            console.error('[Home Page] AUTH ERROR FROM CALLBACK:', authError);
+            alert(`Auth Error: ${authError}`);
+        }
+
         console.log('[Home Page] RAW COOKIES:', document.cookie ? 'Present' : 'NONE');
+
         if (document.cookie) {
             const cookieNames = document.cookie.split(';').map(c => c.trim().split('=')[0]);
             console.log('[Home Page] Cookie Names:', cookieNames.filter(n => n.includes('sb-')));
