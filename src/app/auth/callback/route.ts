@@ -8,9 +8,17 @@ export async function GET(request: Request) {
     // if "next" is in param, use it as the redirect URL
     const next = searchParams.get('next') ?? '/'
 
-    // Use configured site URL if available (Production), otherwise fallback to request origin
-    // This prevents redirecting to internal container URLs (srv-...) on Render/K8s
-    const siteUrl = process.env.NEXT_PUBLIC_APP_URL || origin;
+    // Use configured site URL, or hardcoded production URL if env is missing.
+    // We explicitly avoid using 'origin' because on Render it resolves to internal container IPs (srv-...).
+    let siteUrl = process.env.NEXT_PUBLIC_APP_URL;
+
+    if (!siteUrl) {
+        if (origin.includes('localhost')) {
+            siteUrl = 'http://localhost:3000';
+        } else {
+            siteUrl = 'https://workgraph-os.onrender.com';
+        }
+    }
 
     if (code) {
         const cookieStore = await cookies()

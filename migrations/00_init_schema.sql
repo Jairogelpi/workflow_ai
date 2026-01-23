@@ -1,24 +1,22 @@
--- 1. Ensure 'public.profiles' table matches App Logic
-create table if not exists public.profiles (
-  id uuid references auth.users on delete cascade not null primary key,
-  email text,
-  full_name text,
-  avatar_url text,
-  preferences jsonb default '{}'::jsonb,
-  updated_at timestamp with time zone default timezone('utc'::text, now()) not null
-);
+-- 1. Fix Table Structure: Add columns required by the App
+-- Your current table 'profiles' is missing these, causing the INSERT to fail.
+alter table public.profiles add column if not exists email text;
+alter table public.profiles add column if not exists full_name text;
 
--- 2. Enable RLS
+-- 2. Ensure RLS is enabled
 alter table public.profiles enable row level security;
 
--- 3. Policies
+-- 3. Update Policies (Drop first to avoid duplicates/errors)
+drop policy if exists "Users can view own profile" on public.profiles;
+drop policy if exists "Users can update own profile" on public.profiles;
+
 create policy "Users can view own profile" on public.profiles
   for select using (auth.uid() = id);
 
 create policy "Users can update own profile" on public.profiles
   for update using (auth.uid() = id);
 
--- 4. Trigger Function (Updated to target 'profiles')
+-- 4. Fix the Trigger Function
 create or replace function public.handle_new_user()
 returns trigger as $$
 begin
@@ -29,12 +27,16 @@ begin
     new.raw_user_meta_data->>'full_name',
     new.raw_user_meta_data->>'avatar_url'
   )
-  on conflict (id) do nothing; -- Prevent errors if API created it first
+  on conflict (id) do update
+  set 
+    email = excluded.email,
+    full_name = excluded.full_name,
+    avatar_url = excluded.avatar_url;
   return new;
 end;
 $$ language plpgsql security definer;
 
--- 5. Trigger
+-- 5. Re-bind the Trigger
 drop trigger if exists on_auth_user_created on auth.users;
 
 create trigger on_auth_user_created
