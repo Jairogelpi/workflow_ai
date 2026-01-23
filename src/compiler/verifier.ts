@@ -51,7 +51,7 @@ export async function verifyBranch(nodes: WorkNode[], edges?: any[]): Promise<Ve
     if (edges && edges.length > 0) {
         try {
             // Dynamic import for WASM module (logic-engine)
-            const logicEngine = await import('logic-engine');
+            const logicEngine = await import('../../logic-engine/pkg');
             await logicEngine.default?.(); // Initialize WASM if needed
 
             const graphData = {

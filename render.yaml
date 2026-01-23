@@ -14,9 +14,12 @@ services:
       
       # Build WASM modules
       cd antigravity-engine && wasm-pack build --target bundler && cd ..
+      cd logic-engine && wasm-pack build --target bundler && cd ..
+      cd signer-core && wasm-pack build --target bundler && cd ..
+      cd crdt-sync && wasm-pack build --target bundler && cd ..
       
-      # Install Node dependencies and build (with legacy peer deps for ESLint)
-      npm ci --legacy-peer-deps
+      # Install Node dependencies and build
+      npm install --legacy-peer-deps
       npm run build
     startCommand: npm start
     envVars:

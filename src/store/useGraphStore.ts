@@ -524,7 +524,7 @@ export const useGraphStore = create<GraphState>((set, get) => ({
         };
 
         try {
-            const signerCore = await import('signer-core');
+            const signerCore = await import('../../signer-core/pkg');
             await signerCore.default?.(); // Initialize WASM
 
             const targetNode = nodes.find(n => n.id === id);

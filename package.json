@@ -10,7 +10,7 @@
         "lint": "eslint .",
         "typecheck": "tsc --noEmit",
         "format": "prettier --check .",
-        "build:wasm": "cd antigravity-engine && wasm-pack build --target bundler",
+        "build:wasm": "cd antigravity-engine && wasm-pack build --target bundler && cd ../logic-engine && wasm-pack build --target bundler && cd ../signer-core && wasm-pack build --target bundler && cd ../crdt-sync && wasm-pack build --target bundler",
         "check": "npm run lint && npm run typecheck && npm run format"
     },
     "dependencies": {

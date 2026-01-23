@@ -152,7 +152,7 @@ export class MergeEngine {
         conflicts_resolved: number;
     }> {
         try {
-            const crdtSync = await import('crdt-sync');
+            const crdtSync = await import('../../../crdt-sync/pkg');
             await crdtSync.default?.(); // Initialize WASM
 
             const result = JSON.parse(crdtSync.merge_remote_update(localState, remoteUpdate));
@@ -175,7 +175,7 @@ export class MergeEngine {
      */
     static async createCrdtDocument(initialContent: string): Promise<string> {
         try {
-            const crdtSync = await import('crdt-sync');
+            const crdtSync = await import('../../../crdt-sync/pkg');
             await crdtSync.default?.();
             return crdtSync.create_document(initialContent);
         } catch (err) {
