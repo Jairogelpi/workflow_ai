@@ -2,61 +2,71 @@ import { useEffect } from 'react';
 import { useGraphStore } from '../store/useGraphStore';
 import { traceSpan } from '../kernel/observability';
 
+// Dynamic import for WASM module (works in production)
+let wasmModule: any = null;
+let wasmInitialized = false;
+
 /**
  * Antigravity Physics Engine Hook
- * Applies spatial forces to nodes using WASM (when available) or JS fallback
+ * Uses Rust/WASM for high-performance spatial physics
  */
 export function useAntigravityEngine() {
     const nodes = useGraphStore(state => state.nodes);
     const edges = useGraphStore(state => state.edges);
     const setNodes = useGraphStore(state => state.setNodes);
     const isAntigravityActive = useGraphStore(state => state.isAntigravityActive);
-    const cursorPosition = useGraphStore(state => state.cursorPosition);
+
+    useEffect(() => {
+        // Initialize WASM module once
+        if (!wasmInitialized) {
+            import('../../../antigravity-engine/pkg')
+                .then(module => {
+                    wasmModule = module;
+                    wasmInitialized = true;
+                    console.log('[Antigravity] WASM module loaded successfully');
+                })
+                .catch(err => {
+                    console.warn('[Antigravity] WASM not available, using JS fallback:', err);
+                });
+        }
+    }, []);
 
     useEffect(() => {
         if (!isAntigravityActive || nodes.length === 0) return;
 
         const interval = setInterval(() => {
             traceSpan('antigravity.tick', { nodeCount: nodes.length }, () => {
-                // JavaScript fallback for spatial magnetism
-                const updatedNodes = nodes.map(node => {
-                    if (node.data.metadata.pin) return node; // Pinned nodes don't move
+                if (wasmModule && wasmModule.apply_forces) {
+                    // Use WASM for physics
+                    const nodeData = nodes.map(n => ({
+                        id: n.id,
+                        x: n.position.x,
+                        y: n.position.y,
+                        is_pin: n.data.metadata.pin || false
+                    }));
 
-                    let dx = 0;
-                    let dy = 0;
+                    const edgeData = edges.map(e => ({
+                        source: e.source,
+                        target: e.target
+                    }));
 
-                    // Cursor magnetism
-                    if (cursorPosition) {
-                        const distX = cursorPosition.x - node.position.x;
-                        const distY = cursorPosition.y - node.position.y;
-                        const distance = Math.sqrt(distX * distX + distY * distY);
-
-                        if (distance < 200 && distance > 0) {
-                            const force = (200 - distance) / 200 * 2;
-                            dx += (distX / distance) * force;
-                            dy += (distY / distance) * force;
-                        }
+                    try {
+                        const updatedData = wasmModule.apply_forces(nodeData, edgeData);
+                        const updatedNodes = nodes.map((node, i) => ({
+                            ...node,
+                            position: {
+                                x: updatedData[i].x,
+                                y: updatedData[i].y
+                            }
+                        }));
+                        setNodes(updatedNodes);
+                    } catch (err) {
+                        console.error('[Antigravity] WASM error:', err);
                     }
-
-                    // Center gravity (weak)
-                    const centerX = 400;
-                    const centerY = 300;
-                    dx += (centerX - node.position.x) * 0.001;
-                    dy += (centerY - node.position.y) * 0.001;
-
-                    return {
-                        ...node,
-                        position: {
-                            x: node.position.x + dx,
-                            y: node.position.y + dy
-                        }
-                    };
-                });
-
-                setNodes(updatedNodes);
+                }
             });
         }, 50); // 20 FPS
 
         return () => clearInterval(interval);
-    }, [isAntigravityActive, nodes, edges, cursorPosition, setNodes]);
+    }, [isAntigravityActive, nodes, edges, setNodes]);
 }
