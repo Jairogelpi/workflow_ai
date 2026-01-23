@@ -4,8 +4,8 @@ import { Metadata } from 'next';
 import Providers from './providers';
 
 export const metadata: Metadata = {
-    title: 'WorkGraph OS',
-    description: 'Agentic RLM Workbench',
+    title: 'Axiom GraphOs',
+    description: 'Sistema Operativo de Gráfos Inteligentes',
 };
 
 export default function RootLayout({

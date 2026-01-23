@@ -156,26 +156,14 @@ export function WorkNodeComponent(props: any) {
                 className={`
                     min-w-[200px] max-w-[280px] rounded-[32px] 
                     transition-all duration-300 ease-out
-                    ${isGhost ? 'opacity-60 grayscale-[0.2] brightness-110' : ''}
-                    ${isSigned ? 'shadow-[0_0_20px_rgba(245,158,11,0.25)]' : ''}
-                    ${selected ? 'scale-105 shadow-[0_20px_50px_rgba(0,0,0,0.1)]' : 'shadow-[0_8px_30px_rgba(0,0,0,0.05)]'}
-                    ${tensionLevel > 0 ? 'animate-vibration' : ''}
-                    ${data.metadata.origin === 'ai' && !isGhost ? 'opacity-70 border-dashed border-slate-300 grayscale-[0.5]' : ''}
+                    ${isGhost ? 'opacity-40 grayscale' : ''}
+                    ${selected ? 'scale-105 shadow-[0_25px_60px_-15px_rgba(0,0,0,0.15)] ring-2 ring-blue-500/20' : 'shadow-[0_8px_30px_rgba(0,0,0,0.04)]'}
+                    ${data.metadata.origin === 'ai' && !isGhost ? 'opacity-80 border-dashed border-slate-200' : ''}
                 `}
                 style={{
                     backgroundColor: colors.bg,
-                    border: data.metadata.origin === 'ai' || isGhost
-                        ? `2px dashed ${isGhost ? '#f59e0b' : colors.text + '50'}`
-                        : `2px solid ${selected ? colors.text : colors.border}`,
+                    border: `1.5px solid ${selected ? colors.text : colors.border}`,
                     transform: isAntigravityActive ? `scale(${zDepth})` : undefined,
-                    boxShadow: isGhost
-                        ? '0 0 20px rgba(245, 158, 11, 0.4)'
-                        : (tensionLevel > 0
-                            ? `0 0 ${10 + tensionLevel * 5}px rgba(239, 68, 68, ${0.3 + tensionLevel * 0.1})`
-                            : (isSigned ? '0 0 15px rgba(245, 158, 11, 0.2)' : undefined)),
-                    animation: isGhost
-                        ? 'ripple 2s infinite ease-in-out'
-                        : (isSigned ? 'heartbeat 2s infinite ease-in-out' : (tensionLevel > 0 ? `vibration ${Math.max(0.1, 0.5 - tensionLevel * 0.05)}s infinite linear` : undefined))
                 }}
             >
                 <style jsx>{`
@@ -208,25 +196,10 @@ export function WorkNodeComponent(props: any) {
                     </div>
                 )}
 
-                {/* [Phase 12] X-Ray Structural Layer */}
-                {isXRayActive && (
-                    <div className="absolute inset-0 z-20 bg-slate-950/95 rounded-3xl p-4 flex flex-col justify-between font-mono text-[9px] border-2 border-cyan-500/40 shadow-[inset_0_0_20px_rgba(34,211,238,0.2)] animate-in fade-in zoom-in-95 duration-200">
-                        <div className="flex justify-between text-cyan-400 font-bold uppercase tracking-tighter">
-                            <span>PHY_ADDR: {id.slice(0, 8)}</span>
-                            <span>VER: {data.metadata.version_hash?.slice(0, 6) || 'RAW'}</span>
-                        </div>
-                        <div className="flex-1 flex flex-col items-center justify-center gap-2">
-                            <div className="text-[10px] text-cyan-300 font-black animate-pulse">NEURAL_SCAN_ACTIVE</div>
-                            <div className="w-full bg-cyan-900/30 h-10 border border-cyan-500/20 rounded-xl flex items-center justify-center">
-                                <span className="text-cyan-500 flex items-center gap-1">
-                                    <Zap size={14} className="animate-bounce" />
-                                    INTEGRITY_INDEX: {(data.metadata.confidence * 100).toFixed(1)}%
-                                </span>
-                            </div>
-                        </div>
-                        <div className="text-slate-400 border-t border-cyan-950 mt-2 py-1 truncate">
-                            {isSigned ? `SIGNATURE_ED25519: ${(data.metadata.human_signature as any)?.public_key?.slice(0, 16)}...` : 'AUTH: AI_INFERRED (NON_CANON)'}
-                        </div>
+                {/* Simplified Tension Overlay */}
+                {tensionLevel > 0 && (
+                    <div className="absolute -top-2 -right-2 bg-red-400 text-white rounded-full p-1.5 shadow-md z-10 animate-bounce">
+                        <Zap size={10} fill="currentColor" />
                     </div>
                 )}
                 <div className="px-4 py-3 flex items-start gap-3">
