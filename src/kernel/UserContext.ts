@@ -1,5 +1,5 @@
 
-import { createClient } from '../lib/supabase-server';
+import { supabase } from '../lib/supabase';
 import { generateEmbedding } from '../lib/ingest/vectorizer';
 
 /**

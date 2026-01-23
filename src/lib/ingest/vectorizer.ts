@@ -3,7 +3,7 @@
  * Semantic indexing capabilities for the WorkGraph OS.
  */
 
-import { createClient } from '../supabase-server';
+import { supabase } from '../supabase';
 
 /**
  * Generates a vector embedding for the given text using OpenAI.
@@ -47,7 +47,7 @@ export async function generateEmbedding(text: string): Promise<number[]> {
  * Saves a node's embedding to the vector store.
  */
 export async function saveNodeEmbedding(nodeId: string, embedding: number[]) {
-    const supabase = await createClient();
+    // We expect a table named 'node_embeddings' with 'node_id' and 'embedding' (vector) columns
 
     // We expect a table named 'node_embeddings' with 'node_id' and 'embedding' (vector) columns
     const { error } = await supabase
