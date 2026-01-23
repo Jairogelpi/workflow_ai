@@ -194,88 +194,39 @@ function GraphContent() {
             onPaneMouseLeave={onPaneMouseLeave}
             zoomOnDoubleClick={false}
             fitView
-            className={`dot-grid transition-all duration-500 ${isXRayMode ? 'brightness-90 grayscale-[0.3]' : ''}`}
+            className="transition-all duration-500 bg-white"
             proOptions={{ hideAttribution: true }}
         >
-            <Background color={isXRayMode ? "#33ffff" : "#ccc"} variant={"dots" as any} />
+            {/* Super subtle background - pure white feeling */}
+            <Background color="#f8fafc" variant={"dots" as any} gap={40} size={1} />
 
-            {/* X-Ray Spatial Wires (Alt key) */}
-            {isXRayMode && (
-                <Panel position="top-center" className="mt-4">
-                    <div className="bg-sky-950/80 border border-sky-400 text-sky-400 px-4 py-2 rounded-full font-mono text-xs animate-pulse">
-                        X-RAY SPATIAL MODE: SEMANTIC WIRES VISIBLE
-                    </div>
-                </Panel>
-            )}
-
-            <Controls className="!bg-white/90 dark:!bg-surface-dark-container-high/90 !backdrop-blur-xl !border !border-outline-variant/20 dark:!border-white/10 !rounded-2xl !shadow-elevation-3 !p-1 [&>button]:!bg-transparent [&>button]:!border-0 [&>button]:!rounded-xl [&>button:hover]:!bg-primary/10 [&>button]:!text-outline dark:[&>button]:!text-outline-variant [&>button]:!w-8 [&>button]:!h-8" />
-            <MiniMap
-                className="!bg-white/80 dark:!bg-surface-dark-container/80 !backdrop-blur-xl !border !border-outline-variant/20 dark:!border-white/10 !rounded-2xl !shadow-elevation-3"
-                nodeColor={(node) => {
-                    if ((node as any).className === 'draft-proposal') return '#94a3b8';
-                    const type = node.type || 'note';
-                    const colors: Record<string, string> = {
-                        note: '#F3EDF7', claim: '#D3E3FD', evidence: '#C4EED0',
-                        decision: '#FEF7C3', idea: '#E7F8ED', task: '#E8DEF8',
-                        artifact: '#FFE0B2', source: '#E3F2FD'
-                    };
-                    return colors[type] || '#F3EDF7';
-                }}
-                maskColor="rgba(0,0,0,0.05)"
-            />
-
-            {/* Floating Toolbar Island */}
-            <Panel position="bottom-center" className="!mb-6">
-                <div className="floating-island flex items-center gap-2 px-4 py-2 bg-white/90 dark:bg-surface-dark/90 backdrop-blur-xl border border-outline-variant/20 rounded-full shadow-elevation-3">
+            {/* Simple Navigation Island */}
+            <Panel position="bottom-center" className="!mb-10">
+                <div className="flex items-center gap-4 px-6 py-3 bg-white border border-slate-200 rounded-full shadow-[0_20px_50px_rgba(0,0,0,0.1)] pointer-events-auto">
                     <button
                         onClick={() => addNode('note')}
-                        className="flex items-center gap-2 px-4 py-2 rounded-full bg-primary text-white font-medium text-sm transition-all hover:bg-primary/90 hover:scale-105 active:scale-95 shadow-elevation-2"
+                        className="flex items-center gap-2 px-6 py-2.5 rounded-full bg-blue-500 text-white font-bold text-sm transition-all hover:bg-blue-600 hover:scale-105 active:scale-95 shadow-lg shadow-blue-500/20"
                     >
-                        <Plus size={18} />
-                        <span>New Node</span>
+                        <Plus size={20} />
+                        <span>Nueva Idea</span>
                     </button>
 
-                    <div className="w-px h-6 bg-outline-variant/30 dark:bg-white/10" />
-
-                    <button className="p-2 rounded-full hover:bg-primary/10 transition-colors text-outline dark:text-outline-variant" title="Search">
-                        <Search size={20} />
-                    </button>
-
-                    <button className="p-2 rounded-full hover:bg-primary/10 transition-colors text-outline dark:text-outline-variant" title="Filter">
-                        <Filter size={20} />
-                    </button>
-
-                    <div className="w-px h-6 bg-outline-variant/30 dark:bg-white/10" />
+                    <div className="w-px h-8 bg-slate-100 mx-2" />
 
                     <button
                         onClick={toggleAntigravity}
-                        className={`p-2 rounded-full transition-all duration-300 ${isAntigravityActive ? 'bg-primary text-white shadow-elevation-2' : 'hover:bg-primary/10 text-outline dark:text-outline-variant'}`}
-                        title={isAntigravityActive ? "Switch to Stationary (Freeze)" : "Enable Antigravity (Physics)"}
+                        className={`p-3 rounded-full transition-all duration-300 ${isAntigravityActive ? 'bg-blue-50 text-blue-500' : 'hover:bg-slate-50 text-slate-400'}`}
+                        title="Fuerza Gravitacional"
                     >
-                        <Wind size={20} className={isAntigravityActive ? 'animate-pulse' : ''} />
+                        <Wind size={22} className={isAntigravityActive ? 'animate-pulse' : ''} />
                     </button>
 
-                    <div className="w-px h-6 bg-outline-variant/30 dark:bg-white/10" />
-
-                    <button
-                        onClick={() => {
-                            // Using dummy IDs for now, in a real scenario these would be active branch IDs
-                            const { performAlignmentCheck } = useGraphStore.getState();
-                            performAlignmentCheck('branch-infra', 'branch-finance');
-                        }}
-                        className="p-2 rounded-full hover:bg-cyan-500/10 text-cyan-500 transition-colors"
-                        title="Audit Semantic Alignment"
-                    >
-                        <ShieldCheck size={20} />
-                    </button>
-
-                    {/* X-Ray Mode Toggle */}
                     <button
                         onClick={() => useXRayMode.getState().toggleXRay()}
-                        className={`p-2 rounded-full transition-all ${useXRayMode.getState().isXRayActive ? 'bg-cyan-500/20 text-cyan-400 shadow-[0_0_15px_rgba(6,182,212,0.4)]' : 'hover:bg-cyan-500/10 text-slate-500'}`}
-                        title="Toggle X-Ray Mode (Forensic Audit)"
+                        className={`p-3 rounded-full transition-all ${useXRayMode.getState().isXRayActive ? 'bg-blue-50 text-blue-500' : 'hover:bg-slate-50 text-slate-400'}`}
+                        title="Ver Detalles"
                     >
-                        <Eye size={20} />
+                        <Eye size={22} />
                     </button>
                 </div>
             </Panel>
