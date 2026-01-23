@@ -317,7 +317,7 @@ export const useGraphStore = create<GraphState>((set, get) => ({
         set({ isAlignmentComputing: true });
         try {
             // Dynamic import to avoid circular dependencies
-            const alignmentEngine = await import('../kernel/alignment_engine.js');
+            const alignmentEngine = await import('../kernel/alignment_engine');
             const report = await alignmentEngine.checkCrossBranchAlignment(sourceBranchId, targetBranchId);
             set({ alignmentReport: report, isAlignmentComputing: false });
 

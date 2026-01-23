@@ -6,7 +6,7 @@
  */
 use wasm_bindgen::prelude::*;
 use serde::{Serialize, Deserialize};
-use varisat::{Solver, Lit, CnfFormula};
+use varisat::{Solver, Lit, CnfFormula, ExtendFormula};
 use std::collections::HashMap;
 
 #[derive(Serialize, Deserialize)]
