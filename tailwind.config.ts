@@ -51,19 +51,19 @@ const config: Config = {
                     container: '#C2E7FF',
                     'on-container': '#001D35',
                 },
-                // Semantic Node Colors (Pastel)
+                // Semantic Node Colors (Axiom Palette)
                 node: {
-                    note: { bg: '#F3EDF7', text: '#4A4458', border: '#CAC4D0' },
-                    claim: { bg: '#D3E3FD', text: '#041E49', border: '#A8C7FA' },
-                    evidence: { bg: '#C4EED0', text: '#0D5D2C', border: '#6DD58C' },
-                    decision: { bg: '#FEF7C3', text: '#594F05', border: '#FDD663' },
-                    problem: { bg: '#F9DEDC', text: '#8C1D18', border: '#F2B8B5' },
-                    idea: { bg: '#E7F8ED', text: '#0D5D2C', border: '#A8DAB5' },
-                    task: { bg: '#E8DEF8', text: '#4A4458', border: '#CAC4D0' },
-                    artifact: { bg: '#FFE0B2', text: '#5D4037', border: '#FFCC80' },
-                    assumption: { bg: '#FCE4EC', text: '#880E4F', border: '#F48FB1' },
-                    constraint: { bg: '#EFEBE9', text: '#4E342E', border: '#BCAAA4' },
-                    source: { bg: '#E3F2FD', text: '#0D47A1', border: '#90CAF9' },
+                    note: { bg: '#F8F9FA', text: '#3C4043', border: '#DADCE0' },
+                    claim: { bg: '#E8F0FE', text: '#1967D2', border: '#4285F4' }, // Axiom Blue
+                    evidence: { bg: '#E6F4EA', text: '#137333', border: '#34A853' }, // Axiom Green
+                    decision: { bg: '#FEF7E0', text: '#B06000', border: '#FBBC04' }, // Axiom Yellow
+                    problem: { bg: '#FCE8E6', text: '#C5221F', border: '#EA4335' }, // Axiom Red
+                    idea: { bg: '#E6F4EA', text: '#137333', border: '#34A853' },
+                    task: { bg: '#FAFAFA', text: '#3C4043', border: '#DADCE0' },
+                    artifact: { bg: '#FFF7E0', text: '#B06000', border: '#FBBC04' },
+                    assumption: { bg: '#FCE8E6', text: '#C5221F', border: '#EA4335' },
+                    constraint: { bg: '#F1F3F4', text: '#3C4043', border: '#DADCE0' },
+                    source: { bg: '#E8F0FE', text: '#1967D2', border: '#4285F4' },
                 },
                 // Dark mode node colors
                 'node-dark': {

@@ -25,63 +25,63 @@ const NODE_TYPE_CONFIG: Record<string, {
     dark: { bg: string; text: string; border: string };
 }> = {
     note: {
-        label: 'Note',
+        label: 'Nota',
         icon: MessageSquare,
-        light: { bg: '#F3EDF7', text: '#4A4458', border: '#CAC4D0' },
+        light: { bg: '#F8F9FA', text: '#3C4043', border: '#DADCE0' },
         dark: { bg: '#4A4458', text: '#E8DEF8', border: '#938F99' }
     },
     claim: {
-        label: 'Claim',
+        label: 'Afirmación',
         icon: ShieldAlert,
-        light: { bg: '#D3E3FD', text: '#041E49', border: '#A8C7FA' },
+        light: { bg: '#E8F0FE', text: '#1967D2', border: '#4285F4' }, // Axiom Blue
         dark: { bg: '#004A77', text: '#C2E7FF', border: '#0077B6' }
     },
     evidence: {
-        label: 'Evidence',
+        label: 'Evidencia',
         icon: CheckCircle2,
-        light: { bg: '#C4EED0', text: '#0D5D2C', border: '#6DD58C' },
+        light: { bg: '#E6F4EA', text: '#137333', border: '#34A853' }, // Axiom Green
         dark: { bg: '#0D5D2C', text: '#C4EED0', border: '#1B8A45' }
     },
     decision: {
-        label: 'Decision',
+        label: 'Decisión',
         icon: Brain,
-        light: { bg: '#FEF7C3', text: '#594F05', border: '#FDD663' },
+        light: { bg: '#FEF7E0', text: '#B06000', border: '#FBBC04' }, // Axiom Yellow
         dark: { bg: '#594F05', text: '#FEF7C3', border: '#8D7E0A' }
     },
     idea: {
         label: 'Idea',
         icon: Lightbulb,
-        light: { bg: '#E7F8ED', text: '#0D5D2C', border: '#A8DAB5' },
+        light: { bg: '#E6F4EA', text: '#137333', border: '#34A853' },
         dark: { bg: '#0D5D2C', text: '#E7F8ED', border: '#2E7D32' }
     },
     task: {
-        label: 'Task',
+        label: 'Tarea',
         icon: CheckSquare,
-        light: { bg: '#E8DEF8', text: '#4A4458', border: '#CAC4D0' },
+        light: { bg: '#FAFAFA', text: '#3C4043', border: '#DADCE0' },
         dark: { bg: '#4A4458', text: '#E8DEF8', border: '#7E57C2' }
     },
     artifact: {
-        label: 'Artifact',
+        label: 'Entregable',
         icon: FileText,
-        light: { bg: '#FFE0B2', text: '#5D4037', border: '#FFCC80' },
+        light: { bg: '#FFF7E0', text: '#B06000', border: '#FBBC04' },
         dark: { bg: '#5D4037', text: '#FFE0B2', border: '#8D6E63' }
     },
     assumption: {
-        label: 'Assumption',
+        label: 'Supuesto',
         icon: HelpCircle,
-        light: { bg: '#FCE4EC', text: '#880E4F', border: '#F48FB1' },
+        light: { bg: '#FCE8E6', text: '#C5221F', border: '#EA4335' }, // Axiom Red
         dark: { bg: '#880E4F', text: '#FCE4EC', border: '#AD1457' }
     },
     constraint: {
-        label: 'Constraint',
+        label: 'Restricción',
         icon: Lock,
-        light: { bg: '#F9DEDC', text: '#8C1D18', border: '#F2B8B5' },
-        dark: { bg: '#8C1D18', text: '#F9DEDC', border: '#C62828' }
+        light: { bg: '#F1F3F4', text: '#3C4043', border: '#DADCE0' },
+        dark: { bg: '#4E342E', text: '#EFEBE9', border: '#795548' }
     },
     source: {
-        label: 'Source',
+        label: 'Fuente',
         icon: Link,
-        light: { bg: '#E3F2FD', text: '#0D47A1', border: '#90CAF9' },
+        light: { bg: '#E8F0FE', text: '#1967D2', border: '#4285F4' },
         dark: { bg: '#0D47A1', text: '#E3F2FD', border: '#1976D2' }
     },
 };
@@ -154,13 +154,13 @@ export function WorkNodeComponent(props: any) {
 
             <div
                 className={`
-                    min-w-[200px] max-w-[280px] rounded-3xl 
+                    min-w-[200px] max-w-[280px] rounded-[32px] 
                     transition-all duration-300 ease-out
                     ${isGhost ? 'opacity-60 grayscale-[0.2] brightness-110' : ''}
                     ${isSigned ? 'shadow-[0_0_20px_rgba(245,158,11,0.25)]' : ''}
-                    ${selected ? 'scale-105 shadow-elevation-5' : 'shadow-elevation-3'}
+                    ${selected ? 'scale-105 shadow-[0_20px_50px_rgba(0,0,0,0.1)]' : 'shadow-[0_8px_30px_rgba(0,0,0,0.05)]'}
                     ${tensionLevel > 0 ? 'animate-vibration' : ''}
-                    ${data.metadata.origin === 'ai' && !isGhost ? 'opacity-70 border-dashed border-gray-400 grayscale-[0.5]' : ''}
+                    ${data.metadata.origin === 'ai' && !isGhost ? 'opacity-70 border-dashed border-slate-300 grayscale-[0.5]' : ''}
                 `}
                 style={{
                     backgroundColor: colors.bg,

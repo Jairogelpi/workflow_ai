@@ -29,18 +29,18 @@ function useDebouncedCallback<T extends (...args: any[]) => void>(
     );
 }
 
-// Node type display names and colors
+// Node type display names and colors (Axiom Palette)
 const NODE_TYPE_CONFIG: Record<string, { label: string; color: string }> = {
-    note: { label: 'Note', color: 'bg-slate-500' },
-    claim: { label: 'Claim', color: 'bg-blue-500' },
-    evidence: { label: 'Evidence', color: 'bg-green-500' },
-    decision: { label: 'Decision', color: 'bg-purple-500' },
-    idea: { label: 'Idea', color: 'bg-yellow-500' },
-    task: { label: 'Task', color: 'bg-orange-500' },
-    artifact: { label: 'Artifact', color: 'bg-pink-500' },
-    assumption: { label: 'Assumption', color: 'bg-red-400' },
-    constraint: { label: 'Constraint', color: 'bg-red-600' },
-    source: { label: 'Source', color: 'bg-cyan-500' },
+    note: { label: 'Nota', color: 'bg-slate-400' },
+    claim: { label: 'Afirmación', color: 'bg-blue-500' },
+    evidence: { label: 'Evidencia', color: 'bg-green-500' },
+    decision: { label: 'Decisión', color: 'bg-yellow-500' },
+    idea: { label: 'Idea', color: 'bg-green-400' },
+    task: { label: 'Tarea', color: 'bg-slate-500' },
+    artifact: { label: 'Entregable', color: 'bg-yellow-400' },
+    assumption: { label: 'Supuesto', color: 'bg-red-400' },
+    constraint: { label: 'Restricción', color: 'bg-slate-600' },
+    source: { label: 'Fuente', color: 'bg-blue-400' },
 };
 
 export default function NodeEditor() {
@@ -134,9 +134,9 @@ export default function NodeEditor() {
     if (!editor) return null;
 
     return (
-        <div className="flex flex-col h-full bg-slate-900 text-slate-200 shadow-2xl">
+        <div className="flex flex-col h-full bg-white text-slate-800 shadow-xl rounded-[24px] overflow-hidden">
             {/* Header with node type selector and AUTHORITY STATUS */}
-            <div className={`flex items-center justify-between gap-2 p-3 border-b border-slate-700 transition-colors ${isSigned ? (isSealBroken ? 'bg-red-900/50' : 'bg-blue-900 text-white') : 'bg-slate-800/50'
+            <div className={`flex items-center justify-between gap-2 p-4 border-b border-slate-50 transition-colors ${isSigned ? (isSealBroken ? 'bg-red-50' : 'bg-blue-50') : 'bg-slate-50/50'
                 }`}>
                 <div className="flex items-center gap-2">
                     {isSigned ? (
@@ -145,10 +145,10 @@ export default function NodeEditor() {
                         <select
                             value={nodeType}
                             onChange={(e) => mutateNodeType(selectedNodeId!, e.target.value as any)}
-                            className={`px-2 py-1 text-xs font-semibold text-white rounded cursor-pointer appearance-none outline-none ring-1 ring-white/10 ${typeConfig?.color || 'bg-slate-500'}`}
+                            className={`px-3 py-1.5 text-[11px] font-bold text-white rounded-full cursor-pointer appearance-none outline-none shadow-sm ${typeConfig?.color || 'bg-slate-500'}`}
                         >
                             {Object.entries(NODE_TYPE_CONFIG).map(([type, cfg]) => (
-                                <option key={type} value={type} className="bg-slate-800 text-white">
+                                <option key={type} value={type} className="text-slate-800">
                                     {cfg.label}
                                 </option>
                             ))}
@@ -170,25 +170,25 @@ export default function NodeEditor() {
                 </div>
 
                 {selectedNode && (
-                    <div className={`text-[10px] uppercase tracking-wider font-bold ${isSigned && !isSealBroken ? 'text-blue-200' : 'text-slate-500'}`}>
-                        {selectedNode.data.metadata.origin}
+                    <div className={`text-[10px] uppercase tracking-widest font-bold ${isSigned && !isSealBroken ? 'text-blue-600' : 'text-slate-400'}`}>
+                        MÁQUINA: {selectedNode.data.metadata.origin.toUpperCase()}
                     </div>
                 )}
             </div>
 
 
-            <div className={`flex-1 overflow-auto p-6 scrollbar-thin scrollbar-thumb-slate-700 ${!canEdit ? 'bg-slate-950/20' : ''}`}>
-                <div className="flex items-center justify-between mb-4">
-                    <label className="text-[10px] uppercase font-black text-slate-500 tracking-widest">Contenido Secuencial</label>
+            <div className={`flex-1 overflow-auto p-8 scrollbar-thin scrollbar-thumb-slate-200 ${!canEdit ? 'bg-slate-50/30' : ''}`}>
+                <div className="flex items-center justify-between mb-6">
+                    <label className="text-[10px] uppercase font-bold text-slate-400 tracking-[0.2em]">Cuerpo del Pensamiento</label>
                     {isSigned && !isSealBroken && (
-                        <span className="text-[9px] bg-blue-500/20 text-blue-400 px-2 py-0.5 rounded border border-blue-500/30 font-bold flex items-center gap-1">
-                            <Lock className="h-2.5 w-2.5" /> BLOQUEADO POR AUTORIDAD
+                        <span className="text-[10px] bg-blue-100 text-blue-600 px-3 py-1 rounded-full font-bold flex items-center gap-2">
+                            <Lock className="h-3 w-3" /> PROTEGIDO
                         </span>
                     )}
                 </div>
 
-                <div className="prose dark:prose-invert max-w-none">
-                    <EditorContent editor={editor} className={`outline-none min-h-[150px] transition-opacity ${!canEdit ? 'opacity-60 cursor-not-allowed' : 'opacity-100'}`} />
+                <div className="prose prose-slate max-w-none prose-p:text-slate-700 prose-headings:text-slate-900 prose-strong:text-slate-900">
+                    <EditorContent editor={editor} className={`outline-none min-h-[200px] text-lg leading-relaxed transition-opacity ${!canEdit ? 'opacity-60 cursor-not-allowed' : 'opacity-100'}`} />
                 </div>
 
                 {/* Zona de Firma de Autoridad (Hito 4.4) */}
@@ -244,8 +244,8 @@ export default function NodeEditor() {
 
                             {selectedNode.data.metadata.snippet_context && (
                                 <div>
-                                    <span className="text-[9px] text-slate-600 block mb-1 uppercase tracking-tighter">Surrounding Context</span>
-                                    <div className="p-3 bg-slate-950/50 rounded border border-slate-800 text-[11px] text-slate-500 italic leading-relaxed line-clamp-4 hover:line-clamp-none transition-all cursor-zoom-in">
+                                    <span className="text-[9px] text-slate-400 block mb-2 uppercase tracking-widest font-bold">Contexto de la idea</span>
+                                    <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 text-[13px] text-slate-500 italic leading-relaxed line-clamp-4 hover:line-clamp-none transition-all cursor-zoom-in">
                                         "...{selectedNode.data.metadata.snippet_context}..."
                                     </div>
                                 </div>
