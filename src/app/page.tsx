@@ -34,17 +34,33 @@ export default function Home() {
     }, []);
 
     React.useEffect(() => {
+        console.log('[Home Page] Mount - Initializing session check...');
+
+        // Expose debug info to window for the USER to copy/paste if needed
+        (window as any).__DEBUG_AUTH__ = async () => {
+            const { data, error } = await supabase.auth.getSession();
+            console.log('[DEBUG] Manual getSession:', { data, error });
+            const { data: userData, error: userError } = await supabase.auth.getUser();
+            console.log('[DEBUG] Manual getUser:', { userData, userError });
+            alert(`Session: ${data.session ? 'EXIST' : 'NONE'}. User: ${userData.user ? userData.user.email : 'NONE'}`);
+        };
+
         // Initial session check
         supabase.auth.getSession().then(({ data: { session }, error }) => {
             if (error) console.error('[Home Page] getSession error:', error);
-            console.log('[Home Page] Initial session check:', session ? `User: ${session.user.email}` : 'No session');
+            console.log('[Home Page] Initial session check result:', JSON.stringify({
+                hasSession: !!session,
+                email: session?.user?.email,
+                expires_at: session?.expires_at
+            }, null, 2));
+
             setUser(session?.user ?? null);
             setAuthLoading(false);
         });
 
         // Listen for auth changes
         const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-            console.log(`[Home Page] Auth state change event: ${event}. Session: ${session ? 'Active' : 'None'}`);
+            console.log(`[Home Page] Auth state change event: ${event}. Session state: ${session ? 'PRESENT' : 'MISSING'}`);
             setUser(session?.user ?? null);
             setAuthLoading(false);
         });

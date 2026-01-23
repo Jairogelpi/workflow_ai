@@ -32,10 +32,23 @@ export async function GET(request: Request) {
                         return cookieStore.get(name)?.value
                     },
                     set(name: string, value: string, options: CookieOptions) {
-                        cookieStore.set({ name, value, ...options })
+                        cookieStore.set({
+                            name,
+                            value,
+                            ...options,
+                            path: '/',
+                            sameSite: 'lax',
+                            secure: siteUrl.startsWith('https')
+                        })
                     },
                     remove(name: string, options: CookieOptions) {
-                        cookieStore.delete({ name, ...options })
+                        cookieStore.delete({
+                            name,
+                            ...options,
+                            path: '/',
+                            sameSite: 'lax',
+                            secure: siteUrl.startsWith('https')
+                        })
                     },
                 },
             }
