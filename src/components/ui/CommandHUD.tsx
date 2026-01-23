@@ -47,19 +47,18 @@ export function CommandHUD() {
     return (
         <div className="fixed inset-0 z-[9999] flex items-start justify-center pt-[15vh] bg-black/40 backdrop-blur-sm animate-in fade-in duration-300">
             <div className="w-full max-w-xl bg-white/80 dark:bg-zinc-900/80 backdrop-blur-2xl border border-white/20 dark:border-white/10 rounded-2xl shadow-2xl overflow-hidden ring-1 ring-black/5 animate-in zoom-in-95 duration-200">
-                <div className="flex items-center px-4 border-b border-black/5 dark:border-white/5">
-                    <Search className="w-5 h-5 text-zinc-400" />
+                <div className="flex items-center px-6 border-b border-slate-100">
+                    <Search className="w-5 h-5 text-slate-400" />
                     <input
                         ref={inputRef}
                         type="text"
-                        placeholder="Telepathic Search... (or try /pulse, /heal)"
+                        placeholder="Busca ideas, documentos o tareas..."
                         value={query}
                         onChange={(e) => setQuery(e.target.value)}
-                        className="flex-1 h-14 bg-transparent border-none outline-none px-3 font-medium text-lg text-zinc-800 dark:text-zinc-100 placeholder:text-zinc-400"
+                        className="flex-1 h-16 bg-transparent border-none outline-none px-4 font-medium text-lg text-slate-800 placeholder:text-slate-400"
                     />
-                    <div className="flex items-center gap-1.5 px-2 py-1 bg-zinc-100 dark:bg-zinc-800 rounded-md border border-black/5 dark:border-white/5">
-                        <Command className="w-3 h-3 text-zinc-400" />
-                        <span className="text-[10px] font-bold text-zinc-400 tracking-wider">K</span>
+                    <div className="hidden sm:flex items-center gap-1 px-2 py-1 bg-slate-100 rounded-lg border border-slate-200">
+                        <span className="text-[10px] font-bold text-slate-500 tracking-wider">Alt K</span>
                     </div>
                 </div>
 
@@ -110,10 +109,10 @@ export function CommandHUD() {
                     )}
                 </div>
 
-                <div className="px-4 py-3 bg-zinc-50/50 dark:bg-zinc-800/20 border-t border-black/5 dark:border-white/5 flex items-center justify-between">
-                    <p className="text-[10px] text-zinc-400 font-medium">Navigate with <span className="font-bold">↑↓</span> and <span className="font-bold">Enter</span></p>
-                    <button onClick={() => setIsOpen(false)} className="p-1 hover:bg-zinc-200 dark:hover:bg-zinc-800 rounded-md transition-colors">
-                        <X className="w-4 h-4 text-zinc-400" />
+                <div className="px-6 py-4 bg-slate-50/50 border-t border-slate-100 flex items-center justify-between">
+                    <p className="text-[11px] text-slate-400 font-medium">Usa <span className="font-bold text-slate-600">↑↓</span> para navegar y <span className="font-bold text-slate-600">Enter</span> para seleccionar</p>
+                    <button onClick={() => setIsOpen(false)} className="p-1.5 hover:bg-slate-200 rounded-full transition-colors">
+                        <X className="w-4 h-4 text-slate-400" />
                     </button>
                 </div>
             </div>
@@ -125,17 +124,17 @@ function CommandItem({ icon, title, description, onSelect }: any) {
     return (
         <button
             onClick={onSelect}
-            className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-zinc-100 dark:hover:bg-white/5 transition-all group text-left"
+            className="w-full flex items-center gap-4 p-4 rounded-2xl hover:bg-slate-50 transition-all group text-left"
         >
-            <div className="w-10 h-10 flex items-center justify-center bg-white dark:bg-zinc-800 border border-black/5 dark:border-white/10 rounded-lg shadow-sm group-hover:scale-110 transition-transform">
+            <div className="w-12 h-12 flex items-center justify-center bg-white border border-slate-100 rounded-2xl shadow-sm group-hover:scale-105 transition-transform">
                 {icon}
             </div>
             <div className="flex-1 min-w-0">
                 <div className="flex items-center justify-between">
-                    <p className="font-bold text-zinc-800 dark:text-zinc-100 truncate">{title}</p>
-                    <ArrowRight className="w-4 h-4 text-zinc-300 opacity-0 group-hover:opacity-100 -translate-x-2 group-hover:translate-x-0 transition-all" />
+                    <p className="font-semibold text-slate-800 truncate">{title}</p>
+                    <ArrowRight className="w-4 h-4 text-slate-300 opacity-0 group-hover:opacity-100 -translate-x-2 group-hover:translate-x-0 transition-all" />
                 </div>
-                <p className="text-xs text-zinc-400 truncate mt-0.5">{description}</p>
+                <p className="text-xs text-slate-400 truncate mt-1">{description}</p>
             </div>
         </button>
     );

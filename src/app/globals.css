@@ -26,10 +26,13 @@
 }
 
 body {
-  background-color: rgb(var(--surface));
-  color: rgb(var(--on-surface));
+  background-color: #ffffff;
+  color: #3c4043;
+  /* Google secondary text color */
   font-family: 'Google Sans', 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  letter-spacing: 0.01em;
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
   overflow: hidden;
   user-select: none;
   cursor: default;

@@ -6,11 +6,11 @@ export function BootSequence({ onComplete }: { onComplete: () => void }) {
     const [progress, setProgress] = useState(0);
 
     const steps = [
-        "INITIALIZING AXIOM KERNEL...",
-        "CALIBRATING NEURAL ALIGNMENT...",
-        "SYNCHRONIZING SYMBOLIC SPACE...",
-        "READYING OS SHELL...",
-        "SYSTEMS NOMINAL."
+        "Preparando tu espacio...",
+        "Alineando ideas...",
+        "Cargando lo importante...",
+        "Casi listo...",
+        "¡Todo listo!"
     ];
 
     useEffect(() => {
