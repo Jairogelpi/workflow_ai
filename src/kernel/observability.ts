@@ -16,7 +16,7 @@ export interface SpanAttributes {
     [key: string]: any;
 }
 
-export type TraceSpan<T> = (name: string, attributes: SpanAttributes, fn: () => Promise<T>) => Promise<T>;
+export type TraceSpan<T> = (name: string, attributes: SpanAttributes, fn: () => Promise<T> | T) => Promise<T>;
 
 /**
  * Mocks the OpenTelemetry tracer for now, but enforces the interface.
@@ -27,7 +27,7 @@ export type TraceSpan<T> = (name: string, attributes: SpanAttributes, fn: () => 
 export async function traceSpan<T>(
     name: string,
     attributes: SpanAttributes,
-    fn: () => Promise<T>
+    fn: () => Promise<T> | T
 ): Promise<T> {
     const start = performance.now();
     try {
