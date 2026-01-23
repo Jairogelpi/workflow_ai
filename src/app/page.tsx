@@ -35,13 +35,16 @@ export default function Home() {
 
     React.useEffect(() => {
         // Initial session check
-        supabase.auth.getSession().then(({ data: { session } }) => {
+        supabase.auth.getSession().then(({ data: { session }, error }) => {
+            if (error) console.error('[Home Page] getSession error:', error);
+            console.log('[Home Page] Initial session check:', session ? `User: ${session.user.email}` : 'No session');
             setUser(session?.user ?? null);
             setAuthLoading(false);
         });
 
         // Listen for auth changes
-        const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+            console.log(`[Home Page] Auth state change event: ${event}. Session: ${session ? 'Active' : 'None'}`);
             setUser(session?.user ?? null);
             setAuthLoading(false);
         });

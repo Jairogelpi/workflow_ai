@@ -21,6 +21,7 @@ export async function GET(request: Request) {
     }
 
     if (code) {
+        console.log(`[Auth Callback] Code received: ${code.slice(0, 5)}...`);
         const cookieStore = await cookies()
         const supabase = createServerClient(
             process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -40,9 +41,13 @@ export async function GET(request: Request) {
             }
         )
 
-        const { error } = await supabase.auth.exchangeCodeForSession(code)
+        const { data, error } = await supabase.auth.exchangeCodeForSession(code)
         if (!error) {
+            console.log(`[Auth Callback] Session exchange successful for user: ${data.user?.email}`);
+            console.log(`[Auth Callback] Redirecting to: ${siteUrl}${next}`);
             return NextResponse.redirect(`${siteUrl}${next}`)
+        } else {
+            console.error('[Auth Callback] Session exchange error:', error.message);
         }
     }
 
