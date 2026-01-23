@@ -3,7 +3,7 @@
  * Semantic indexing capabilities for the WorkGraph OS.
  */
 
-import { createClient } from '../../lib/supabase';
+import { createClient } from '../supabase-server';
 
 /**
  * Generates a vector embedding for the given text.

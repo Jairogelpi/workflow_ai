@@ -1,6 +1,6 @@
 'use server';
 
-import { createClient } from '../../lib/supabase';
+import { createClient } from '../supabase-server';
 import { v4 as uuidv4 } from 'uuid';
 import {
     extractTextFromPDF,
