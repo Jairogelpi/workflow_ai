@@ -6,15 +6,42 @@
 import { createClient } from '../supabase-server';
 
 /**
- * Generates a vector embedding for the given text.
- * Note: In a production environment, this would call OpenAI or a similar service.
- * For the initial 'Smart Ingest' implementation, we provide the interface 
- * and a placeholder for dry-runs.
+ * Generates a vector embedding for the given text using OpenAI.
  */
 export async function generateEmbedding(text: string): Promise<number[]> {
-    // Placeholder: Return a random vector for structural testing if no key is found
-    // In Hito 2.8+, this will be fully integrated with a BYOK provider.
-    return Array.from({ length: 1536 }, () => Math.random() - 0.5);
+    const apiKey = process.env.OPENAI_API_KEY;
+
+    if (!apiKey) {
+        console.warn('[Vectorizer] OPENAI_API_KEY not found. Falling back to random vector (STRUCTURAL MOCK).');
+        return Array.from({ length: 1536 }, () => Math.random() - 0.5);
+    }
+
+    try {
+        const response = await fetch('https://api.openai.com/v1/embeddings', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${apiKey}`
+            },
+            body: JSON.stringify({
+                model: 'text-embedding-3-small',
+                input: text
+            })
+        });
+
+        if (!response.ok) {
+            const err = await response.json();
+            throw new Error(`OpenAI Embedding Error: ${err.error?.message || response.statusText}`);
+        }
+
+        const data = await response.json();
+        return data.data[0].embedding;
+
+    } catch (err) {
+        console.error('[Vectorizer] Failed to generate embedding:', err);
+        // Fallback to random to avoid breaking ingestion flow
+        return Array.from({ length: 1536 }, () => Math.random() - 0.5);
+    }
 }
 
 /**

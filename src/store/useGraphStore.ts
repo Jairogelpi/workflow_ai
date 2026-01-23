@@ -198,8 +198,8 @@ export const useGraphStore = create<GraphState>((set, get) => ({
     isLoading: false,
     isSyncing: false,
     currentUser: {
-        id: 'admin-001', // Default for now, populated by Auth later
-        role: 'admin'
+        id: '', // Populated by Auth
+        role: 'viewer'
     },
     proposals: [],
     draftNodes: [],
@@ -283,11 +283,11 @@ export const useGraphStore = create<GraphState>((set, get) => ({
     })),
 
     activeAgents: {
-        'harvester-01': { name: 'Neural Harvester', status: 'IDLE', color: '#fbbf24' },
-        'builder-01': { name: 'Expansionist', status: 'IDLE', color: '#22d3ee' },
-        'critic-01': { name: 'Logical Critic', status: 'IDLE', color: '#f87171' },
-        'validator-01': { name: 'Evidence Hunter', status: 'IDLE', color: '#c084fc' },
-        'librarian-01': { name: 'G-Librarian', status: 'IDLE', color: '#4ade80' }
+        'harvester': { name: 'Axiom Harvester', status: 'IDLE', color: '#fbbf24' },
+        'builder': { name: 'Graph Architect', status: 'IDLE', color: '#22d3ee' },
+        'critic': { name: 'Logical Auditor', status: 'IDLE', color: '#f87171' },
+        'validator': { name: 'Evidence Sentry', status: 'IDLE', color: '#c084fc' },
+        'librarian': { name: 'Canon Librarian', status: 'IDLE', color: '#4ade80' }
     },
     setAgentStatus: (agentId, status) => set((state) => {
         const agent = state.activeAgents[agentId];
@@ -436,28 +436,6 @@ export const useGraphStore = create<GraphState>((set, get) => ({
             const { RLMDispatcher } = await import('../kernel/RLMDispatcher');
 
             addRLMThought({ message: "PLANNER: Generando jerarquía de ramas...", type: 'reasoning' });
-
-            // Scaffolding based on the RLM analysis (Mocked for Hito 4.1)
-            const branches = [
-                { title: `Infraestructura: ${name}`, type: 'idea' },
-                { title: 'Marco Legal y Cumplimiento', type: 'idea' },
-                { title: 'Hojas de Ruta y Finanzas', type: 'idea' }
-            ];
-
-            for (const b of branches) {
-                await addNode({
-                    type: b.type as any,
-                    summary: b.title,
-                    metadata: {
-                        origin: 'ai',
-                        confidence: 1.0,
-                        validated: true,
-                        pin: true,
-                        tags: ['scaffold', 'manifest-generation']
-                    }
-                } as any);
-                await new Promise(r => setTimeout(r, 800)); // Dynamic expansion feel
-            }
 
             addRLMThought({ message: `BOOT_COMPLETE: Proyecto '${name}' nacido en el Canon.`, type: 'success' });
             set({ isBooting: false });

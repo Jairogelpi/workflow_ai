@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase-server';
 import { generateEmbedding, saveNodeEmbedding } from '@/lib/ingest/vectorizer';
+import { askAIServer } from '@/lib/llm-server';
 import { chunkText } from '@/lib/ingest/chunking';
 import { z } from 'zod';
 import { v4 as uuidv4 } from 'uuid';
@@ -44,10 +45,27 @@ export async function POST(req: NextRequest) {
         const nodeId = uuidv4();
         const now = new Date().toISOString();
 
-        // 2. Create the Source Node
+        // 2. AI Reasoning (RLM Analysis) [Production Hardening]
+        // We use the server-side LLM to summarize and categorize the knowledge
+        let aiSummary = "Analizando contenido...";
+        let aiCategory = "knowledge";
+
+        try {
+            const aiResponse = await askAIServer(
+                "Eres el Analista de Axiom. Resume el siguiente contenido en una sola oración potente y devuelve una categoría técnica (ej: infra, research, finance, bio). Formato: RESUMEN | CATEGORIA",
+                `Título: ${title}\nContenido: ${content.substring(0, 2000)}`
+            );
+            const [summary, category] = aiResponse.split('|').map(s => s.trim());
+            aiSummary = summary || title;
+            aiCategory = category || "research";
+        } catch (e) {
+            console.error('[Ingest AI] Analysis failed, falling back to basic metadata:', e);
+            aiSummary = title;
+        }
+
+        // 3. Create the Source Node
         // RLS will check if project_id belongs to the 'user'
         const { error: nodeError } = await supabase
-
             .from('work_nodes')
             .insert({
                 id: nodeId,
@@ -59,14 +77,16 @@ export async function POST(req: NextRequest) {
                     title: title,
                     url: url,
                     text_preview: content.substring(0, 500),
-                    images: images || []
+                    images: images || [],
+                    ai_summary: aiSummary
                 },
                 metadata: {
                     source_url: url,
                     ingested_at: now,
                     original_timestamp: timestamp || now,
                     origin: 'ai_generated',
-                    browser_captured: true
+                    browser_captured: true,
+                    category: aiCategory
                 }
             });
 

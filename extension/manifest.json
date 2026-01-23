@@ -16,7 +16,7 @@
         "<all_urls>"
     ],
     "background": {
-        "service_worker": "src/background/index.ts",
+        "service_worker": "background.js",
         "type": "module"
     },
     "side_panel": {
@@ -28,7 +28,7 @@
                 "<all_urls>"
             ],
             "js": [
-                "src/content/index.tsx"
+                "content.js"
             ],
             "run_at": "document_end"
         }

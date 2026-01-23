@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { ArrowRight, ExternalLink, Save, Check, Loader2, Settings, Terminal, FileText } from 'lucide-react';
-import { ModelSelector } from '../../../src/components/settings/ModelSelector';
+import { ModelSelector } from '../components/ModelSelector';
 import { SidePanelAuditView } from '../components/SidePanelAuditView';
 import { useAuth } from '../hooks/useAuth';
 import { LoginView } from '../components/LoginView';
