@@ -8,6 +8,10 @@ export async function GET(request: Request) {
     // if "next" is in param, use it as the redirect URL
     const next = searchParams.get('next') ?? '/'
 
+    // Use configured site URL if available (Production), otherwise fallback to request origin
+    // This prevents redirecting to internal container URLs (srv-...) on Render/K8s
+    const siteUrl = process.env.NEXT_PUBLIC_APP_URL || origin;
+
     if (code) {
         const cookieStore = await cookies()
         const supabase = createServerClient(
@@ -30,10 +34,10 @@ export async function GET(request: Request) {
 
         const { error } = await supabase.auth.exchangeCodeForSession(code)
         if (!error) {
-            return NextResponse.redirect(`${origin}${next}`)
+            return NextResponse.redirect(`${siteUrl}${next}`)
         }
     }
 
     // return the user to an error page with instructions
-    return NextResponse.redirect(`${origin}/auth/auth-code-error`)
+    return NextResponse.redirect(`${siteUrl}/auth/auth-code-error`)
 }
