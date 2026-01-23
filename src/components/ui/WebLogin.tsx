@@ -18,6 +18,8 @@ export const WebLogin = () => {
         }
     };
 
+    console.log('[WebLogin] Mounted - Waiting for interaction');
+
     return (
         <div className="fixed inset-0 bg-white overflow-y-auto overflow-x-hidden">
             {/* Cinematic Background Bloom */}
@@ -33,12 +35,12 @@ export const WebLogin = () => {
                     />
                 </div>
 
-                <div className="text-center mb-16 px-10 animate-in fade-in slide-in-from-bottom-5 duration-700 delay-300 fill-mode-forwards opacity-0">
+                <div className="text-center mb-16 px-10 animate-in fade-in slide-in-from-bottom-5 duration-700 delay-300">
                     <h1 className="text-4xl md:text-5xl font-bold text-slate-900 tracking-tight mb-4">Bienvenido al Grafo</h1>
                     <p className="text-lg md:text-xl text-slate-400 font-medium leading-relaxed max-w-2xl px-4">Conecta tus ideas, automatiza tu investigación y <br className="hidden md:block" />visualiza el conocimiento como nunca antes.</p>
                 </div>
 
-                <div className="w-full max-w-lg px-10 space-y-4 animate-in fade-in slide-in-from-bottom-5 duration-700 delay-500 fill-mode-forwards opacity-0">
+                <div className="w-full max-w-lg px-10 space-y-4 animate-in fade-in slide-in-from-bottom-5 duration-700 delay-500">
                     <button
                         onClick={handleLogin}
                         className="w-full group relative flex items-center justify-between bg-white border-2 border-slate-100 p-6 rounded-[32px] hover:border-blue-500 hover:shadow-2xl hover:shadow-blue-500/10 transition-all active:scale-[0.99]"
@@ -58,7 +60,7 @@ export const WebLogin = () => {
                 </div>
 
                 {/* Features Matrix */}
-                <div className="grid grid-cols-3 gap-8 md:gap-12 mt-24 w-full max-w-4xl px-10 animate-in fade-in duration-1000 delay-700 fill-mode-forwards opacity-0 pb-20">
+                <div className="grid grid-cols-3 gap-8 md:gap-12 mt-24 w-full max-w-4xl px-10 animate-in fade-in duration-1000 delay-700 pb-20">
                     <div className="flex flex-col items-center text-center space-y-4">
                         <div className="p-5 bg-blue-50/50 rounded-[24px] text-blue-500 shadow-sm">
                             <Globe size={28} />
