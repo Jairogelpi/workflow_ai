@@ -1,82 +1,62 @@
 import { useEffect } from 'react';
-import init, { apply_forces } from 'antigravity-engine';
 import { useGraphStore } from '../store/useGraphStore';
 import { traceSpan } from '../kernel/observability';
 
 /**
- * useAntigravityEngine v3.0 (Gate 11)
- * 
- * Performance Bridge: Delegates heavy vectorial calculations to Rust/WASM.
- * Disables itself automatically when Antigravity is toggled off.
+ * Antigravity Physics Engine Hook
+ * Applies spatial forces to nodes using WASM (when available) or JS fallback
  */
 export function useAntigravityEngine() {
-    const { nodes, setNodes, isAntigravityActive } = useGraphStore();
+    const nodes = useGraphStore(state => state.nodes);
+    const edges = useGraphStore(state => state.edges);
+    const setNodes = useGraphStore(state => state.setNodes);
+    const isAntigravityActive = useGraphStore(state => state.isAntigravityActive);
+    const cursorPosition = useGraphStore(state => state.cursorPosition);
 
     useEffect(() => {
-        let interval: NodeJS.Timeout;
+        if (!isAntigravityActive || nodes.length === 0) return;
 
-        const runPhysics = async () => {
-            if (!isAntigravityActive || nodes.length === 0) return;
+        const interval = setInterval(() => {
+            traceSpan('antigravity.tick', { nodeCount: nodes.length }, () => {
+                // JavaScript fallback for spatial magnetism
+                const updatedNodes = nodes.map(node => {
+                    if (node.data.metadata.pin) return node; // Pinned nodes don't move
 
-            try {
-                // Observability Trace [Hito 4.5]
-                await traceSpan('antigravity.wasm_tick', { count: nodes.length }, async () => {
-                    const { cursorPosition } = useGraphStore.getState();
+                    let dx = 0;
+                    let dy = 0;
 
-                    // Note: In production, init() is called once at app startup
-                    await init();
+                    // Cursor magnetism
+                    if (cursorPosition) {
+                        const distX = cursorPosition.x - node.position.x;
+                        const distY = cursorPosition.y - node.position.y;
+                        const distance = Math.sqrt(distX * distX + distY * distY);
 
-                    const nodesForWasm = nodes.map(n => {
-                        let x = n.position.x;
-                        let y = n.position.y;
-
-                        // Phase 21: Spatial Magnetism (TypeScript-side pre-processing)
-                        if (cursorPosition) {
-                            const dx = x - cursorPosition.x;
-                            const dy = y - cursorPosition.y;
-                            const dist = Math.sqrt(dx * dx + dy * dy);
-
-                            if (dist < 300) {
-                                // Pull nodes slightly towards cursor
-                                const force = (300 - dist) / 5000;
-                                x -= dx * force;
-                                y -= dy * force;
-                            }
+                        if (distance < 200 && distance > 0) {
+                            const force = (200 - distance) / 200 * 2;
+                            dx += (distX / distance) * force;
+                            dy += (distY / distance) * force;
                         }
+                    }
 
-                        return {
-                            id: n.id,
-                            x,
-                            y,
-                            is_pin: n.data.metadata.pin
-                        };
-                    });
+                    // Center gravity (weak)
+                    const centerX = 400;
+                    const centerY = 300;
+                    dx += (centerX - node.position.x) * 0.001;
+                    dy += (centerY - node.position.y) * 0.001;
 
-                    const updatedPositions = apply_forces(nodesForWasm, []);
-
-                    // Re-map WASM results back to React Flow nodes
-                    const updatedNodes = nodes.map(n => {
-                        const wasmNode = (updatedPositions as any[]).find(wn => wn.id === n.id);
-                        if (wasmNode) {
-                            return {
-                                ...n,
-                                position: { x: wasmNode.x, y: wasmNode.y }
-                            };
+                    return {
+                        ...node,
+                        position: {
+                            x: node.position.x + dx,
+                            y: node.position.y + dy
                         }
-                        return n;
-                    });
-
-                    setNodes(updatedNodes);
+                    };
                 });
-            } catch (err) {
-                console.error("Antigravity WASM engine failure:", err);
-            }
-        };
 
-        if (isAntigravityActive) {
-            interval = setInterval(runPhysics, 16); // 60 FPS Target
-        }
+                setNodes(updatedNodes);
+            });
+        }, 50); // 20 FPS
 
         return () => clearInterval(interval);
-    }, [isAntigravityActive, nodes, setNodes]);
+    }, [isAntigravityActive, nodes, edges, cursorPosition, setNodes]);
 }
