@@ -156,7 +156,7 @@ export function WorkNodeComponent(props: any) {
                 className={`
                     min-w-[200px] max-w-[280px] rounded-3xl 
                     transition-all duration-300 ease-out
-                    ${isGhost ? 'opacity-40 border-dashed border-cyan-400 grayscale brightness-75' : ''}
+                    ${isGhost ? 'opacity-60 grayscale-[0.2] brightness-110' : ''}
                     ${isSigned ? 'shadow-[0_0_20px_rgba(245,158,11,0.25)]' : ''}
                     ${selected ? 'scale-105 shadow-elevation-5' : 'shadow-elevation-3'}
                     ${tensionLevel > 0 ? 'animate-vibration' : ''}
@@ -165,13 +165,17 @@ export function WorkNodeComponent(props: any) {
                 style={{
                     backgroundColor: colors.bg,
                     border: data.metadata.origin === 'ai' || isGhost
-                        ? `2px dashed ${isGhost ? '#22d3ee' : colors.text + '50'}`
+                        ? `2px dashed ${isGhost ? '#f59e0b' : colors.text + '50'}`
                         : `2px solid ${selected ? colors.text : colors.border}`,
                     transform: isAntigravityActive ? `scale(${zDepth})` : undefined,
-                    boxShadow: tensionLevel > 0
-                        ? `0 0 ${10 + tensionLevel * 5}px rgba(239, 68, 68, ${0.3 + tensionLevel * 0.1})`
-                        : (isSigned ? '0 0 15px rgba(245, 158, 11, 0.2)' : undefined),
-                    animation: isSigned ? 'heartbeat 2s infinite ease-in-out' : (tensionLevel > 0 ? `vibration ${Math.max(0.1, 0.5 - tensionLevel * 0.05)}s infinite linear` : undefined)
+                    boxShadow: isGhost
+                        ? '0 0 20px rgba(245, 158, 11, 0.4)'
+                        : (tensionLevel > 0
+                            ? `0 0 ${10 + tensionLevel * 5}px rgba(239, 68, 68, ${0.3 + tensionLevel * 0.1})`
+                            : (isSigned ? '0 0 15px rgba(245, 158, 11, 0.2)' : undefined)),
+                    animation: isGhost
+                        ? 'ripple 2s infinite ease-in-out'
+                        : (isSigned ? 'heartbeat 2s infinite ease-in-out' : (tensionLevel > 0 ? `vibration ${Math.max(0.1, 0.5 - tensionLevel * 0.05)}s infinite linear` : undefined))
                 }}
             >
                 <style jsx>{`
@@ -187,7 +191,12 @@ export function WorkNodeComponent(props: any) {
                         14% { transform: scale(1.02); box-shadow: 0 0 25px rgba(245, 158, 11, 0.35); }
                         28% { transform: scale(1); box-shadow: 0 0 15px rgba(245, 158, 11, 0.15); }
                         42% { transform: scale(1.02); box-shadow: 0 0 20px rgba(245, 158, 11, 0.25); }
-                        70% { transform: scale(11); box-shadow: 0 0 15px rgba(245, 158, 11, 0.15); }
+                        70% { transform: scale(1); box-shadow: 0 0 15px rgba(245, 158, 11, 0.15); }
+                    }
+                    @keyframes ripple {
+                        0% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.4); border-color: rgba(245, 158, 11, 0.4); }
+                        50% { box-shadow: 0 0 20px 10px rgba(245, 158, 11, 0); border-color: rgba(245, 158, 11, 1); }
+                        100% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0); border-color: rgba(245, 158, 11, 0.4); }
                     }
                     .animate-vibration {
                         animation: vibration 0.2s infinite linear;

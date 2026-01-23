@@ -1,6 +1,7 @@
 import { WorkNode, WorkGraph, NodeId, UserRole } from '../canon/schema/ir';
 
 // RBAC Role Hierarchy (Higher is more powerful)
+// Hito 4.1 Mapping: Soberano (admin), Arquitecto (editor), Observador (viewer)
 const ROLE_HIERARCHY: Record<UserRole, number> = {
     'viewer': 1,
     'editor': 2,
@@ -14,46 +15,61 @@ export function hasRequiredRole(userRole: UserRole, requiredRole: UserRole): boo
     return ROLE_HIERARCHY[userRole] >= ROLE_HIERARCHY[requiredRole];
 }
 
-/**
- * Validates if an action can be performed by a user on a node.
- */
-export function canPerformAction(
-    node: WorkNode,
-    userRole: UserRole,
-    userId: string,
-    action: 'MODIFY' | 'DELETE' | 'PIN' | 'UNPIN'
-): boolean {
-    const { access_control } = node.metadata;
-    const requiredRole = access_control?.role_required || 'editor';
-
-    // Owners or Admins always have bypass (unless PIN enforcement applies later)
-    if (userRole === 'admin' || access_control?.owner_id === userId) {
-        return true;
-    }
-
-    if (!hasRequiredRole(userRole, requiredRole)) {
-        logBlock(action, node.id, `INSUFFICIENT_ROLE (Required: ${requiredRole}, Have: ${userRole})`);
-        return false;
-    }
-
-    return true;
-}
-
 // Simple Observability (Audit Log stub)
 const logBlock = (action: string, nodeId: string, reason: string) => {
     console.warn(`[KERNEL_BLOCK] Action: ${action} | Node: ${nodeId} | Reason: ${reason}`);
 };
 
 /**
+ * Validates if an action can be performed by a user on a node.
+ * Sovereign (admin) -> Invariants/PINs
+ * Architect (editor) -> Autocomplete/Scaffolding
+ * Observer (viewer) -> Read-only
+ */
+export function canPerformAction(
+    node: WorkNode,
+    userRole: UserRole,
+    userId: string,
+    action: 'MODIFY' | 'DELETE' | 'PIN' | 'UNPIN' | 'AUTOCOMPLETE'
+): boolean {
+    const { access_control } = node.metadata;
+    const requiredRole = access_control?.role_required || 'editor';
+
+    // Sovereign (Admin) has absolute control, especially over PINs
+    if (userRole === 'admin') {
+        return true;
+    }
+
+    // Architects (Editor) can trigger autocomplete but cannot touch PINs
+    if (userRole === 'editor') {
+        if (action === 'AUTOCOMPLETE') return true;
+        if (node.metadata.pin && (action === 'MODIFY' || action === 'DELETE')) return false;
+        return true;
+    }
+
+    // Observers are locked to read-only
+    if (userRole === 'viewer') {
+        return false;
+    }
+
+    // Ownership fallback
+    if (access_control?.owner_id === userId) {
+        return true;
+    }
+
+    return hasRequiredRole(userRole, requiredRole);
+}
+
+/**
  * Validates if a node can be modified.
  * Rule 1: RBAC check (role and ownership).
- * Rule 2: PIN nodes are immutable unless explicitly unpinned.
+ * Rule 2: PIN nodes are immutable for non-admins (Soberanos).
  */
 export function canModifyNode(node: WorkNode, userRole: UserRole, userId: string): boolean {
     if (!canPerformAction(node, userRole, userId, 'MODIFY')) return false;
 
-    if (node.metadata.pin) {
-        logBlock('MODIFY', node.id, 'Node is PINNED (Invariant Violation)');
+    if (node.metadata.pin && userRole !== 'admin') {
+        logBlock('MODIFY', node.id, 'Node is PINNED (Sovereign Invariant Protected)');
         return false;
     }
     return true;

@@ -4,6 +4,7 @@ import { useGraphStore } from '../../store/useGraphStore';
 import { FloatingPanel } from './FloatingPanel';
 import NodeEditor from '../editor/NodeEditor';
 import { SmartViewer } from './SmartViewer';
+import { ProjectManifest } from '../collaboration/ProjectManifest';
 
 export function WindowManager() {
     const windows = useGraphStore(state => state.windows);
@@ -40,10 +41,10 @@ export function WindowManager() {
                                 >
                                     {win.contentType === 'editor' ? (
                                         <div className="h-full bg-surface dark:bg-surface-dark-container overflow-y-auto">
-                                            {/* We need to pass the nodeId to NodeEditor or have it fetch from store based on focus */}
-                                            {/* For now, we assume NodeEditor uses a selectedNode state we might need to fix */}
                                             <NodeEditor />
                                         </div>
+                                    ) : (win.contentType as any) === 'manifest' ? (
+                                        <ProjectManifest onClose={() => closeWindow(win.id)} />
                                     ) : (
                                         <SmartViewer
                                             content={win.textContent || win.nodeData?.content || ''}

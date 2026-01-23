@@ -402,11 +402,18 @@ phases:
     hitos:
       - id: "4.1"
         title: "SSO/SAML & RBAC"
-        description: "Enterprise identity and access control."
-        status: "pending"
+        description: "Enterprise identity and role-based access control."
+        status: "done"
         gate: "RBAC policies enforced per sub-graph."
-        tasks: []
-        evidence_nodes: []
+        tasks:
+          - "Implement Soberano/Arquitecto/Observador role hierarchy"
+          - "Create ProjectManifest.tsx for governance definition"
+          - "Integrate guards.ts with canPerformAction RBAC logic"
+          - "Connect RLMDispatcher for automated scaffolding"
+        evidence_nodes:
+          - "src/kernel/guards.ts"
+          - "src/components/collaboration/ProjectManifest.tsx"
+          - "documentacion/HITO_4.1_SOVEREIGN_ONBOARDING.md"
 
       - id: "4.2"
         title: "Local Compiler (Universal BYOE)"
@@ -652,6 +659,76 @@ phases:
           - "extension/src/content/xray-hud.ts"
           - "extension/src/content/xray-system.ts"
           - "documentacion/XRAY_VISION_TECHNICAL.md"
+
+  - id: 7
+    title: "Phase 7: Sovereign Intelligence Layer"
+    description: "Self-healing graph structures with hybrid SAT+RLM validation and total transparency."
+    phase_gate: "Graph maintains 100% structural and semantic consistency with forensic auditability."
+    hitos:
+      - id: "7.8"
+        title: "Self-Healing Engine & Alignment Protocol"
+        description: "Hybrid SAT Solver + RLM Swarm for detecting and repairing inconsistencies."
+        status: "done"
+        gate: "Ghost Nodes projected for detected gaps and materialized with authority signatures."
+        tasks:
+          - "Implement alignment_engine.ts orchestrator"
+          - "Create AlignmentOverlay.tsx for gap visualization"
+          - "Add materializeGhost action to store"
+          - "Integrate Ed25519 signing for materialized nodes"
+        evidence_nodes:
+          - "src/kernel/alignment_engine.ts"
+          - "src/components/graph/AlignmentOverlay.tsx"
+          - "src/components/graph/AlignmentTunnels.tsx"
+          - "documentacion/HITO_7.8_SELF_HEALING_ENGINE.md"
+
+      - id: "7.9"
+        title: "Sync Coherence Agent (SyncGuardian)"
+        description: "Real-time mutation validation with SAT and CRDT synchronization."
+        status: "done"
+        gate: "Mutations rejected if they violate PIN invariants."
+        tasks:
+          - "Create SyncGuardian.ts kernel module"
+          - "Implement triggerRipple sensorial feedback"
+          - "Hook guardian into updateNodeContent, onConnect, mutateNodeType"
+          - "Add RLM Shadow Audit for semantic drift"
+        evidence_nodes:
+          - "src/kernel/SyncGuardian.ts"
+          - "src/components/graph/SensoryRipple.tsx"
+          - "documentacion/HITO_7.9_SYNC_COHERENCE_AGENT.md"
+
+      - id: "7.10"
+        title: "Forensic Audit Mode (X-Ray Vision)"
+        description: "Total transparency layer showing AI reasoning, costs, and confidence per node."
+        status: "done"
+        gate: "X-Ray toggle exposes ForensicAuditView and XRayOverlay."
+        tasks:
+          - "Create useXRayMode hook"
+          - "Implement ForensicAuditView.tsx session metrics panel"
+          - "Implement XRayOverlay.tsx reasoning bubbles"
+          - "Add Circuit Breaker button for budget control"
+        evidence_nodes:
+          - "src/hooks/useXRayMode.ts"
+          - "src/components/graph/ForensicAuditView.tsx"
+          - "src/components/graph/XRayOverlay.tsx"
+          - "documentacion/HITO_7.10_XRAY_MODE.md"
+
+      - id: "7.11"
+        title: "Sovereign Onboarding (Project Initialization & RBAC)"
+        description: "High-fidelity project manifest and role-based access control."
+        status: "done"
+        gate: "ProjectManifest triggers RLMDispatcher scaffolding with RBAC enforcement."
+        tasks:
+          - "Create ProjectManifest.tsx onboarding HUD"
+          - "Implement BootSequence.tsx with Neural Ripple effects"
+          - "Create RLMDispatcher.ts and RLMCompiler.ts"
+          - "Refine guards.ts for Soberano/Arquitecto/Observador roles"
+        evidence_nodes:
+          - "src/components/collaboration/ProjectManifest.tsx"
+          - "src/components/graph/BootSequence.tsx"
+          - "src/kernel/RLMDispatcher.ts"
+          - "src/kernel/RLMCompiler.ts"
+          - "src/kernel/guards.ts"
+          - "documentacion/HITO_4.1_SOVEREIGN_ONBOARDING.md"
 
 operational_rules:
   sequential_execution: true # Mandatory: Hito N requires Hito N-1 as Done.

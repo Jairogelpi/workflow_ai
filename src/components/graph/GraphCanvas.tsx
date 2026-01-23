@@ -15,8 +15,15 @@ import { useAntigravityEngine } from '../../hooks/useAntigravityEngine';
 import { backendToFlow } from '../../lib/adapters';
 import { NodeId } from '../../canon/schema/primitives';
 import { WorkNode } from '../../canon/schema/ir';
-import { Plus, Search, Filter, Wind } from 'lucide-react';
+import { Plus, Search, Filter, Wind, ShieldCheck, Eye } from 'lucide-react';
+import { useXRayMode } from '../../hooks/useXRayMode';
 import { WorkNodeComponent } from './WorkNode';
+import { AlignmentOverlay } from './AlignmentOverlay';
+import { AlignmentTunnels } from './AlignmentTunnels';
+import { WindowManager } from '../ui/WindowManager';
+import { SensoryRipple } from './SensoryRipple';
+import { BootSequence } from './BootSequence';
+import { ForensicAuditView } from './ForensicAuditView';
 
 const nodeTypes = {
     note: WorkNodeComponent,
@@ -37,6 +44,11 @@ function GraphContent() {
     const onNodesChange = useGraphStore(state => state.onNodesChange);
     const onEdgesChange = useGraphStore(state => state.onEdgesChange);
     const onConnect = useGraphStore(state => state.onConnect);
+    const openManifest = useGraphStore(state => state.openManifest);
+
+    useEffect(() => {
+        openManifest();
+    }, [openManifest]);
     const setNodes = useGraphStore(state => state.setNodes);
     const setSelectedNode = useGraphStore(state => state.setSelectedNode);
     const addNode = useGraphStore(state => state.addNode);
@@ -242,8 +254,38 @@ function GraphContent() {
                     >
                         <Wind size={20} className={isAntigravityActive ? 'animate-pulse' : ''} />
                     </button>
+
+                    <div className="w-px h-6 bg-outline-variant/30 dark:bg-white/10" />
+
+                    <button
+                        onClick={() => {
+                            // Using dummy IDs for now, in a real scenario these would be active branch IDs
+                            const { performAlignmentCheck } = useGraphStore.getState();
+                            performAlignmentCheck('branch-infra', 'branch-finance');
+                        }}
+                        className="p-2 rounded-full hover:bg-cyan-500/10 text-cyan-500 transition-colors"
+                        title="Audit Semantic Alignment"
+                    >
+                        <ShieldCheck size={20} />
+                    </button>
+
+                    {/* X-Ray Mode Toggle */}
+                    <button
+                        onClick={() => useXRayMode.getState().toggleXRay()}
+                        className={`p-2 rounded-full transition-all ${useXRayMode.getState().isXRayActive ? 'bg-cyan-500/20 text-cyan-400 shadow-[0_0_15px_rgba(6,182,212,0.4)]' : 'hover:bg-cyan-500/10 text-slate-500'}`}
+                        title="Toggle X-Ray Mode (Forensic Audit)"
+                    >
+                        <Eye size={20} />
+                    </button>
                 </div>
             </Panel>
+
+            <AlignmentOverlay />
+            <AlignmentTunnels />
+            <BootSequence />
+            <SensoryRipple />
+            <ForensicAuditView />
+            <WindowManager />
         </ReactFlow>
     );
 }

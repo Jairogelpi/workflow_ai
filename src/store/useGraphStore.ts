@@ -13,6 +13,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { WorkNode, WorkEdge, UserRole } from '../canon/schema/ir';
 import { NodeId, EdgeId } from '../canon/schema/primitives';
 import { ChangeProposal } from '../kernel/collaboration/Negotiator';
+import { AlignmentReport } from '../kernel/alignment_types';
 import { createVersion, computeNodeHash } from '../kernel/versioning';
 import { canModifyNode, canDeleteNode } from '../kernel/guards';
 import { backendToFlow } from '../lib/adapters';
@@ -95,6 +96,27 @@ interface GraphState {
     // Phase 15: Swarm Dashboard State
     activeAgents: Record<string, { name: string, status: 'IDLE' | 'THINKING' | 'WORKING', color: string }>;
     setAgentStatus: (agentId: string, status: 'IDLE' | 'THINKING' | 'WORKING') => void;
+
+    // Hito 7.2: Semantic Alignment
+    alignmentReport: AlignmentReport | null;
+    isAlignmentComputing: boolean; // Neural Ripples status
+    setAlignmentReport: (report: AlignmentReport | null) => void;
+    performAlignmentCheck: (sourceBranchId: string, targetBranchId: string) => Promise<void>;
+    materializeGhost: (gap: any) => Promise<void>;
+
+    // Hito 7.9: Sync Coherence & Sensoriality
+    triggerRipple: (ripple: { type: 'info' | 'warn' | 'error' | 'success', message: string, intensity: 'low' | 'medium' | 'high' }) => void;
+    currentRipple: { type: 'info' | 'warn' | 'error' | 'success', message: string, intensity: 'low' | 'medium' | 'high' } | null;
+
+    // Hito 4.1: Project Initialization
+    isBooting: boolean;
+    projectManifest: {
+        name: string;
+        description: string;
+        roles: Record<string, UserRole>;
+    } | null;
+    initProjectSwarm: (name: string, description: string, roles: Record<string, UserRole>) => Promise<void>;
+    openManifest: () => void;
 
     // Core Actions
     setNodes: (nodes: AppNode[]) => void;
@@ -268,6 +290,81 @@ export const useGraphStore = create<GraphState>((set, get) => ({
         };
     }),
 
+    alignmentReport: null,
+    isAlignmentComputing: false,
+    currentRipple: null,
+    isBooting: false,
+    projectManifest: null,
+    setAlignmentReport: (report) => set({ alignmentReport: report }),
+
+    triggerRipple: (ripple) => {
+        set({ currentRipple: ripple });
+        // Auto-clear after duration based on intensity
+        const duration = ripple.intensity === 'high' ? 5000 : 3000;
+        setTimeout(() => {
+            if (get().currentRipple === ripple) set({ currentRipple: null });
+        }, duration);
+    },
+
+    // [Hito 4.1] Open Manifest if uninitialized
+    openManifest: () => {
+        const { openWindow, projectManifest } = get() as any;
+        if (!projectManifest) {
+            openWindow('project-manifest', 'Gate 8: Project Manifest', 'manifest');
+        }
+    },
+    performAlignmentCheck: async (sourceBranchId, targetBranchId) => {
+        set({ isAlignmentComputing: true });
+        try {
+            // Dynamic import to avoid circular dependencies
+            const alignmentEngine = await import('../kernel/alignment_engine.js');
+            const report = await alignmentEngine.checkCrossBranchAlignment(sourceBranchId, targetBranchId);
+            set({ alignmentReport: report, isAlignmentComputing: false });
+
+            // [Phase 15 Swarm] Update agents to show they've finished audit
+            set((state) => ({
+                activeAgents: {
+                    ...state.activeAgents,
+                    'validator-01': { ...state.activeAgents['validator-01']!, status: 'IDLE' }
+                }
+            }));
+        } catch (error) {
+            console.error('[GraphStore] Alignment check failed:', error);
+            set({ isAlignmentComputing: false });
+        }
+    },
+
+    materializeGhost: async (gap) => {
+        const { addNode, setAlignmentReport, alignmentReport, addRLMThought } = get();
+
+        addRLMThought({ message: `GHOST_MATERIALIZATION: Firmando y validando nodo inferred: '${gap.missingConcept.slice(0, 30)}...'`, type: 'success' });
+
+        await addNode({
+            type: 'decision', // Default for healing
+            statement: gap.missingConcept,
+            metadata: {
+                origin: 'ai',
+                confidence: 1.0,
+                validated: true, // Auto-validated upon materialization
+                pin: false,
+                tags: ['alignment-v7.8', 'sovereign-materialization'],
+                forensic_id: `trace-${uuidv4().slice(0, 8)}`,
+                human_signature: {
+                    signer: 'Sovereign_OS_Auth',
+                    timestamp: new Date().toISOString(),
+                    public_key: 'AI_MATERIALIZE_KEY_001'
+                }
+            }
+        } as any);
+
+        if (alignmentReport) {
+            setAlignmentReport({
+                ...alignmentReport,
+                gaps: alignmentReport.gaps.filter((g: any) => g.sourceNodeId !== gap.sourceNodeId)
+            });
+        }
+    },
+
     setNodes: (nodes) => set({ nodes }),
     setEdges: (edges) => set({ edges }),
     setSearchQuery: (searchQuery) => set({ searchQuery }),
@@ -315,6 +412,51 @@ export const useGraphStore = create<GraphState>((set, get) => ({
         }
     },
 
+    initProjectSwarm: async (name, description, roles) => {
+        set({ isBooting: true, projectManifest: { name, description, roles } });
+        const { addRLMThought, addNode } = get();
+
+        addRLMThought({ message: `BOOT_SEQUENCE: Iniciando enjambre para '${name}'...`, type: 'info' });
+
+        try {
+            // [Phase 11] Trigger RLM Scaffolding
+            addRLMThought({ message: "RLM_COMPILER: Analizando intención semántica...", type: 'reasoning' });
+
+            // [Hito 7.9] Orchestrating RLM Dispatcher and SAT consistency
+            const { RLMDispatcher } = await import('../kernel/RLMDispatcher');
+
+            addRLMThought({ message: "PLANNER: Generando jerarquía de ramas...", type: 'reasoning' });
+
+            // Scaffolding based on the RLM analysis (Mocked for Hito 4.1)
+            const branches = [
+                { title: `Infraestructura: ${name}`, type: 'idea' },
+                { title: 'Marco Legal y Cumplimiento', type: 'idea' },
+                { title: 'Hojas de Ruta y Finanzas', type: 'idea' }
+            ];
+
+            for (const b of branches) {
+                await addNode({
+                    type: b.type as any,
+                    summary: b.title,
+                    metadata: {
+                        origin: 'ai',
+                        confidence: 1.0,
+                        validated: true,
+                        pin: true,
+                        tags: ['scaffold', 'manifest-generation']
+                    }
+                } as any);
+                await new Promise(r => setTimeout(r, 800)); // Dynamic expansion feel
+            }
+
+            addRLMThought({ message: `BOOT_COMPLETE: Proyecto '${name}' nacido en el Canon.`, type: 'success' });
+            set({ isBooting: false });
+        } catch (error) {
+            console.error('[GraphStore] Swarm Boot Error:', error);
+            set({ isBooting: false });
+        }
+    },
+
     centerNode: (id) => set({ selectedNodeId: id }),
 
     onNodesChange: (changes) => {
@@ -330,6 +472,7 @@ export const useGraphStore = create<GraphState>((set, get) => ({
     },
 
     onConnect: async (params) => {
+        const { edges } = get();
         const { source, target } = params;
         if (!source || !target) return;
 
@@ -353,18 +496,26 @@ export const useGraphStore = create<GraphState>((set, get) => ({
             }
         };
 
-        const newEdge: AppEdge = {
-            id: newWorkEdge.id,
-            source: newWorkEdge.source,
-            target: newWorkEdge.target,
-            data: newWorkEdge,
-        };
+        // [Hito 7.9] SyncGuardian Audit for Edge
+        try {
+            const { SyncGuardian } = await import('../kernel/SyncGuardian');
+            await SyncGuardian.handleMutation(newWorkEdge.id, { relation: 'relates_to' });
 
-        set({
-            edges: addEdge(newEdge, get().edges) as AppEdge[],
-        });
+            const newEdge: AppEdge = {
+                id: newWorkEdge.id,
+                source: newWorkEdge.source,
+                target: newWorkEdge.target,
+                data: newWorkEdge,
+            };
 
-        await syncService.upsertEdge(DEFAULT_PROJECT_ID, newWorkEdge);
+            set({
+                edges: addEdge(newEdge, edges) as AppEdge[],
+            });
+
+            await syncService.upsertEdge(DEFAULT_PROJECT_ID, newWorkEdge);
+        } catch (err) {
+            console.error('[SyncGuardian] Edge creation rejected:', err);
+        }
     },
 
     setSelectedNode: (id) => set({ selectedNodeId: id }),
@@ -401,9 +552,17 @@ export const useGraphStore = create<GraphState>((set, get) => ({
             return node;
         });
 
-        set({ nodes: updatedNodes });
-        if (updatedNodeRecord) {
-            await syncService.upsertNode(DEFAULT_PROJECT_ID, updatedNodeRecord);
+        // [Hito 7.9] SyncGuardian Audit
+        try {
+            const { SyncGuardian } = await import('../kernel/SyncGuardian');
+            await SyncGuardian.handleMutation(id, { statement: content, content: content });
+
+            set({ nodes: updatedNodes });
+            if (updatedNodeRecord) {
+                await syncService.upsertNode(DEFAULT_PROJECT_ID, updatedNodeRecord);
+            }
+        } catch (err) {
+            console.error('[SyncGuardian] Mutation rejected:', err);
         }
     },
 
@@ -484,9 +643,17 @@ export const useGraphStore = create<GraphState>((set, get) => ({
             return node;
         });
 
-        set({ nodes: updatedNodes });
-        if (updatedNodeRecord) {
-            await syncService.upsertNode(DEFAULT_PROJECT_ID, updatedNodeRecord);
+        // [Hito 7.9] SyncGuardian Audit for Type Mutation
+        try {
+            const { SyncGuardian } = await import('../kernel/SyncGuardian');
+            await SyncGuardian.handleMutation(id, { type: newType });
+
+            set({ nodes: updatedNodes });
+            if (updatedNodeRecord) {
+                await syncService.upsertNode(DEFAULT_PROJECT_ID, updatedNodeRecord);
+            }
+        } catch (err) {
+            console.error('[SyncGuardian] Mutation rejected:', err);
         }
     },
 

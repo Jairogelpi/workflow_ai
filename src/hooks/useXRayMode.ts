@@ -1,25 +1,19 @@
+import { create } from 'zustand';
 
-import { useState, useEffect } from 'react';
-
-export function useXRayMode() {
-    const [isXRayActive, setIsXRayActive] = useState(false);
-
-    useEffect(() => {
-        const handleKeyDown = (e: KeyboardEvent) => {
-            if (e.key === 'Alt') setIsXRayActive(true);
-        };
-        const handleKeyUp = (e: KeyboardEvent) => {
-            if (e.key === 'Alt') setIsXRayActive(false);
-        };
-
-        window.addEventListener('keydown', handleKeyDown);
-        window.addEventListener('keyup', handleKeyUp);
-
-        return () => {
-            window.removeEventListener('keydown', handleKeyDown);
-            window.removeEventListener('keyup', handleKeyUp);
-        };
-    }, []);
-
-    return isXRayActive;
+/**
+ * X-RAY MODE HOOK [2026]
+ * Global state for transparency/audit mode toggle.
+ */
+interface XRayState {
+    isXRayActive: boolean;
+    toggleXRay: () => void;
+    hoveredNodeId: string | null;
+    setHoveredNodeId: (id: string | null) => void;
 }
+
+export const useXRayMode = create<XRayState>((set) => ({
+    isXRayActive: false,
+    toggleXRay: () => set((s) => ({ isXRayActive: !s.isXRayActive })),
+    hoveredNodeId: null,
+    setHoveredNodeId: (id) => set({ hoveredNodeId: id }),
+}));

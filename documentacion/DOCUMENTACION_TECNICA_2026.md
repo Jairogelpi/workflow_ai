@@ -160,4 +160,37 @@ WorkGraph ha dejado de ser una web para convertirse en un **Entorno Operativo**:
 
 ---
 
+## 🛡️ Phase 7: Sovereign Intelligence Layer
+
+La capa de inteligencia soberana asegura que el grafo se auto-repare, valide mutaciones en tiempo real y ofrezca transparencia total.
+
+### A. Self-Healing Engine (Hito 7.8)
+Motor híbrido SAT (Rust) + RLM (Python/TS) para detección y reparación de inconsistencias:
+- **Alignment Engine**: Orquestador de alineación entre visión estratégica y ejecución.
+- **Ghost Nodes**: Proyecciones visuales de gaps lógicos, materializables con firma Ed25519.
+- **AlignmentOverlay/Tunnels**: HUD forense para visualización de conexiones y brechas.
+
+### B. Sync Coherence Agent (Hito 7.9)
+Guardián de mutaciones que intercepta cada cambio antes de persistencia:
+- **SyncGuardian**: Valida con SAT Solver, sincroniza con CRDT.
+- **Sensory Ripple**: Feedback visual de pantalla completa (Rojo=Error, Cian=OK).
+- **Shadow Audit**: Re-evaluación semántica no bloqueante para cambios significativos.
+
+### C. Forensic Audit Mode / X-Ray Vision (Hito 7.10)
+Transparencia radical para inspección del razonamiento de la IA:
+- **ForensicAuditView**: Panel flotante con métricas de sesión (Spend, Burn Rate, Integrity).
+- **XRayOverlay**: Burbujas de razonamiento por nodo (Confianza %, Costo, Firma).
+- **Circuit Breaker**: Botón de emergencia para detener comunicación con LLMs.
+
+### D. Sovereign Onboarding (Hito 7.11 / 4.1)
+Flujo de inicialización de proyectos con gobernanza RBAC:
+- **ProjectManifest**: HUD de alta fidelidad para definición de intención y roles.
+- **BootSequence**: Secuencia de arranque inmersiva con ondas "Neural Ripple".
+- **RLMDispatcher/Compiler**: Autogeneración de arquitecturas de pensamiento.
+- **Guards RBAC**: Soberano (Admin), Arquitecto (Editor), Observador (Viewer).
+
+**Evidencia**: `src/kernel/alignment_engine.ts`, `src/kernel/SyncGuardian.ts`, `src/hooks/useXRayMode.ts`, `src/components/graph/ForensicAuditView.tsx`, `src/components/collaboration/ProjectManifest.tsx`, `src/kernel/RLMDispatcher.ts`
+
+---
+
 *WorkGraph OS: Consciousness is the Interface. Professional Grade 2026.*
