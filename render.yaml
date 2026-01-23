@@ -1,0 +1,42 @@
+services:
+  # Main Next.js Application
+  - type: web
+    name: workgraph-os
+    runtime: node
+    plan: starter
+    buildCommand: |
+      # Install Rust toolchain
+      curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+      source $HOME/.cargo/env
+      
+      # Install wasm-pack
+      cargo install wasm-pack
+      
+      # Build WASM modules
+      cd antigravity-engine && wasm-pack build --target web && cd ..
+      
+      # Install Node dependencies and build
+      npm ci
+      npm run build
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: NEXT_PUBLIC_SUPABASE_URL
+        sync: false
+      - key: NEXT_PUBLIC_SUPABASE_ANON_KEY
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+    healthCheckPath: /api/health
+
+  # Background Worker (Optional - for heavy processing)
+  - type: worker
+    name: workgraph-worker
+    runtime: rust
+    plan: starter
+    buildCommand: cargo build --release --manifest-path workgraph-worker/Cargo.toml
+    startCommand: ./target/release/workgraph-worker
+    envVars:
+      - key: DATABASE_URL
+        sync: false
