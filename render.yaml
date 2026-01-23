@@ -15,8 +15,8 @@ services:
       # Build WASM modules
       cd antigravity-engine && wasm-pack build --target web && cd ..
       
-      # Install Node dependencies and build
-      npm ci
+      # Install Node dependencies and build (with legacy peer deps for ESLint)
+      npm ci --legacy-peer-deps
       npm run build
     startCommand: npm start
     envVars:
