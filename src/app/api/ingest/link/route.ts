@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase';
+import { createClient } from '@/lib/supabase-server';
 import { generateEmbedding, saveNodeEmbedding } from '@/lib/ingest/vectorizer';
 import { chunkText } from '@/lib/ingest/chunking';
 import { z } from 'zod';
