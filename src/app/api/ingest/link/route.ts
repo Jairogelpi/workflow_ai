@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase-server';
-import { generateEmbedding, saveNodeEmbedding } from '@/lib/ingest/vectorizer';
-import { chunkText } from '@/lib/ingest/chunking';
+import { createClient } from '../../../../lib/supabase-server';
+import { generateEmbedding, saveNodeEmbedding } from '../../../../lib/ingest/vectorizer';
+import { chunkText } from '../../../../lib/ingest/chunking';
 import { z } from 'zod';
 import { v4 as uuidv4 } from 'uuid';
 
