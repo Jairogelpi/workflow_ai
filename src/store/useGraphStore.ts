@@ -933,58 +933,7 @@ export const useGraphStore = create<GraphState>((set, get) => ({
     toggleAntigravity: () => set({ isAntigravityActive: !get().isAntigravityActive }),
 
     applyForces: () => {
-        const { nodes, ghostNodes, edges, isAntigravityActive } = get();
-        if (!isAntigravityActive || (nodes.length === 0 && ghostNodes.length === 0)) return;
-
-        const allVisibleNodes = [...nodes, ...ghostNodes];
-        const start = performance.now();
-
-        const simulation = d3.forceSimulation(allVisibleNodes as any)
-            .force('link', d3.forceLink(edges).id((d: any) => d.id).distance((d: any) => {
-                const relation = d.data?.relation || 'relates_to';
-                if (relation === 'evidence_for') return 60;
-                if (relation === 'contradicts') return 450;
-                return 200;
-            }).strength((d: any) => {
-                const relation = d.data?.relation || 'relates_to';
-                if (relation === 'evidence_for' || relation === 'validates') return 0.7;
-                if (relation === 'contradicts') return 1.0;
-                return 0.1;
-            }))
-            .force('charge', d3.forceManyBody().strength((d: any) => {
-                return d.data?.metadata?.pin ? -2200 : -1100;
-            }))
-            .force('center', d3.forceCenter(window.innerWidth / 2, window.innerHeight / 2))
-            .force('collision', d3.forceCollide().radius(220))
-            .stop();
-
-        nodes.forEach((node: any) => {
-            if (node.data?.metadata?.pin) {
-                node.fx = node.position.x;
-                node.fy = node.position.y;
-            }
-        });
-
-        const iterations = 40;
-        for (let i = 0; i < iterations; ++i) simulation.tick();
-
-        const end = performance.now();
-
-        const updatedNodes = nodes.map((node: any) => ({
-            ...node,
-            position: {
-                x: isNaN(node.x) ? node.position.x : node.x,
-                y: isNaN(node.y) ? node.position.y : node.y
-            }
-        }));
-
-        set({
-            nodes: updatedNodes,
-            physicsStats: {
-                latency_ms: Math.round(end - start),
-                cost_usd: 0,
-                iterations
-            }
-        });
+        // [DEPRECATED] Physics moved to Web Worker (physics.worker.ts)
+        // This function is kept as a no-op placeholder for legacy calls
     },
 }));

@@ -192,6 +192,14 @@ function GraphContent() {
             onPaneClick={onPaneClick}
             onPaneMouseMove={onPaneMouseMove}
             onPaneMouseLeave={onPaneMouseLeave}
+            onMove={(_, viewport) => {
+                // Serious Engineering: Auto-LOD (Level of Detail)
+                if (viewport.zoom < 0.6) {
+                    document.body.classList.add('low-power-mode');
+                } else {
+                    document.body.classList.remove('low-power-mode');
+                }
+            }}
             zoomOnDoubleClick={false}
             fitView
             className="transition-all duration-500 bg-white"

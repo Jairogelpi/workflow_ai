@@ -24,12 +24,12 @@ export const WebLogin = () => {
             <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[1200px] h-[1200px] bg-gradient-to-tr from-blue-50/40 via-white to-yellow-50/40 rounded-full blur-[160px] pointer-events-none opacity-80" />
 
             <div className="relative z-10 w-full flex flex-col items-center py-24 md:py-32 min-h-full">
-                {/* Massive Logo Reveal - Lowered for Cinematic Balance */}
-                <div className="relative group mb-12 animate-in fade-in zoom-in duration-[1200ms] ease-out mt-12 md:mt-20">
+                {/* Massive Logo Reveal - Cinematic Position */}
+                <div className="relative group mb-8 animate-in fade-in zoom-in duration-[2000ms] ease-out mt-8 md:mt-16">
                     <img
                         src="/logo.png"
                         alt="Axiom"
-                        className="w-[400px] md:w-[600px] lg:w-[750px] h-auto transition-transform duration-1000 group-hover:scale-[1.02] drop-shadow-[0_30px_90px_rgba(0,0,0,0.06)]"
+                        className="w-[500px] md:w-[700px] lg:w-[900px] h-auto transition-transform duration-1000 group-hover:scale-[1.02] drop-shadow-[0_40px_120px_rgba(0,0,0,0.1)]"
                     />
                 </div>
 

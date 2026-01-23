@@ -39,8 +39,7 @@ export async function generateEmbedding(text: string): Promise<number[]> {
 
     } catch (err) {
         console.error('[Vectorizer] Failed to generate embedding:', err);
-        // Fallback to random to avoid breaking ingestion flow
-        return Array.from({ length: 1536 }, () => Math.random() - 0.5);
+        throw err; // Fail fast in production
     }
 }
 

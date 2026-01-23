@@ -86,24 +86,30 @@ const NODE_TYPE_CONFIG: Record<string, {
     },
 };
 
-export function WorkNodeComponent(props: any) {
+
+export const WorkNodeComponent = React.memo((props: any) => {
     const { data, selected, id, className } = props;
-    const { mutateNodeType, edges, isAntigravityActive, logicalTension, isXRayActive } = useGraphStore();
+
+    // Selectors optimized for performance (Primitive return values avoid re-renders)
+    const mutateNodeType = useGraphStore(state => state.mutateNodeType);
+    const isAntigravityActive = useGraphStore(state => state.isAntigravityActive);
+    const isXRayActive = useGraphStore(state => state.isXRayActive);
+
+    // Combined Tension Selector: Only triggers re-render if the numeric value changes
+    const tensionLevel = useGraphStore(state => {
+        const physicalTension = state.edges.filter(e =>
+            (e.target === id || e.source === id) &&
+            e.data?.relation === 'contradicts'
+        ).length;
+        const logicalTensionValue = state.logicalTension[id] ?? 0;
+        return physicalTension + (logicalTensionValue * 5);
+    });
 
     // [Phase 12] Ghost Node Detection
     const isGhost = className?.includes('ghost-predicted');
     const isSigned = !!data?.metadata?.human_signature;
 
-    // Combined Tension: Physical (edges) + Logical (SAT Solver)
-    const tensionLevel = useMemo(() => {
-        const physicalTension = edges.filter(e =>
-            (e.target === id || e.source === id) &&
-            e.data?.relation === 'contradicts'
-        ).length;
-
-        const logicalTensionValue = logicalTension[id] ?? 0;
-        return physicalTension + (logicalTensionValue * 5); // Scale logical tension
-    }, [edges, id, logicalTension]);
+    // Antigravity Semantic Physics Logic: Calculate Depth (Z-Axis)
 
     // Antigravity Semantic Physics Logic: Calculate Depth (Z-Axis)
     const zDepth = useMemo(() => {
@@ -249,4 +255,4 @@ export function WorkNodeComponent(props: any) {
             </div>
         </>
     );
-}
+});
