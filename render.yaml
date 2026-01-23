@@ -24,7 +24,7 @@ services:
       echo "Building Next.js application..." && npm run build && \
       echo "Copying static assets for standalone mode..." && \
       cp -r .next/static .next/standalone/.next/static && \
-      cp -r public .next/standalone/public
+      (cp -r public .next/standalone/public || echo "No public folder found, skipping")
     startCommand: node .next/standalone/server.js
     envVars:
       - key: NODE_ENV
