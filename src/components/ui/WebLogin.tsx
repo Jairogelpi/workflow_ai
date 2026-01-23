@@ -5,6 +5,8 @@ import { Globe, ShieldCheck, Zap, ChevronRight } from 'lucide-react';
 
 export const WebLogin = () => {
     const handleLogin = async () => {
+        console.log('[WebLogin] Login button clicked. Initiating Google OAuth...');
+        // alert('Redirigiendo a Google...'); // Visual feedback for debug
         const { error } = await supabase.auth.signInWithOAuth({
             provider: 'google',
             options: {
