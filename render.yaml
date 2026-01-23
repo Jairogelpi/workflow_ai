@@ -21,7 +21,10 @@ services:
       echo "Building signer-core..." && (cd signer-core && wasm-pack build --target bundler) && \
       echo "Building crdt-sync..." && (cd crdt-sync && wasm-pack build --target bundler) && \
       echo "Installing Node dependencies..." && npm install --legacy-peer-deps && \
-      echo "Building Next.js application..." && npm run build
+      echo "Building Next.js application..." && npm run build && \
+      echo "Copying static assets for standalone mode..." && \
+      cp -r .next/static .next/standalone/.next/static && \
+      cp -r public .next/standalone/public
     startCommand: node .next/standalone/server.js
     envVars:
       - key: NODE_ENV
