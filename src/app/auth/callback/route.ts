@@ -36,33 +36,35 @@ export async function GET(request: Request) {
                     },
                     setAll(cookiesToSet) {
                         try {
+                            // 0. Canary Cookie (to test basic persistence)
+                            response.headers.append('Set-Cookie', 'test-canary=alive; Path=/; Secure; SameSite=None');
+
                             cookiesToSet.forEach(({ name, value, options }) => {
                                 const finalOptions = {
                                     ...options,
                                     path: '/',
                                     secure: true,
-                                    sameSite: 'lax' as const,
+                                    sameSite: 'none' as const, // RELAXED for debugging
                                     httpOnly: false,
                                     domain: undefined,
                                 };
 
-                                console.log(`[Auth Callback] setAll: setting cookie ${name}`);
+                                console.log(`[Auth Callback] setAll: setting cookie ${name} (len: ${value.length})`);
 
-                                // 1. Set on cookie store (server context)
+                                // 1. Set on cookie store
                                 cookieStore.set(name, value, finalOptions);
 
-                                // 2. Set on response object (standard method)
+                                // 2. Set on response object
                                 response.cookies.set(name, value, finalOptions);
 
-                                // 3. MANUALLY Append via header to guarantee it persists
-                                // Format: Name=Value; Path=/; Secure; SameSite=Lax
-                                let cookieString = `${name}=${encodeURIComponent(value)}; Path=/; Secure; SameSite=Lax`;
+                                // 3. MANUALLY Append via header
+                                // Note: Removed encodeURIComponent to test raw value processing
+                                let cookieString = `${name}=${value}; Path=/; Secure; SameSite=None`;
                                 if (finalOptions.maxAge) {
                                     cookieString += `; Max-Age=${finalOptions.maxAge}`;
                                 }
-                                // Note: We don't include Domain (undefined) or HttpOnly (false)
 
-                                console.log(`[Auth Callback] Manually appending header: ${cookieString.substring(0, 50)}...`);
+                                console.log(`[Auth Callback] Appending Header: ${cookieString.substring(0, 50)}...`);
                                 response.headers.append('Set-Cookie', cookieString);
                             })
                         } catch (err) {
