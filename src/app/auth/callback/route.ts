@@ -10,6 +10,7 @@ export async function GET(request: Request) {
     console.error(`[Auth Callback] URL Origin: ${requestUrl.origin}`);
 
     if (code) {
+        console.error(`[Auth Callback] Code received: ${code.substring(0, 10)}...`);
         const cookieStore = await cookies()
 
         // Define production origin

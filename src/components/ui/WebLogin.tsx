@@ -15,18 +15,40 @@ export const WebLogin = () => {
     }, []);
 
     const handleLogin = async () => {
-        console.log('[WebLogin] Login button clicked. Initiating Google OAuth...');
-        // alert('Redirigiendo a Google...'); // Visual feedback for debug
-        const { error } = await supabase.auth.signInWithOAuth({
-            provider: 'google',
-            options: {
-                redirectTo: `${window.location.origin}/auth/callback`
-            }
-        });
+        try {
+            console.log('[WebLogin] Login button clicked. Initiating Google OAuth...');
 
-        if (error) {
-            console.error('Error logging in:', error.message);
-            alert('Error al iniciar sesión: ' + error.message);
+            // Construct the redirect URL explicitly to ensure it's what we expect
+            const redirectTo = `${window.location.origin}/auth/callback`;
+            console.log('[WebLogin] Redirect URL:', redirectTo);
+
+            const { data, error } = await supabase.auth.signInWithOAuth({
+                provider: 'google',
+                options: {
+                    redirectTo,
+                    skipBrowserRedirect: false, // Ensure we let the SDK handle the redirect if possible
+                }
+            });
+
+            if (error) {
+                console.error('[WebLogin] Supabase Auth Error:', error.message);
+                alert('Error al iniciar sesión: ' + error.message);
+                return;
+            }
+
+            console.log('[WebLogin] signInWithOAuth call successful:', data);
+
+            // If data.url is returned but skipBrowserRedirect was true, we'd need to redirect manually.
+            // But with skipBrowserRedirect: false (default), it should happen automatically.
+            if (data?.url) {
+                console.log('[WebLogin] OAuth URL generated:', data.url);
+            } else {
+                console.warn('[WebLogin] No URL returned in data, but no error either.');
+            }
+
+        } catch (err: any) {
+            console.error('[WebLogin] CRITICAL ERROR during login initiation:', err);
+            alert('Error crítico al iniciar sesión: ' + (err.message || String(err)));
         }
     };
 
