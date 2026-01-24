@@ -17,14 +17,11 @@ export async function GET(request: Request) {
     if (code) {
         const cookieStore = await cookies()
 
-        // Create the response object manually to ensure mutable headers
-        // NextResponse.redirect() can sometimes be immutable or inconsistent with cookies in Route Handlers
-        const response = new NextResponse(null, {
-            status: 303, // See Other - Standard for POST/Redirect patterns
-            headers: {
-                Location: new URL(next, origin).toString(),
-            },
-        });
+        // Prepare headers container for the final response
+        const responseHeaders = new Headers();
+
+        // 0. Canary Cookie
+        responseHeaders.append('Set-Cookie', 'test-canary=alive; Path=/; Secure; SameSite=None');
 
         const supabase = createServerClient(
             process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -36,9 +33,6 @@ export async function GET(request: Request) {
                     },
                     setAll(cookiesToSet) {
                         try {
-                            // 0. Canary Cookie (to test basic persistence)
-                            response.headers.append('Set-Cookie', 'test-canary=alive; Path=/; Secure; SameSite=None');
-
                             cookiesToSet.forEach(({ name, value, options }) => {
                                 const finalOptions = {
                                     ...options,
@@ -49,23 +43,15 @@ export async function GET(request: Request) {
                                     domain: undefined,
                                 };
 
-                                console.log(`[Auth Callback] setAll: setting cookie ${name} (len: ${value.length})`);
-
-                                // 1. Set on cookie store
-                                cookieStore.set(name, value, finalOptions);
-
-                                // 2. Set on response object
-                                response.cookies.set(name, value, finalOptions);
-
-                                // 3. MANUALLY Append via header
-                                // Note: Removed encodeURIComponent to test raw value processing
+                                // MANUALLY Append via header to guarantee persistence
+                                // We do NOT touch cookieStore here to avoid side-effects
                                 let cookieString = `${name}=${value}; Path=/; Secure; SameSite=None`;
                                 if (finalOptions.maxAge) {
                                     cookieString += `; Max-Age=${finalOptions.maxAge}`;
                                 }
 
                                 console.log(`[Auth Callback] Appending Header: ${cookieString.substring(0, 50)}...`);
-                                response.headers.append('Set-Cookie', cookieString);
+                                responseHeaders.append('Set-Cookie', cookieString);
                             })
                         } catch (err) {
                             console.error('[Auth Callback] setAll ERROR:', err);
@@ -84,22 +70,15 @@ export async function GET(request: Request) {
 
             console.log(`[Auth Callback] SUCCESS: Session for ${data.user?.email}`);
 
-            // Inspect the headers before returning
-            // Note: In some Next.js environments, we might need to use getSetCookie() if available, or just check headers
-            const setCookieHeader = response.headers.get('set-cookie');
-            console.log('[Auth Callback] Response Set-Cookie Header (First):', setCookieHeader);
+            // Set Location for redirect
+            responseHeaders.set('Location', new URL(next, origin).toString());
 
-            // Try to see if there are multiple
-            try {
-                // @ts-ignore
-                const allCookies = response.headers.getSetCookie();
-                console.log('[Auth Callback] All Set-Cookie Headers:', JSON.stringify(allCookies, null, 2));
-            } catch (e) {
-                console.log('[Auth Callback] getSetCookie not available');
-            }
+            // Return standard web Response with status 303 (See Other)
+            return new Response(null, {
+                status: 303,
+                headers: responseHeaders,
+            });
 
-            // Return the response which now has the cookies attached via setAll
-            return response
         } catch (error: any) {
             console.error('[Auth Callback] CRITICAL ERROR:', error.message);
             return NextResponse.redirect(new URL(`/?auth_error=${encodeURIComponent(error.message)}`, origin))
