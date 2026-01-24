@@ -66,6 +66,20 @@ export async function GET(request: Request) {
 
             console.log(`[Auth Callback] SUCCESS: Session for ${data.user?.email}`);
 
+            // Inspect the headers before returning
+            // Note: In some Next.js environments, we might need to use getSetCookie() if available, or just check headers
+            const setCookieHeader = response.headers.get('set-cookie');
+            console.log('[Auth Callback] Response Set-Cookie Header (First):', setCookieHeader);
+
+            // Try to see if there are multiple
+            try {
+                // @ts-ignore
+                const allCookies = response.headers.getSetCookie();
+                console.log('[Auth Callback] All Set-Cookie Headers:', JSON.stringify(allCookies, null, 2));
+            } catch (e) {
+                console.log('[Auth Callback] getSetCookie not available');
+            }
+
             // Return the response which now has the cookies attached via setAll
             return response
         } catch (error: any) {
