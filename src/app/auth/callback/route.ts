@@ -69,8 +69,9 @@ export async function GET(request: Request) {
                         const cookieOptions = {
                             ...options,
                             path: '/',
-                            sameSite: 'lax' as const,
-                            secure: isSecure,
+                            sameSite: 'none' as const,
+                            secure: true,
+                            maxAge: 60 * 60 * 24 * 7, // 1 week
                         };
                         console.log(`[Auth Callback] Final Cookie Options:`, JSON.stringify(cookieOptions));
 
