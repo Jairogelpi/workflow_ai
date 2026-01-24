@@ -17,8 +17,14 @@ export async function GET(request: Request) {
     if (code) {
         const cookieStore = await cookies()
 
-        // Create the response object FIRST so we can attach cookies to it in setAll
-        const response = NextResponse.redirect(new URL(next, origin))
+        // Create the response object manually to ensure mutable headers
+        // NextResponse.redirect() can sometimes be immutable or inconsistent with cookies in Route Handlers
+        const response = new NextResponse(null, {
+            status: 303, // See Other - Standard for POST/Redirect patterns
+            headers: {
+                Location: new URL(next, origin).toString(),
+            },
+        });
 
         const supabase = createServerClient(
             process.env.NEXT_PUBLIC_SUPABASE_URL!,
