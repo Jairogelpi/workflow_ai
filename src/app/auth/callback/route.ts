@@ -17,6 +17,7 @@ export async function GET(request: Request) {
     if (code) {
         const cookieStore = await cookies()
         const responseHeaders = new Headers();
+        const cookiesToInject: { name: string, value: string, options: any }[] = [];
 
         responseHeaders.append('Set-Cookie', 'test-canary=alive; Path=/; Secure; SameSite=None');
         responseHeaders.append('Content-Type', 'text/html'); // Success Page
@@ -36,18 +37,20 @@ export async function GET(request: Request) {
                                     ...options,
                                     path: '/',
                                     secure: true,
-                                    sameSite: 'none' as const,
-                                    httpOnly: false,
-                                    domain: undefined,
+                                    sameSite: 'none',
                                 };
 
-                                // Re-enable encoding for standard compliance
-                                let cookieString = `${name}=${encodeURIComponent(value)}; Path=/; Secure; SameSite=None`;
-                                if (finalOptions.maxAge) {
-                                    cookieString += `; Max-Age=${finalOptions.maxAge}`;
-                                }
+                                // Clean up value
+                                const safeValue = encodeURIComponent(value);
 
-                                console.log(`[Auth Callback] Appending Header: ${name} (len: ${value.length})`);
+                                // 1. Collect for Client-Side Injection (The Bypass)
+                                cookiesToInject.push({ name, value: safeValue, options: finalOptions });
+
+                                // 2. Also try Server-Side Header (Backup)
+                                let cookieString = `${name}=${safeValue}; Path=/; Secure; SameSite=None`;
+                                if (finalOptions.maxAge) cookieString += `; Max-Age=${finalOptions.maxAge}`;
+
+                                console.log(`[Auth Callback] Processing Cookie: ${name}`);
                                 responseHeaders.append('Set-Cookie', cookieString);
                             })
                         } catch (err) {
@@ -67,30 +70,57 @@ export async function GET(request: Request) {
 
             console.log(`[Auth Callback] SUCCESS: Session for ${data.user?.email}`);
 
-            // HTML Success Page to verify cookies and detach redirect loop
+            // HYDRATION SCRIPT: Writes cookies directly in the browser
+            const cookieScript = JSON.stringify(cookiesToInject);
+            const redirectUrl = new URL(next, origin).toString();
+
             const html = `
             <!DOCTYPE html>
             <html>
             <head>
                 <title>Login Successful</title>
-                <meta http-equiv="refresh" content="3;url=${new URL(next, origin).toString()}" />
                 <style>
                     body { font-family: system-ui, sans-serif; padding: 2rem; background: #111; color: #eee; }
-                    .box { background: #222; padding: 1rem; border-radius: 8px; margin-top: 1rem; }
-                    code { color: #4af; word-break: break-all; }
+                    .box { background: #222; padding: 1rem; border-radius: 8px; margin-top: 1rem; border: 1px solid #333; }
+                    code { color: #4af; word-break: break-all; display: block; margin-top: 0.5rem; }
+                    .success { color: #4fa; font-weight: bold; }
                 </style>
             </head>
             <body>
                 <h1>Login Successful</h1>
-                <p>Redirecting to dashboard in 3 seconds...</p>
+                <p>Hydrating session...</p>
                 <div class="box">
-                    <h3>Debug Info:</h3>
-                    <p>Current Cookies (JS accessible):</p>
-                    <code id="cookies">Loading...</code>
+                    <h3>Client-Side Cookie Injection</h3>
+                    <div id="logs"></div>
                 </div>
                 <script>
-                    document.getElementById('cookies').textContent = document.cookie || '(none)';
-                    console.log('Cookies:', document.cookie);
+                    const cookies = ${cookieScript};
+                    const logs = document.getElementById('logs');
+                    
+                    function log(msg) {
+                        const div = document.createElement('div');
+                        div.textContent = '> ' + msg;
+                        logs.appendChild(div);
+                    }
+
+                    try {
+                        cookies.forEach(c => {
+                            // Construct cookie string manually for JS
+                            let cookieStr = c.name + '=' + c.value + '; Path=/; Secure; SameSite=None';
+                            if (c.options.maxAge) cookieStr += '; Max-Age=' + c.options.maxAge;
+                            
+                            document.cookie = cookieStr;
+                            log('Wrote: ' + c.name);
+                        });
+
+                        log('All cookies written.');
+                        
+                        setTimeout(() => {
+                            window.location.href = "${redirectUrl}";
+                        }, 1500); // 1.5s delay to assure write
+                    } catch (e) {
+                        log('ERROR: ' + e.message);
+                    }
                 </script>
             </body>
             </html>
