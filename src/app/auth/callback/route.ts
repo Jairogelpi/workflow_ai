@@ -16,6 +16,10 @@ export async function GET(request: Request) {
 
     if (code) {
         const cookieStore = await cookies()
+
+        // Create the response object FIRST so we can attach cookies to it in setAll
+        const response = NextResponse.redirect(new URL(next, origin))
+
         const supabase = createServerClient(
             process.env.NEXT_PUBLIC_SUPABASE_URL!,
             process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -26,13 +30,15 @@ export async function GET(request: Request) {
                     },
                     setAll(cookiesToSet) {
                         try {
-                            cookiesToSet.forEach(({ name, value, options }) =>
+                            cookiesToSet.forEach(({ name, value, options }) => {
+                                console.log(`[Auth Callback] setAll: setting cookie ${name}`);
+                                // Set on the cookie store for immediate server-side context
                                 cookieStore.set(name, value, options)
-                            )
-                        } catch {
-                            // The `setAll` method was called from a Server Component.
-                            // This can be ignored if you have middleware refreshing
-                            // user sessions.
+                                // Set on the response for the browser to receive it
+                                response.cookies.set(name, value, options)
+                            })
+                        } catch (err) {
+                            console.error('[Auth Callback] setAll ERROR:', err);
                         }
                     },
                 },
@@ -48,9 +54,8 @@ export async function GET(request: Request) {
 
             console.log(`[Auth Callback] SUCCESS: Session for ${data.user?.email}`);
 
-            // In Next.js 15, we handle cookies on the cookie store directly.
-            // The cookies set in `setAll` will be included in the redirect response automatically.
-            return NextResponse.redirect(new URL(next, origin))
+            // Return the response which now has the cookies attached via setAll
+            return response
         } catch (error: any) {
             console.error('[Auth Callback] CRITICAL ERROR:', error.message);
             return NextResponse.redirect(new URL(`/?auth_error=${encodeURIComponent(error.message)}`, origin))
