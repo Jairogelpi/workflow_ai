@@ -75,7 +75,7 @@ export async function GET(request: Request) {
                         };
                         console.log(`[Auth Callback] Final Cookie Options:`, JSON.stringify(cookieOptions));
 
-                        cookieStore.set({ name, value, ...cookieOptions })
+                        // cookieStore.set({ name, value, ...cookieOptions }) // REMOVED: Cannot set cookies on request store in GET handler
                         response.cookies.set({ name, value, ...cookieOptions })
                     },
                     remove(name: string, options: CookieOptions) {
@@ -84,18 +84,26 @@ export async function GET(request: Request) {
                             path: '/',
                             maxAge: 0
                         };
-                        cookieStore.set({ name, value: '', ...cookieOptions })
+                        // cookieStore.set({ name, value: '', ...cookieOptions }) // REMOVED
                         response.cookies.set({ name, value: '', ...cookieOptions })
                     },
                 },
             }
         )
 
+        // Set a debug cookie to test persistence independent of Supabase
+        response.cookies.set('debug-persistence', 'alive', { path: '/', secure: true, sameSite: 'none' });
+
         try {
             const { data, error } = await supabase.auth.exchangeCodeForSession(code)
-            if (error) throw error
+            if (error) {
+                console.error('[Auth Callback] exchangeCodeForSession ERROR:', error);
+                throw error;
+            }
 
-            console.log(`[Auth Callback] Success for: ${data.user?.email}`);
+            console.log(`[Auth Callback] Session created for: ${data.user?.email}`);
+            console.log(`[Auth Callback] Access Token Length: ${data.session?.access_token?.length}`);
+
             return response
         } catch (error: any) {
             console.error('[Auth Callback] CRITICAL ERROR:', error.message);
@@ -105,5 +113,6 @@ export async function GET(request: Request) {
     }
 
     // No code, redirect to home
+    console.warn('[Auth Callback] No code found in URL');
     return NextResponse.redirect(new URL(next, request.url))
 }
