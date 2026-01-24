@@ -21,9 +21,9 @@ export async function GET(request: Request) {
         // 5. request.nextUrl.origin (Last resort)
         const forwardedHost = request.headers.get('x-forwarded-host')
         const host = request.headers.get('host')
-        
+
         let origin = requestUrl.origin; // Default to internal if nothing else found
-        
+
         if (process.env.NEXT_PUBLIC_SITE_URL) {
             origin = process.env.NEXT_PUBLIC_SITE_URL;
         } else if (process.env.VERCEL_URL) {
@@ -31,7 +31,7 @@ export async function GET(request: Request) {
         } else if (forwardedHost) {
             origin = `https://${forwardedHost}`; // Assume HTTPS behind proxy
         } else if (host) {
-             origin = `https://${host}`; // Assume HTTPS
+            origin = `https://${host}`; // Assume HTTPS
         }
 
         console.log(`[Auth Callback] Resolved Origin: ${origin} (Internal: ${requestUrl.origin})`);
@@ -49,11 +49,17 @@ export async function GET(request: Request) {
                     },
                     set(name: string, value: string, options: CookieOptions) {
                         // Ensure the cookie is accessible across the entire site
+                        // Check if we are running securely (HTTPS)
+                        // Trust X-Forwarded-Proto if behind a proxy (like Render)
+                        const isSecure = process.env.NODE_ENV === 'production' ||
+                            requestUrl.protocol === 'https:' ||
+                            request.headers.get('x-forwarded-proto') === 'https';
+
                         const cookieOptions = {
                             ...options,
                             path: '/',
                             sameSite: 'lax' as const,
-                            secure: requestUrl.protocol === 'https:',
+                            secure: isSecure,
                         };
                         cookieStore.set({ name, value, ...cookieOptions })
                         response.cookies.set({ name, value, ...cookieOptions })
