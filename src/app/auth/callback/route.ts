@@ -51,12 +51,12 @@ export async function GET(request: Request) {
                         // Ensure the cookie is accessible across the entire site
                         // Check if we are running securely (HTTPS)
                         // Trust X-Forwarded-Proto if behind a proxy (like Render)
-                        const isSecure = process.env.NODE_ENV === 'production' ||
-                            requestUrl.protocol === 'https:' ||
+                        // REMOVED NODE_ENV check to prevent forcing Secure on connections Render thinks are HTTP
+                        const isSecure = requestUrl.protocol === 'https:' ||
                             request.headers.get('x-forwarded-proto') === 'https';
 
-                        console.log(`[Auth Callback] Setting Cookie: ${name}`);
-                        console.log(`[Auth Callback] Security Check: env=${process.env.NODE_ENV}, proto=${requestUrl.protocol}, x-forwarded=${request.headers.get('x-forwarded-proto')} -> isSecure=${isSecure}`);
+                        console.error(`[Auth Callback] Setting Cookie: ${name}`);
+                        console.error(`[Auth Callback] Security Check: env=${process.env.NODE_ENV}, proto=${requestUrl.protocol}, x-forwarded=${request.headers.get('x-forwarded-proto')} -> isSecure=${isSecure}`);
 
                         const cookieOptions = {
                             ...options,
