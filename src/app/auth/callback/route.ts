@@ -36,10 +36,12 @@ export async function GET(request: Request) {
 
                         const cookieOptions = {
                             path: '/',
-                            secure: isSecure,
+                            secure: true, // Force secure for production context
                             sameSite: 'lax' as const,
-                            httpOnly: false, // CRITICAL: Allow client-side Supabase client to read the session
+                            httpOnly: true, // Essential for auth token protection
                             maxAge: 60 * 60 * 24 * 7,
+                            // FORCE public domain to avoid "srv-..." mismatch
+                            domain: isProduction ? 'workgraph-os.onrender.com' : undefined,
                         };
 
                         console.error(`[Auth Callback] SET Cookie: ${name} (Secure: ${isSecure}, len: ${value.length})`);
