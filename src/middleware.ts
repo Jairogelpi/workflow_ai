@@ -27,7 +27,11 @@ export async function middleware(request: NextRequest) {
         {
             cookies: {
                 get(name: string) {
-                    return request.cookies.get(name)?.value
+                    const val = request.cookies.get(name)?.value
+                    if (name.includes('auth-token')) {
+                        console.error(`[Middleware] GET Cookie: ${name} = ${val ? 'FOUND' : 'MISSING'}`);
+                    }
+                    return val
                 },
                 set(name: string, value: string, options: CookieOptions) {
                     // Update request cookies so subsequent calls in this request see them
