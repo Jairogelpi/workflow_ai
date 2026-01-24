@@ -16,12 +16,10 @@ export async function GET(request: Request) {
 
     if (code) {
         const cookieStore = await cookies()
-
-        // Prepare headers container for the final response
         const responseHeaders = new Headers();
 
-        // 0. Canary Cookie
         responseHeaders.append('Set-Cookie', 'test-canary=alive; Path=/; Secure; SameSite=None');
+        responseHeaders.append('Content-Type', 'text/html'); // Success Page
 
         const supabase = createServerClient(
             process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -38,19 +36,18 @@ export async function GET(request: Request) {
                                     ...options,
                                     path: '/',
                                     secure: true,
-                                    sameSite: 'none' as const, // RELAXED for debugging
+                                    sameSite: 'none' as const,
                                     httpOnly: false,
                                     domain: undefined,
                                 };
 
-                                // MANUALLY Append via header to guarantee persistence
-                                // We do NOT touch cookieStore here to avoid side-effects
-                                let cookieString = `${name}=${value}; Path=/; Secure; SameSite=None`;
+                                // Re-enable encoding for standard compliance
+                                let cookieString = `${name}=${encodeURIComponent(value)}; Path=/; Secure; SameSite=None`;
                                 if (finalOptions.maxAge) {
                                     cookieString += `; Max-Age=${finalOptions.maxAge}`;
                                 }
 
-                                console.log(`[Auth Callback] Appending Header: ${cookieString.substring(0, 50)}...`);
+                                console.log(`[Auth Callback] Appending Header: ${name} (len: ${value.length})`);
                                 responseHeaders.append('Set-Cookie', cookieString);
                             })
                         } catch (err) {
@@ -70,12 +67,37 @@ export async function GET(request: Request) {
 
             console.log(`[Auth Callback] SUCCESS: Session for ${data.user?.email}`);
 
-            // Set Location for redirect
-            responseHeaders.set('Location', new URL(next, origin).toString());
+            // HTML Success Page to verify cookies and detach redirect loop
+            const html = `
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <title>Login Successful</title>
+                <meta http-equiv="refresh" content="3;url=${new URL(next, origin).toString()}" />
+                <style>
+                    body { font-family: system-ui, sans-serif; padding: 2rem; background: #111; color: #eee; }
+                    .box { background: #222; padding: 1rem; border-radius: 8px; margin-top: 1rem; }
+                    code { color: #4af; word-break: break-all; }
+                </style>
+            </head>
+            <body>
+                <h1>Login Successful</h1>
+                <p>Redirecting to dashboard in 3 seconds...</p>
+                <div class="box">
+                    <h3>Debug Info:</h3>
+                    <p>Current Cookies (JS accessible):</p>
+                    <code id="cookies">Loading...</code>
+                </div>
+                <script>
+                    document.getElementById('cookies').textContent = document.cookie || '(none)';
+                    console.log('Cookies:', document.cookie);
+                </script>
+            </body>
+            </html>
+            `;
 
-            // Return standard web Response with status 303 (See Other)
-            return new Response(null, {
-                status: 303,
+            return new Response(html, {
+                status: 200,
                 headers: responseHeaders,
             });
 
