@@ -34,15 +34,31 @@ export async function middleware(request: NextRequest) {
                     return val
                 },
                 set(name: string, value: string, options: CookieOptions) {
+                    const finalOptions = {
+                        ...options,
+                        path: '/',
+                        secure: true,
+                        sameSite: 'lax' as const,
+                        httpOnly: false,
+                        domain: undefined,
+                    };
                     // Update request cookies so subsequent calls in this request see them
-                    request.cookies.set({ name, value, ...options })
+                    request.cookies.set({ name, value, ...finalOptions })
 
                     // Update response cookies so the browser gets them
-                    response.cookies.set({ name, value, ...options })
+                    response.cookies.set({ name, value, ...finalOptions })
                 },
                 remove(name: string, options: CookieOptions) {
-                    request.cookies.set({ name, value: '', ...options })
-                    response.cookies.set({ name, value: '', ...options })
+                    const finalOptions = {
+                        ...options,
+                        path: '/',
+                        secure: true,
+                        sameSite: 'lax' as const,
+                        httpOnly: false,
+                        domain: undefined,
+                    };
+                    request.cookies.set({ name, value: '', ...finalOptions })
+                    response.cookies.set({ name, value: '', ...finalOptions })
                 },
             },
         }

@@ -31,11 +31,23 @@ export async function GET(request: Request) {
                     setAll(cookiesToSet) {
                         try {
                             cookiesToSet.forEach(({ name, value, options }) => {
+                                // Force options for production compatibility and browser acceptance
+                                // We remove 'domain' to let the browser use the current host (workgraph-os.onrender.com)
+                                // and force httpOnly: false for client-side SDK synchronization.
+                                const finalOptions = {
+                                    ...options,
+                                    path: '/',
+                                    secure: true,
+                                    sameSite: 'lax' as const,
+                                    httpOnly: false,
+                                    domain: undefined,
+                                };
+
                                 console.log(`[Auth Callback] setAll: setting cookie ${name}`);
                                 // Set on the cookie store for immediate server-side context
-                                cookieStore.set(name, value, options)
+                                cookieStore.set(name, value, finalOptions)
                                 // Set on the response for the browser to receive it
-                                response.cookies.set(name, value, options)
+                                response.cookies.set(name, value, finalOptions)
                             })
                         } catch (err) {
                             console.error('[Auth Callback] setAll ERROR:', err);
