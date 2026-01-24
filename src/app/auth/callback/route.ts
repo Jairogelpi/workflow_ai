@@ -55,12 +55,17 @@ export async function GET(request: Request) {
                             requestUrl.protocol === 'https:' ||
                             request.headers.get('x-forwarded-proto') === 'https';
 
+                        console.log(`[Auth Callback] Setting Cookie: ${name}`);
+                        console.log(`[Auth Callback] Security Check: env=${process.env.NODE_ENV}, proto=${requestUrl.protocol}, x-forwarded=${request.headers.get('x-forwarded-proto')} -> isSecure=${isSecure}`);
+
                         const cookieOptions = {
                             ...options,
                             path: '/',
                             sameSite: 'lax' as const,
                             secure: isSecure,
                         };
+                        console.log(`[Auth Callback] Final Cookie Options:`, JSON.stringify(cookieOptions));
+
                         cookieStore.set({ name, value, ...cookieOptions })
                         response.cookies.set({ name, value, ...cookieOptions })
                     },

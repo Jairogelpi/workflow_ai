@@ -5,8 +5,14 @@ export async function middleware(request: NextRequest) {
     const cookieNames = request.cookies.getAll().map(c => c.name)
     const sbCookies = cookieNames.filter(n => n.includes('sb-'))
 
-    // We can't log to the browser console from here, so we log to server logs
-    // which the user can hopefully see in Render if we ask.
+    console.log(`[Middleware] Incoming Request: ${request.nextUrl.pathname}`);
+    console.log(`[Middleware] Cookies Present: ${cookieNames.length} (Supabase: ${sbCookies.length})`);
+    if (sbCookies.length > 0) {
+        console.log(`[Middleware] Supabase Cookies: ${sbCookies.join(', ')}`);
+    } else {
+        console.log(`[Middleware] NO SUPABASE COOKIES FOUND!`);
+    }
+    console.log(`[Middleware] Headers: x-forwarded-proto=${request.headers.get('x-forwarded-proto')}, host=${request.headers.get('host')}`);
     // For now, let's just make it fast.
 
     let response = NextResponse.next({
