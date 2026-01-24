@@ -21,23 +21,32 @@ export async function GET(request: Request) {
         // 5. request.nextUrl.origin (Last resort)
         const forwardedHost = request.headers.get('x-forwarded-host')
         const host = request.headers.get('host')
+        const envUrl = process.env.NEXT_PUBLIC_SITE_URL
+
+        console.error(`[Auth Callback] Headers: host=${host}, x-forwarded-host=${forwardedHost}, x-forwarded-proto=${request.headers.get('x-forwarded-proto')}`);
 
         let origin = requestUrl.origin; // Default to internal if nothing else found
 
-        if (process.env.NEXT_PUBLIC_SITE_URL) {
-            origin = process.env.NEXT_PUBLIC_SITE_URL;
+        // FORCE HTTPS in Production
+        if (process.env.NODE_ENV === 'production') {
+            console.error('[Auth Callback] Production Mode Detected - Forcing HTTPS Origin');
+            origin = 'https://workgraph-os.onrender.com';
+        } else if (envUrl) {
+            origin = envUrl;
         } else if (process.env.VERCEL_URL) {
             origin = `https://${process.env.VERCEL_URL}`;
         } else if (forwardedHost) {
-            origin = `https://${forwardedHost}`; // Assume HTTPS behind proxy
-        } else if (host) {
-            origin = `https://${host}`; // Assume HTTPS
+            origin = `https://${forwardedHost}`;
+        } else if (host && !host.includes('localhost')) {
+            origin = `https://${host}`;
         }
 
-        console.log(`[Auth Callback] Resolved Origin: ${origin} (Internal: ${requestUrl.origin})`);
+        console.error(`[Auth Callback] Resolved Origin: ${origin} (Internal: ${requestUrl.origin})`);
 
         // Use the resolved origin for the redirect
-        const response = NextResponse.redirect(new URL(next, origin))
+        const redirectUrl = new URL(next, origin);
+        console.error(`[Auth Callback] Redirecting to: ${redirectUrl.toString()}`);
+        const response = NextResponse.redirect(redirectUrl)
 
         const supabase = createServerClient(
             process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -48,15 +57,14 @@ export async function GET(request: Request) {
                         return cookieStore.get(name)?.value
                     },
                     set(name: string, value: string, options: CookieOptions) {
-                        // Ensure the cookie is accessible across the entire site
-                        // Check if we are running securely (HTTPS)
-                        // Trust X-Forwarded-Proto if behind a proxy (like Render)
-                        // REMOVED NODE_ENV check to prevent forcing Secure on connections Render thinks are HTTP
-                        const isSecure = requestUrl.protocol === 'https:' ||
+                        // FORCE Secure in Production
+                        const isProduction = process.env.NODE_ENV === 'production';
+                        const isSecure = isProduction ||
+                            requestUrl.protocol === 'https:' ||
                             request.headers.get('x-forwarded-proto') === 'https';
 
                         console.error(`[Auth Callback] Setting Cookie: ${name}`);
-                        console.error(`[Auth Callback] Security Check: env=${process.env.NODE_ENV}, proto=${requestUrl.protocol}, x-forwarded=${request.headers.get('x-forwarded-proto')} -> isSecure=${isSecure}`);
+                        console.error(`[Auth Callback] Security Check (STRICT): production=${isProduction} -> isSecure=${isSecure}`);
 
                         const cookieOptions = {
                             ...options,
