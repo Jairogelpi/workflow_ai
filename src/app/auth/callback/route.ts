@@ -12,8 +12,32 @@ export async function GET(request: Request) {
     if (code) {
         const cookieStore = await cookies()
 
-        // Use the request's own origin for the redirect to ensure domain consistency
-        const response = NextResponse.redirect(new URL(next, request.url))
+        // Robustly determine the origin for the redirect
+        // Priority:
+        // 1. NEXT_PUBLIC_SITE_URL (Explicit override)
+        // 2. VERCEL_URL (Vercel support)
+        // 3. x-forwarded-host (Standard proxy header)
+        // 4. host (Fallback)
+        // 5. request.nextUrl.origin (Last resort)
+        const forwardedHost = request.headers.get('x-forwarded-host')
+        const host = request.headers.get('host')
+        
+        let origin = requestUrl.origin; // Default to internal if nothing else found
+        
+        if (process.env.NEXT_PUBLIC_SITE_URL) {
+            origin = process.env.NEXT_PUBLIC_SITE_URL;
+        } else if (process.env.VERCEL_URL) {
+            origin = `https://${process.env.VERCEL_URL}`;
+        } else if (forwardedHost) {
+            origin = `https://${forwardedHost}`; // Assume HTTPS behind proxy
+        } else if (host) {
+             origin = `https://${host}`; // Assume HTTPS
+        }
+
+        console.log(`[Auth Callback] Resolved Origin: ${origin} (Internal: ${requestUrl.origin})`);
+
+        // Use the resolved origin for the redirect
+        const response = NextResponse.redirect(new URL(next, origin))
 
         const supabase = createServerClient(
             process.env.NEXT_PUBLIC_SUPABASE_URL!,
