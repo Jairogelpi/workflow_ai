@@ -35,19 +35,18 @@ export async function GET(request: Request) {
                             request.headers.get('x-forwarded-proto') === 'https';
 
                         const cookieOptions = {
-                            ...options,
                             path: '/',
+                            secure: isSecure,
                             sameSite: 'lax' as const,
-                            secure: true, // Force secure for production context
-                            httpOnly: true, // Essential for auth token protection
+                            httpOnly: false, // CRITICAL: Allow client-side Supabase client to read the session
                             maxAge: 60 * 60 * 24 * 7,
                         };
 
-                        console.error(`[Auth Callback] SET Cookie: ${name} (val-len: ${value.length})`);
+                        console.error(`[Auth Callback] SET Cookie: ${name} (Secure: ${isSecure}, len: ${value.length})`);
 
-                        // Next.js 15 standard: allow setting cookies in Route Handlers via async cookie store
+                        // Set on the async cookie store (Next.js 15 standard)
                         cookieStore.set({ name, value, ...cookieOptions })
-                        // For redirects, also set on the response object
+                        // Also set on response for the immediate redirect
                         response.cookies.set({ name, value, ...cookieOptions })
                     },
                     remove(name: string, options: CookieOptions) {
