@@ -72,44 +72,59 @@ export async function GET(request: Request) {
             console.log(`[Auth Callback] SUCCESS: Session for ${data.user?.email}`);
 
             // MANUAL FALLBACK: If Supabase didn't trigger setAll, we do it ourselves.
-            // This happens sometimes with SSR + certain Next.js configs.
             if (cookiesToInject.length === 0 && data.session) {
-                console.warn('[Auth Callback] WARNING: setAll was not triggered. Manually constructing cookie.');
+                console.warn('[Auth Callback] WARNING: setAll was not triggered. Manually constructing CHUNKED cookies.');
 
                 try {
-                    // 1. Extract Project Ref
                     const projectUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
                     const projectRef = projectUrl.match(/https?:\/\/([^.]+)\./)?.[1];
 
                     if (projectRef) {
-                        const cookieName = `sb-${projectRef}-auth-token`;
-                        // Supabase format: "base64-" + base64(JSON.stringify(session))
-                        // We use a simplified version: just the session string. Supabase client can usually read plain JSON too, 
-                        // but let's try to be robust. 
+                        const baseName = `sb-${projectRef}-auth-token`;
+                        // Serialize session safely
                         const sessionStr = JSON.stringify(data.session);
-                        const safeValue = 'base64-' + Buffer.from(sessionStr).toString('base64');
+                        // Prefix properly as Supabase does
+                        const rawValue = 'base64-' + Buffer.from(sessionStr).toString('base64');
 
-                        const manualCookie = {
-                            name: cookieName,
-                            value: safeValue,
-                            options: {
-                                path: '/',
-                                secure: true,
-                                sameSite: 'none',
-                                maxAge: 60 * 60 * 24 * 7 // 1 week
-                            }
-                        };
+                        // CHUNKING LOGIC (Max 3000 chars to be safe < 4096 bytes)
+                        const CHUNK_SIZE = 3000;
+                        const chunks: string[] = [];
 
-                        cookiesToInject.push(manualCookie);
+                        for (let i = 0; i < rawValue.length; i += CHUNK_SIZE) {
+                            chunks.push(rawValue.slice(i, i + CHUNK_SIZE));
+                        }
 
-                        // Also inject a plain access token for debugging/middleware fallback if needed
+                        console.log(`[Auth Callback] Chunking session (len: ${rawValue.length}) into ${chunks.length} chunks.`);
+
+                        chunks.forEach((chunk, index) => {
+                            const name = `${baseName}.${index}`;
+                            cookiesToInject.push({
+                                name,
+                                value: chunk,
+                                options: {
+                                    path: '/',
+                                    secure: true,
+                                    sameSite: 'none',
+                                    maxAge: 60 * 60 * 24 * 7 // 1 week
+                                }
+                            });
+                        });
+
+                        // Add legacy single token ONLY if small (unlikely)
+                        if (chunks.length === 1) {
+                            cookiesToInject.push({
+                                name: baseName, // Un-chunked alias
+                                value: chunks[0],
+                                options: { path: '/', secure: true, sameSite: 'none', maxAge: 60 * 60 * 24 * 7 }
+                            });
+                        }
+
+                        // Fallback access token for simple middleware
                         cookiesToInject.push({
-                            name: 'sb-access-token', // Custom simple name
+                            name: 'sb-access-token',
                             value: data.session.access_token,
                             options: { path: '/', secure: true, sameSite: 'none', maxAge: 3600 }
                         });
-
-                        console.log('[Auth Callback] Manually added session cookie:', cookieName);
                     }
                 } catch (e) {
                     console.error('[Auth Callback] Manual fallback failed:', e);
@@ -139,7 +154,8 @@ export async function GET(request: Request) {
                 
                 <div class="box">
                     <h3>Server Payload (What the server sent)</h3>
-                    <pre>${JSON.stringify(cookiesToInject, null, 2)}</pre>
+                    <p>Found ${cookiesToInject.length} cookies to inject.</p>
+                    <pre>${JSON.stringify(cookiesToInject.map(c => ({ name: c.name, len: c.value.length })), null, 2)}</pre>
                 </div>
 
                 <div class="box">
@@ -167,7 +183,7 @@ export async function GET(request: Request) {
                     try {
                         let successCount = 0;
                         cookies.forEach(c => {
-                            // Construct cookie string (ENCODED value)
+                            // Write Encoded Cookie
                             let cookieStr = c.name + '=' + encodeURIComponent(c.value) + '; Path=/; Secure; SameSite=None';
                             if (c.options.maxAge) cookieStr += '; Max-Age=' + c.options.maxAge;
                             
@@ -179,17 +195,23 @@ export async function GET(request: Request) {
                         const allCookies = document.cookie;
                         document.getElementById('final-cookies').textContent = allCookies;
                         
-                        // Loose Check: Find ANY auth token (including our manual ones)
-                        const hasAuthToken = allCookies.includes('auth-token') || allCookies.includes('sb-access-token');
+                        // Verify we have at least one chunk or token
+                        const hasToken = allCookies.includes('auth-token') || allCookies.includes('sb-access-token');
                         
-                        if (!hasAuthToken) {
-                            status.textContent = 'FATAL ERROR: Browser rejected cookies!';
+                        // Strict check: Are ALL injected chunks present?
+                        const failedCookies = cookies.filter(c => !allCookies.includes(c.name));
+                        
+                        if (failedCookies.length > 0) {
+                            status.textContent = 'FATAL ERROR: Some cookies were rejected!';
                             status.className = 'error';
-                            log('FATAL: No auth tokens found in document.cookie', 'error');
+                            log('MISSING: ' + failedCookies.map(c => c.name).join(', '), 'error');
+                        } else if (!hasToken) {
+                            status.textContent = 'FATAL ERROR: No auth tokens visible!';
+                            status.className = 'error';
                         } else {
                             status.textContent = 'Success! Redirecting...';
                             status.className = 'success';
-                            log('Verification Passed. Redirecting...');
+                            log('Verification Passed. All chunks written. Redirecting...');
                             setTimeout(() => {
                                 window.location.href = "${redirectUrl}";
                             }, 1000);
