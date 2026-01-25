@@ -20,7 +20,7 @@ export const ProjectManifest: React.FC<{ onClose: () => void }> = ({ onClose }) 
             if (user) {
                 setMembers([{
                     id: user.id,
-                    name: user.user_metadata?.full_name || user.email?.split('@')[0] || 'Admin',
+                    name: user.user_metadata?.full_name || user.email?.split('@')[0] || 'Usuario',
                     email: user.email || '',
                     role: 'admin',
                     status: 'active'
@@ -44,7 +44,9 @@ export const ProjectManifest: React.FC<{ onClose: () => void }> = ({ onClose }) 
     };
 
     const handleRemoveMember = (id: string) => {
-        if (id === '1') return;
+        // Prevent removing self (Admin)
+        const currentUser = members.find(m => m.role === 'admin');
+        if (currentUser && currentUser.id === id) return;
         setMembers(members.filter(m => m.id !== id));
     };
 

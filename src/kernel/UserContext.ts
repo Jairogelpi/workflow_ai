@@ -41,8 +41,8 @@ export class UserContext {
     static async getStyleContext(userId: string, currentIntent: string): Promise<string> {
         // [REAL] Check for valid user
         if (!userId || userId === 'current-user') {
-            // Fallback to anonymous profile if auth is not yet hydrated in this context
-            return "[User Style]: Standard Professional.";
+            console.warn('[UserContext] No authenticated user found for style context.');
+            return ""; // No context, raw model behavior
         }
 
         const queryVector = await generateEmbedding(currentIntent);
@@ -56,7 +56,7 @@ export class UserContext {
         });
 
         if (error || !patterns || patterns.length === 0) {
-            return "[User Style]: Standard Professional (No historical patterns found).";
+            return "";
         }
 
         const insights = patterns.map((p: any) => `- Observed ${p.action_type} on: "${p.content_snippet}"`).join('\n');

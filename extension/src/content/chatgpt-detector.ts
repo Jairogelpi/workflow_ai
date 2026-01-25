@@ -2,6 +2,7 @@ import { BaseFileDetector, DetectedFile } from './file-detector';
 
 /**
  * ChatGPT File Detector
+ * @deprecated Fragile DOM detection. Use PerceptionEngine (Semantic Analysis) instead.
  * Detects files uploaded to ChatGPT interface
  */
 export class ChatGPTDetector extends BaseFileDetector {

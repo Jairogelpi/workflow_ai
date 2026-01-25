@@ -36,6 +36,9 @@ export class MediatorAgent {
             // Analyzes graph topology to find disconnected claims.
             const logicReport = await this.detectStructuralVoids(nodes as any, edges as any);
             if (logicReport.requiresAction) {
+                // Lazy load Consensus to avoid cyclic deps if any
+                const { ConsensusEngine } = await import('../consensus_engine');
+
                 for (const voidItem of logicReport.voids) {
                     const p = await this.negotiator.proposeChange({
                         type: 'ADD_RELATION',
@@ -43,7 +46,15 @@ export class MediatorAgent {
                         sourceNodeId: voidItem.nodeId,
                         relation: 'needs_evidence'
                     });
-                    currentProposals.push(p);
+
+                    // [Neuro-Symbolic Arbiter] Pre-flight Check
+                    const consensus = await ConsensusEngine.validateProposal(p, nodes as any, edges as any);
+                    if (consensus.approved) {
+                        currentProposals.push(p);
+                    } else {
+                        console.warn(`[MEDIATOR] Proposal rejected by Logic Kernel: ${consensus.reason}`);
+                        // Negative Reward: We track this rejection to adjust future RLM prompts (Future work)
+                    }
                 }
             }
 

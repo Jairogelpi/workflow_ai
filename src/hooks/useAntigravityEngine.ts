@@ -51,6 +51,9 @@ export function useAntigravityEngine() {
         };
     }, [setNodes]);
 
+    // [Performance] Compute a lightweight hash for pin state to avoid re-syncing on text changes
+    const pinSignature = nodes.map(n => n.data.metadata.pin ? '1' : '0').join('');
+
     // 2. Sync Data to Worker
     useEffect(() => {
         if (!workerRef.current || !isAntigravityActive || nodes.length === 0) return;
@@ -80,7 +83,7 @@ export function useAntigravityEngine() {
             });
         });
 
-    }, [nodes.length, edges.length, isAntigravityActive]); // Only re-sync when count changes or topology changes
+    }, [nodes.length, edges.length, isAntigravityActive, pinSignature]); // React to Pin changes!
 
     // 3. Handle Resize
     useEffect(() => {

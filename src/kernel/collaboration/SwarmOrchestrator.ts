@@ -36,9 +36,12 @@ export class SwarmOrchestrator {
             type: 'info'
         });
 
-        // Run agents in parallel
+        // [Cognitive Latency Fix] Run agents in background 
+        // We use setTimeout to break the synchronous call stack, allowing the UI to render.
         this.agents.forEach(agent => {
-            this.runAgentCycle(agent, contextNodeIds);
+            setTimeout(() => {
+                this.runAgentCycle(agent, contextNodeIds).catch(err => console.error(err));
+            }, 10);
         });
     }
 

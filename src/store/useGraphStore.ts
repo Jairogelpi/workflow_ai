@@ -25,7 +25,7 @@ export type AppNode = Node<WorkNode, string>;
 export type AppEdge = Edge<WorkEdge>;
 
 // Default project ID for now (Local-first mindset but SQL-backed)
-const DEFAULT_PROJECT_ID = '00000000-0000-0000-0000-000000000000';
+// Project context handled dynamically
 
 // Semantic force mapping based on IR relations
 const FORCE_MAPPING: Record<string, number> = {
@@ -430,7 +430,7 @@ export const useGraphStore = create<GraphState>((set, get) => ({
                 human_signature: {
                     signer: 'Sovereign_OS_Auth',
                     timestamp: new Date().toISOString(),
-                    public_key: 'AI_MATERIALIZE_KEY_001'
+                    public_key: 'PENDING_ON_CHAIN_GENERATION' // Placeholder for future crypto-bridge
                 }
             }
         } as any);
@@ -538,31 +538,28 @@ export const useGraphStore = create<GraphState>((set, get) => ({
         const { source, target } = params;
         if (!source || !target) return;
 
-        const newWorkEdge: WorkEdge = {
-            id: uuidv4() as EdgeId,
-            source: source as NodeId,
-            target: target as NodeId,
-            relation: 'relates_to',
-            metadata: {
-                created_at: new Date().toISOString(),
-                updated_at: new Date().toISOString(),
-                version_hash: '0000000000000000000000000000000000000000000000000000000000000000',
-                origin: 'human',
-                confidence: 1.0,
-                validated: false,
-                pin: false,
-                access_control: {
-                    role_required: 'editor',
-                    owner_id: get().currentUser.id
-                }
-            }
-        };
-
-        // [Hito 7.9] SyncGuardian Audit for Edge
         try {
-            const { SyncGuardian } = await import('../kernel/SyncGuardian');
-            await SyncGuardian.handleMutation(newWorkEdge.id, { relation: 'relates_to' });
+            const newWorkEdge: WorkEdge = {
+                id: uuidv4() as EdgeId,
+                source: source as NodeId,
+                target: target as NodeId,
+                relation: 'relates_to',
+                metadata: {
+                    created_at: new Date().toISOString(),
+                    updated_at: new Date().toISOString(),
+                    version_hash: uuidv4(),
+                    origin: 'human',
+                    confidence: 1.0,
+                    validated: false,
+                    pin: false,
+                    access_control: {
+                        role_required: 'editor',
+                        owner_id: get().currentUser.id
+                    }
+                }
+            };
 
+            // React Flow UI update
             const newEdge: AppEdge = {
                 id: newWorkEdge.id,
                 source: newWorkEdge.source,
@@ -574,7 +571,9 @@ export const useGraphStore = create<GraphState>((set, get) => ({
                 edges: addEdge(newEdge, edges) as AppEdge[],
             });
 
-            await syncService.upsertEdge(DEFAULT_PROJECT_ID, newWorkEdge);
+            const projectId = get().projectManifest ? (get().projectManifest as any).id : 'temp-session';
+            await syncService.upsertEdge(projectId, newWorkEdge);
+
         } catch (err) {
             console.error('[SyncGuardian] Edge creation rejected:', err);
         }
@@ -621,7 +620,7 @@ export const useGraphStore = create<GraphState>((set, get) => ({
 
             set({ nodes: updatedNodes });
             if (updatedNodeRecord) {
-                await syncService.upsertNode(DEFAULT_PROJECT_ID, updatedNodeRecord);
+                await syncService.upsertNode(get().projectManifest ? (get().projectManifest as any).id : 'temp-session', updatedNodeRecord);
             }
         } catch (err) {
             console.error('[SyncGuardian] Mutation rejected:', err);
@@ -659,7 +658,7 @@ export const useGraphStore = create<GraphState>((set, get) => ({
             else if (type === 'decision') { baseNode.rationale = 'New Decision'; baseNode.chosen_option = ''; }
             else if (type === 'idea') baseNode.summary = 'New Idea';
             else if (type === 'task') { baseNode.title = 'New Task'; baseNode.status = 'todo'; }
-            else if (type === 'artifact') { baseNode.name = 'New Artifact'; baseNode.uri = 'http://localhost'; }
+            else if (type === 'artifact') { baseNode.name = 'New Artifact'; baseNode.uri = ''; }
             else if (type === 'assumption') { baseNode.premise = 'New Assumption'; baseNode.risk_level = 'medium'; }
             else if (type === 'constraint') { baseNode.rule = 'New Constraint'; baseNode.enforcement_level = 'strict'; }
         }
@@ -669,7 +668,8 @@ export const useGraphStore = create<GraphState>((set, get) => ({
         const flowNode = backendToFlow(finalNode, position || { x: Math.random() * 400, y: Math.random() * 400 });
 
         set({ nodes: [...get().nodes, flowNode] });
-        await syncService.upsertNode(DEFAULT_PROJECT_ID, finalNode);
+        const projectId = get().projectManifest ? (get().projectManifest as any).id : 'temp-session'; // Fallback only if no project loaded
+        await syncService.upsertNode(projectId, finalNode);
     },
 
     mutateNodeType: async (id, newType) => {
@@ -693,7 +693,7 @@ export const useGraphStore = create<GraphState>((set, get) => ({
                 else if (newType === 'decision') { newData.rationale = oldContent; newData.chosen_option = ''; }
                 else if (newType === 'idea') newData.summary = oldContent;
                 else if (newType === 'task') { newData.title = 'Mutated Task'; newData.description = oldContent; newData.status = 'todo'; }
-                else if (newType === 'artifact') { newData.name = oldContent; newData.uri = 'http://localhost'; }
+                else if (newType === 'artifact') { newData.name = oldContent; newData.uri = ''; }
                 else if (newType === 'assumption') { newData.premise = oldContent; newData.risk_level = 'medium'; }
                 else if (newType === 'constraint') { newData.rule = oldContent; newData.enforcement_level = 'strict'; }
                 else if (newType === 'source') { newData.citation = oldContent; }
@@ -712,7 +712,7 @@ export const useGraphStore = create<GraphState>((set, get) => ({
 
             set({ nodes: updatedNodes });
             if (updatedNodeRecord) {
-                await syncService.upsertNode(DEFAULT_PROJECT_ID, updatedNodeRecord);
+                await syncService.upsertNode(get().projectManifest ? (get().projectManifest as any).id : 'temp-session', updatedNodeRecord);
             }
         } catch (err) {
             console.error('[SyncGuardian] Mutation rejected:', err);
@@ -809,7 +809,7 @@ export const useGraphStore = create<GraphState>((set, get) => ({
 
         set({ nodes: updatedNodes });
         if (updatedNodeRecord) {
-            await syncService.upsertNode(DEFAULT_PROJECT_ID, updatedNodeRecord);
+            await syncService.upsertNode(get().projectManifest ? (get().projectManifest as any).id : 'temp-session', updatedNodeRecord);
         }
     },
 
@@ -829,7 +829,7 @@ export const useGraphStore = create<GraphState>((set, get) => ({
 
         set({ nodes: updatedNodes });
         if (updatedNodeRecord) {
-            await syncService.upsertNode(DEFAULT_PROJECT_ID, updatedNodeRecord);
+            await syncService.upsertNode(get().projectManifest ? (get().projectManifest as any).id : 'temp-session', updatedNodeRecord);
         }
     },
 
@@ -854,7 +854,7 @@ export const useGraphStore = create<GraphState>((set, get) => ({
             draftNodes: draftNodes.filter(n => n.id !== id)
         });
 
-        await syncService.upsertNode(DEFAULT_PROJECT_ID, finalizedNode);
+        await syncService.upsertNode(get().projectManifest ? (get().projectManifest as any).id : 'temp-session', finalizedNode);
     },
 
     discardDraft: (id) => {
@@ -944,7 +944,7 @@ export const useGraphStore = create<GraphState>((set, get) => ({
 
         set({ nodes: updatedNodes });
         if (updatedNodeRecord) {
-            await syncService.upsertNode(DEFAULT_PROJECT_ID, updatedNodeRecord);
+            await syncService.upsertNode(get().projectManifest ? (get().projectManifest as any).id : 'temp-session', updatedNodeRecord);
         }
     },
 
@@ -967,7 +967,7 @@ export const useGraphStore = create<GraphState>((set, get) => ({
 
         set({ nodes: updatedNodes });
         if (updatedNodeRecord) {
-            await syncService.upsertNode(DEFAULT_PROJECT_ID, updatedNodeRecord);
+            await syncService.upsertNode(get().projectManifest ? (get().projectManifest as any).id : 'temp-session', updatedNodeRecord);
         }
     },
 
@@ -988,7 +988,7 @@ export const useGraphStore = create<GraphState>((set, get) => ({
 
         set({ edges: updatedEdges });
         if (updatedEdgeRecord) {
-            await syncService.upsertEdge(DEFAULT_PROJECT_ID, updatedEdgeRecord);
+            await syncService.upsertEdge(get().projectManifest ? (get().projectManifest as any).id : 'temp-session', updatedEdgeRecord);
         }
     },
 

@@ -160,11 +160,56 @@ export const syncService = {
     },
 
     /**
-     * Batch upsert
+     * Batch upsert (FIXED: Single Request)
      */
     async syncAll(projectId: string, nodes: WorkNode[], edges: WorkEdge[]) {
-        for (const node of nodes) await this.upsertNode(projectId, node);
-        for (const edge of edges) await this.upsertEdge(projectId, edge);
+        if (nodes.length === 0 && edges.length === 0) return;
+
+        // 1. Prepare Bulk Payloads
+        const nodesPayload = nodes.map(node => {
+            const { id, type, metadata, ...contentSpecifics } = node as any;
+            return {
+                id: id,
+                project_id: projectId,
+                type: type,
+                content: contentSpecifics,
+                is_pinned: metadata.pin,
+                is_validated: metadata.validated,
+                current_version_hash: metadata.version_hash,
+                confidence: metadata.confidence,
+                origin: metadata.origin,
+                metadata: {
+                    source: metadata.source,
+                    source_title: metadata.source_title,
+                    accessed_at: metadata.accessed_at,
+                    snippet_context: metadata.snippet_context
+                },
+                updated_at: new Date().toISOString(),
+                deleted_at: null
+            };
+        });
+
+        const edgesPayload = edges.map(edge => ({
+            id: edge.id,
+            project_id: projectId,
+            source_node_id: edge.source,
+            target_node_id: edge.target,
+            relation: edge.relation,
+            metadata: edge.metadata,
+            created_at: new Date().toISOString(),
+            deleted_at: null
+        }));
+
+        // 2. Execute Parallel Bulk Requests
+        const [nodeRes, edgeRes] = await Promise.all([
+            nodesPayload.length > 0 ? supabase.from('work_nodes').upsert(nodesPayload) : { error: null },
+            edgesPayload.length > 0 ? supabase.from('work_edges').upsert(edgesPayload) : { error: null }
+        ]);
+
+        if (nodeRes.error) throw nodeRes.error;
+        if (edgeRes.error) throw edgeRes.error;
+
+        console.log(`[SyncService] Bulk synced ${nodes.length} nodes and ${edges.length} edges.`);
     },
 
     /**

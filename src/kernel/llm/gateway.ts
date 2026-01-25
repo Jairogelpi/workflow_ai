@@ -24,7 +24,10 @@ export async function verifyWithLocalModel(
     try {
         const response = await fetch(`${RLM_CORE_URL}/verify`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: {
+                'Content-Type': 'application/json',
+                'x-trace-id': `trace-${Date.now()}`
+            },
             body: JSON.stringify({
                 claim,
                 context,
@@ -36,8 +39,8 @@ export async function verifyWithLocalModel(
         if (!response.ok) throw new Error(`RLM Core error: ${response.status}`);
         return await response.json();
     } catch (err) {
-        console.warn('[Gateway] RLM Core not available, skipping local verification:', err);
-        return { consistent: true, confidence: 0.5, reasoning: 'RLM Core unavailable' };
+        console.warn('[Gateway] RLM Core not available:', err);
+        throw new Error('Verification Service Unavailable. RLM Core required.');
     }
 }
 
@@ -70,8 +73,8 @@ export async function shouldUseLocalModel(
             estimatedCost: data.estimated_cost_usd
         };
     } catch (err) {
-        console.warn('[Gateway] RLM Core SmartRouter unavailable, defaulting to cloud:', err);
-        return { useLocal: false, recommendedModel: 'gpt-4o', estimatedCost: 0.01 };
+        console.warn('[Gateway] RLM Core SmartRouter unavailable:', err);
+        throw new Error('Routing Service Unavailable. Cannot determine optimal model.');
     }
 }
 
