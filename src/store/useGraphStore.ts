@@ -115,7 +115,7 @@ interface GraphState {
         description: string;
         roles: Record<string, UserRole>;
     } | null;
-    initProjectSwarm: (name: string, description: string, roles: Record<string, UserRole>) => Promise<void>;
+    initProjectSwarm: (name: string, description: string, roles: Record<string, UserRole>) => Promise<string>;
     openManifest: () => void;
     openWindow: (idOrConfig: any, title?: string, contentType?: any) => void;
 
@@ -424,7 +424,7 @@ export const useGraphStore = create<GraphState>((set, get) => ({
 
     initProjectSwarm: async (name, description, roles) => {
         set({ isBooting: true, projectManifest: { name, description, roles } });
-        const { addRLMThought, addNode } = get();
+        const { addRLMThought, currentUser } = get();
 
         addRLMThought({ message: `BOOT_SEQUENCE: Iniciando enjambre para '${name}'...`, type: 'info' });
 
@@ -433,15 +433,21 @@ export const useGraphStore = create<GraphState>((set, get) => ({
             addRLMThought({ message: "RLM_COMPILER: Analizando intención semántica...", type: 'reasoning' });
 
             // [Hito 7.9] Orchestrating RLM Dispatcher and SAT consistency
-            const { RLMDispatcher } = await import('../kernel/RLMDispatcher');
+            // const { RLMDispatcher } = await import('../kernel/RLMDispatcher'); // Future
 
-            addRLMThought({ message: "PLANNER: Generando jerarquía de ramas...", type: 'reasoning' });
+            // PERSISTENCE LAYER: Save to Supabase
+            // Use current user or fallback (though auth should be active)
+            const ownerId = currentUser.id || '00000000-0000-0000-0000-000000000000';
+            const project = await syncService.createProject(name, description, ownerId);
 
-            addRLMThought({ message: `BOOT_COMPLETE: Proyecto '${name}' nacido en el Canon.`, type: 'success' });
+            addRLMThought({ message: `BOOT_COMPLETE: Proyecto '${name}' nacido en el Canon (ID: ${project.id}).`, type: 'success' });
             set({ isBooting: false });
+
+            return project.id; // Return for navigation
         } catch (error) {
             console.error('[GraphStore] Swarm Boot Error:', error);
             set({ isBooting: false });
+            throw error;
         }
     },
 

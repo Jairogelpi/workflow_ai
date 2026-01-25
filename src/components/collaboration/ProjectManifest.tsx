@@ -37,11 +37,12 @@ export const ProjectManifest: React.FC<{ onClose: () => void }> = ({ onClose }) 
     const handleGenerate = async () => {
         if (!name || !description) return;
         const roleMap = members.reduce((acc, m) => ({ ...acc, [m.id]: m.role }), {});
-        await initProjectSwarm(name, description, roleMap);
+
+        // This now calls syncService.createProject internally and returns the real ID
+        const newProjectId = await initProjectSwarm(name, description, roleMap);
+
         onClose();
-        // Redirect to new project workspace (Mock ID for now)
-        // In real app, initProjectSwarm would return the ID.
-        const newProjectId = `proj-${Date.now().toString(36)}`;
+        // Redirect to new project workspace using REAL ID
         window.location.href = `/project/${newProjectId}`;
     };
 

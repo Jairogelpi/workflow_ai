@@ -165,5 +165,44 @@ export const syncService = {
     async syncAll(projectId: string, nodes: WorkNode[], edges: WorkEdge[]) {
         for (const node of nodes) await this.upsertNode(projectId, node);
         for (const edge of edges) await this.upsertEdge(projectId, edge);
+    },
+
+    /**
+     * Create a new Project
+     */
+    async createProject(name: string, description: string, ownerId: string) {
+        const { data, error } = await supabase
+            .from('projects')
+            .insert({
+                name,
+                description,
+                owner_id: ownerId,
+                status: 'active',
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString()
+            })
+            .select() // Return the created row
+            .single();
+
+        if (error) throw error;
+        return data;
+    },
+
+    /**
+     * Fetch Projects for User
+     */
+    async fetchProjects() {
+        // Simplified: Fetch all projects where current user is owner (or has access via RBAC logic later)
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return [];
+
+        const { data, error } = await supabase
+            .from('projects')
+            .select('*')
+            .eq('owner_id', user.id)
+            .order('updated_at', { ascending: false });
+
+        if (error) throw error;
+        return data || [];
     }
 };

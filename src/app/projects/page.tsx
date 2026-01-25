@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { ProjectManifest } from '@/components/collaboration/ProjectManifest';
 import { Plus, FolderOpen, Clock, ChevronRight, LogOut, Grid, List } from 'lucide-react';
+import { syncService } from '@/lib/sync';
 
 interface Project {
     id: string;
@@ -28,11 +29,13 @@ export default function ProjectsPage() {
             }
             setUser(session.user);
 
-            // Mock Projects - In production invoke Supabase query here
-            setProjects([
-                { id: 'proj-alpha-001', name: 'Axiom Core V1', description: 'Sistema operativo de grafos.', updated_at: 'Hace 2 horas' },
-                { id: 'proj-beta-002', name: 'Marketing Q3', description: 'Estrategia de despliegue.', updated_at: 'Hace 1 día' }
-            ]);
+            // FETCH REAL PROJECTS
+            try {
+                const realProjects = await syncService.fetchProjects();
+                setProjects(realProjects as Project[]);
+            } catch (err) {
+                console.error('Failed to fetch projects', err);
+            }
         };
         checkUser();
     }, [router]);
