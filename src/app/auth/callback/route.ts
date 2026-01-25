@@ -12,7 +12,6 @@ export async function GET(request: Request) {
         ? 'https://workgraph-os.onrender.com'
         : requestUrl.origin;
 
-    console.log(`[Auth Callback] Processing callback. Code: ${code ? 'YES' : 'NO'}, Origin: ${origin}`);
 
     if (code) {
         const cookieStore = await cookies()
@@ -51,7 +50,6 @@ export async function GET(request: Request) {
                                 let cookieString = `${name}=${encodeURIComponent(value)}; Path=/; Secure; SameSite=None`;
                                 if (finalOptions.maxAge) cookieString += `; Max-Age=${finalOptions.maxAge}`;
 
-                                console.log(`[Auth Callback] Processing Cookie: ${name}`);
                                 responseHeaders.append('Set-Cookie', cookieString);
                             })
                         } catch (err) {
@@ -69,11 +67,9 @@ export async function GET(request: Request) {
                 throw error;
             }
 
-            console.log(`[Auth Callback] SUCCESS: Session for ${data.user?.email}`);
 
             // MANUAL FALLBACK: If Supabase didn't trigger setAll, we do it ourselves.
             if (cookiesToInject.length === 0 && data.session) {
-                console.warn('[Auth Callback] WARNING: setAll was not triggered. Manually constructing CHUNKED cookies.');
 
                 try {
                     const projectUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
@@ -94,7 +90,6 @@ export async function GET(request: Request) {
                             chunks.push(rawValue.slice(i, i + CHUNK_SIZE));
                         }
 
-                        console.log(`[Auth Callback] Chunking session (len: ${rawValue.length}) into ${chunks.length} chunks.`);
 
                         chunks.forEach((chunk, index) => {
                             const name = `${baseName}.${index}`;
@@ -139,86 +134,58 @@ export async function GET(request: Request) {
             <!DOCTYPE html>
             <html>
             <head>
-                <title>Login Successful</title>
+                <title>Redirecting...</title>
                 <style>
-                    body { font-family: system-ui, sans-serif; padding: 2rem; background: #111; color: #eee; }
-                    .box { background: #222; padding: 1rem; border-radius: 8px; margin-top: 1rem; border: 1px solid #333; }
-                    .error { color: #f55; font-weight: bold; }
-                    .success { color: #4fa; font-weight: bold; }
-                    pre { background: #000; padding: 0.5rem; overflow-x: auto; color: #aaa; }
+                    body { 
+                        font-family: system-ui, -apple-system, sans-serif; 
+                        background: #000; 
+                        color: #fff; 
+                        display: flex; 
+                        flex-direction: column;
+                        align-items: center; 
+                        justify-content: center; 
+                        height: 100vh; 
+                        margin: 0;
+                    }
+                    .loader {
+                        width: 48px;
+                        height: 48px;
+                        border: 3px solid #fff;
+                        border-bottom-color: transparent;
+                        border-radius: 50%;
+                        display: inline-block;
+                        box-sizing: border-box;
+                        animation: rotation 1s linear infinite;
+                        margin-bottom: 1.5rem;
+                    }
+                    @keyframes rotation {
+                        0% { transform: rotate(0deg); }
+                        100% { transform: rotate(360deg); }
+                    }
+                    h1 { font-size: 1rem; font-weight: 400; opacity: 0.7; letter-spacing: 0.1em; text-transform: uppercase; }
                 </style>
             </head>
             <body>
-                <h1>Login Successful</h1>
-                <div id="status">Starting hydration...</div>
+                <span class="loader"></span>
+                <h1>Initializing Session...</h1>
                 
-                <div class="box">
-                    <h3>Server Payload (What the server sent)</h3>
-                    <p>Found ${cookiesToInject.length} cookies to inject.</p>
-                    <pre>${JSON.stringify(cookiesToInject.map(c => ({ name: c.name, len: c.value.length })), null, 2)}</pre>
-                </div>
-
-                <div class="box">
-                    <h3>Hydration Log</h3>
-                    <div id="logs"></div>
-                </div>
-
-                <div class="box">
-                    <h3>Final Cookie Check</h3>
-                    <pre id="final-cookies">...</pre>
-                </div>
-
                 <script>
                     const cookies = ${cookieScript};
-                    const logs = document.getElementById('logs');
-                    const status = document.getElementById('status');
                     
-                    function log(msg, type = 'info') {
-                        const div = document.createElement('div');
-                        div.textContent = '> ' + msg;
-                        if (type === 'error') div.style.color = '#f55';
-                        logs.appendChild(div);
-                    }
-
                     try {
-                        let successCount = 0;
                         cookies.forEach(c => {
                             // Write Encoded Cookie
                             let cookieStr = c.name + '=' + encodeURIComponent(c.value) + '; Path=/; Secure; SameSite=None';
                             if (c.options.maxAge) cookieStr += '; Max-Age=' + c.options.maxAge;
-                            
                             document.cookie = cookieStr;
-                            log('Wrote: ' + c.name + ' (Len: ' + c.value.length + ')');
                         });
 
-                        // VERIFICATION STEP
-                        const allCookies = document.cookie;
-                        document.getElementById('final-cookies').textContent = allCookies;
-                        
-                        // Verify we have at least one chunk or token
-                        const hasToken = allCookies.includes('auth-token') || allCookies.includes('sb-access-token');
-                        
-                        // Strict check: Are ALL injected chunks present?
-                        const failedCookies = cookies.filter(c => !allCookies.includes(c.name));
-                        
-                        if (failedCookies.length > 0) {
-                            status.textContent = 'FATAL ERROR: Some cookies were rejected!';
-                            status.className = 'error';
-                            log('MISSING: ' + failedCookies.map(c => c.name).join(', '), 'error');
-                        } else if (!hasToken) {
-                            status.textContent = 'FATAL ERROR: No auth tokens visible!';
-                            status.className = 'error';
-                        } else {
-                            status.textContent = 'Success! Redirecting...';
-                            status.className = 'success';
-                            log('Verification Passed. All chunks written. Redirecting...');
-                            setTimeout(() => {
-                                window.location.href = "${redirectUrl}";
-                            }, 1000);
-                        }
-
+                        // Immediate redirect on success
+                        window.location.href = "${redirectUrl}";
                     } catch (e) {
-                        log('JS ERROR: ' + e.message, 'error');
+                        console.error('Hydration failed:', e);
+                        // Fallback redirect anyway, maybe middleware catches it
+                        window.location.href = "${redirectUrl}";
                     }
                 </script>
             </body>
