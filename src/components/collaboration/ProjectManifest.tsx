@@ -39,6 +39,10 @@ export const ProjectManifest: React.FC<{ onClose: () => void }> = ({ onClose }) 
         const roleMap = members.reduce((acc, m) => ({ ...acc, [m.id]: m.role }), {});
         await initProjectSwarm(name, description, roleMap);
         onClose();
+        // Redirect to new project workspace (Mock ID for now)
+        // In real app, initProjectSwarm would return the ID.
+        const newProjectId = `proj-${Date.now().toString(36)}`;
+        window.location.href = `/project/${newProjectId}`;
     };
 
     return (
