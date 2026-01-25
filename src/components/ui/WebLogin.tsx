@@ -62,13 +62,16 @@ export const WebLogin = () => {
                 {/* Intro Effect: Breathing Pulse */}
                 <div className="absolute inset-0 bg-gradient-to-tr from-blue-50/20 via-transparent to-yellow-50/20 animate-pulse-slow pointer-events-none" />
 
-                <div className="relative animate-in fade-in duration-[4000ms] zoom-in-50 ease-out flex flex-col items-center">
+                <div className="relative flex flex-col items-center">
+                    {/* Cinematic Logo Reveal */}
                     <img
                         src="/logo.png"
                         alt="Axiom"
-                        className="w-[200px] md:w-[400px] h-auto drop-shadow-[0_20px_50px_rgba(0,0,0,0.15)]"
+                        className="w-[400px] md:w-[700px] h-auto drop-shadow-[0_20px_50px_rgba(0,0,0,0.15)] opacity-0 animate-in fade-in zoom-in-90 duration-[2500ms] delay-[1000ms] fill-mode-forwards motion-reduce:transition-none"
                     />
-                    <div className="mt-8 text-slate-300 tracking-[0.5em] text-xs font-light uppercase animate-in fade-in slide-in-from-bottom-4 duration-1000 delay-[2000ms] fill-mode-forwards opacity-0">
+
+                    {/* Text also delayed and subtle */}
+                    <div className="mt-12 text-slate-300 tracking-[0.8em] text-sm font-light uppercase opacity-0 animate-in fade-in slide-in-from-bottom-8 duration-[2000ms] delay-[2500ms] fill-mode-forwards">
                         Initializing GraphOS...
                     </div>
                 </div>
