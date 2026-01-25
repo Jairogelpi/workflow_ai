@@ -12,6 +12,7 @@ import { Desktop } from '@/components/shell/Desktop';
 import { useGraphStore } from '@/store/useGraphStore';
 import { supabase } from '@/lib/supabase';
 import { BootSequence } from '@/components/ui/BootSequence';
+import { TrafficLightHUD } from '@/components/workflow/TrafficLightHUD';
 
 export default function ProjectWorkspace() {
     const params = useParams();
@@ -63,6 +64,7 @@ export default function ProjectWorkspace() {
                         <GraphCanvas />
                         <MediatorHUD />
                         <SwarmDashboard />
+                        <TrafficLightHUD /> {/* [Circuit Breaker] */}
                     </div>
                     <WindowManager />
                 </main>

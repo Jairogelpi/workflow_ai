@@ -108,6 +108,12 @@ interface GraphState {
     triggerRipple: (ripple: { type: 'info' | 'warn' | 'error' | 'success', message: string, intensity: 'low' | 'medium' | 'high' }) => void;
     currentRipple: { type: 'info' | 'warn' | 'error' | 'success', message: string, intensity: 'low' | 'medium' | 'high' } | null;
 
+    // Traffic Light Workflow State
+    projectPhase: 'JAM' | 'BLUEPRINT' | 'BUILD';
+    currentBlueprint?: any; // Simple storage for approved plan
+    setPhase: (phase: 'JAM' | 'BLUEPRINT' | 'BUILD') => void;
+    signBlueprint: (bp: any) => Promise<void>;
+
     // Hito 4.1: Project Initialization
     isBooting: boolean;
     projectManifest: {
@@ -306,6 +312,27 @@ export const useGraphStore = create<GraphState>((set, get) => ({
     isBooting: false,
     projectManifest: null,
     setAlignmentReport: (report) => set({ alignmentReport: report }),
+
+    projectPhase: 'JAM', // Default start
+    currentBlueprint: null,
+    setPhase: (phase) => set({ projectPhase: phase }),
+    signBlueprint: async (bp) => {
+        const { addRLMThought, currentUser } = get();
+
+        // 1. Log the Authority Signature
+        addRLMThought({
+            message: `AUTHORITY_SIGNATURE: Blueprint aprobado por ${currentUser.id} (Rol: ${currentUser.role}). Desbloqueando modo BUILD.`,
+            type: 'success'
+        });
+
+        // 2. Persist State (Mock Sync for now, ideally update Project Row)
+        // await syncService.updateProjectPhase(projectId, 'BUILD');
+
+        set({
+            projectPhase: 'BUILD',
+            currentBlueprint: bp
+        });
+    },
 
     triggerRipple: (ripple) => {
         set({ currentRipple: ripple });
