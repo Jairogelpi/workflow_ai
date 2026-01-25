@@ -85,13 +85,18 @@ export async function GET(request: Request) {
                     .box { background: #222; padding: 1rem; border-radius: 8px; margin-top: 1rem; border: 1px solid #333; }
                     .error { color: #f55; font-weight: bold; }
                     .success { color: #4fa; font-weight: bold; }
-                    pre { background: #000; padding: 0.5rem; overflow-x: auto; }
+                    pre { background: #000; padding: 0.5rem; overflow-x: auto; color: #aaa; }
                 </style>
             </head>
             <body>
                 <h1>Login Successful</h1>
                 <div id="status">Starting hydration...</div>
                 
+                <div class="box">
+                    <h3>Server Payload (What the server sent)</h3>
+                    <pre>${JSON.stringify(cookiesToInject, null, 2)}</pre>
+                </div>
+
                 <div class="box">
                     <h3>Hydration Log</h3>
                     <div id="logs"></div>
@@ -129,14 +134,21 @@ export async function GET(request: Request) {
                         const allCookies = document.cookie;
                         document.getElementById('final-cookies').textContent = allCookies;
                         
-                        // Robust Check: Find ANY auth token
-                        const hasAuthToken = cookies.some(c => c.name.includes('auth-token'));
-                        const savedCorrectly = cookies.every(c => allCookies.includes(c.name));
+                        // Strict Check: Find ACTUAL auth tokens (ignore code-verifier)
+                        // Look for 'sb-<project>-auth-token' WITHOUT 'code-verifier'
+                        const serverHasAuthTokens = cookies.some(c => c.name.includes('auth-token') && !c.name.includes('code-verifier'));
                         
-                        if (hasAuthToken && !savedCorrectly) {
-                            status.textContent = 'FATAL ERROR: Browser rejected one or more cookies!';
+                        // Validate strict presence
+                        const missingCookies = cookies.filter(c => !allCookies.includes(c.name));
+                        
+                        if (!serverHasAuthTokens) {
+                            status.textContent = 'CRITICAL: Server did NOT send any auth tokens!';
                             status.className = 'error';
-                            log('FATAL: Verification failed. See Final Cookie Check.', 'error');
+                            log('CRITICAL: Payload is missing session tokens. Supabase issue?', 'error');
+                        } else if (missingCookies.length > 0) {
+                            status.textContent = 'FATAL ERROR: Browser rejected cookies!';
+                            status.className = 'error';
+                            log('FATAL: Missing: ' + missingCookies.map(c => c.name).join(', '), 'error');
                         } else {
                             status.textContent = 'Success! Redirecting...';
                             status.className = 'success';
