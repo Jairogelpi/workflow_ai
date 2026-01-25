@@ -43,9 +43,9 @@ export async function GET(request: Request) {
                                 };
 
                                 // 1. Collect for Client-Side Injection
-                                // TRY RAW VALUE (No double encoding) to avoid hitting 4096 limit
-                                // Supabase chunks are calculated based on raw size usually.
-                                cookiesToInject.push({ name, value: value, options: finalOptions });
+                                // RE-ENABLE ENCODING: Raw Base64 can break document.cookie syntax (e.g. '=')
+                                // Supabase chunks are sized to fit significantly below 4096 to allow for encoding overhead.
+                                cookiesToInject.push({ name, value: encodeURIComponent(value), options: finalOptions });
 
                                 // 2. Server-Side Header (Backup)
                                 let cookieString = `${name}=${encodeURIComponent(value)}; Path=/; Secure; SameSite=None`;
@@ -117,8 +117,7 @@ export async function GET(request: Request) {
                     try {
                         let successCount = 0;
                         cookies.forEach(c => {
-                            // Construct cookie string (RAW value)
-                            // Note: standard document.cookie doesn't strictly require encoding for Base64 characters
+                            // Construct cookie string (ENCODED value)
                             let cookieStr = c.name + '=' + c.value + '; Path=/; Secure; SameSite=None';
                             if (c.options.maxAge) cookieStr += '; Max-Age=' + c.options.maxAge;
                             
@@ -130,13 +129,14 @@ export async function GET(request: Request) {
                         const allCookies = document.cookie;
                         document.getElementById('final-cookies').textContent = allCookies;
                         
-                        // Check if main token exists
-                        const tokenCookie = cookies.find(c => c.name.includes('auth-token.0'));
-                        if (tokenCookie && !allCookies.includes(tokenCookie.name)) {
-                            status.textContent = 'FATAL ERROR: Browser rejected the cookie!';
+                        // Robust Check: Find ANY auth token
+                        const hasAuthToken = cookies.some(c => c.name.includes('auth-token'));
+                        const savedCorrectly = cookies.every(c => allCookies.includes(c.name));
+                        
+                        if (hasAuthToken && !savedCorrectly) {
+                            status.textContent = 'FATAL ERROR: Browser rejected one or more cookies!';
                             status.className = 'error';
-                            log('FATAL: ' + tokenCookie.name + ' NOT found in document.cookie after write.', 'error');
-                            log('Possible cause: Size limit exceeded or Invalid characters.', 'error');
+                            log('FATAL: Verification failed. See Final Cookie Check.', 'error');
                         } else {
                             status.textContent = 'Success! Redirecting...';
                             status.className = 'success';
