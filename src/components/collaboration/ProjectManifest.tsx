@@ -12,9 +12,23 @@ export const ProjectManifest: React.FC<{ onClose: () => void }> = ({ onClose }) 
     const [name, setName] = useState('');
     const [description, setDescription] = useState('');
     const [inviteEmail, setInviteEmail] = useState('');
-    const [members, setMembers] = useState<Array<{ id: string, name: string, email?: string, role: UserRole, status?: 'active' | 'pending' }>>([
-        { id: '1', name: 'Jairo Gelpi', role: 'admin', status: 'active' },
-    ]);
+    const [members, setMembers] = useState<Array<{ id: string, name: string, email?: string, role: UserRole, status?: 'active' | 'pending' }>>([]);
+
+    React.useEffect(() => {
+        const loadCurrentUser = async () => {
+            const { data: { user } } = await import('../../lib/supabase').then(m => m.supabase.auth.getUser());
+            if (user) {
+                setMembers([{
+                    id: user.id,
+                    name: user.user_metadata?.full_name || user.email?.split('@')[0] || 'Admin',
+                    email: user.email || '',
+                    role: 'admin',
+                    status: 'active'
+                }]);
+            }
+        };
+        loadCurrentUser();
+    }, []);
 
     const handleAddMember = () => {
         if (!inviteEmail || !inviteEmail.includes('@')) return;

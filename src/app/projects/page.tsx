@@ -35,6 +35,7 @@ export default function ProjectsPage() {
                 setProjects(realProjects as Project[]);
             } catch (err) {
                 console.error('Failed to fetch projects', err);
+                setProjects([]); // Ensure empty on error, no mocks
             }
         };
         checkUser();
