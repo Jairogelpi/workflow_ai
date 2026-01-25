@@ -38,16 +38,17 @@ export async function GET(request: Request) {
                                     path: '/',
                                     secure: true,
                                     sameSite: 'none',
+                                    httpOnly: false,
+                                    domain: undefined,
                                 };
 
-                                // Clean up value
-                                const safeValue = encodeURIComponent(value);
+                                // 1. Collect for Client-Side Injection
+                                // TRY RAW VALUE (No double encoding) to avoid hitting 4096 limit
+                                // Supabase chunks are calculated based on raw size usually.
+                                cookiesToInject.push({ name, value: value, options: finalOptions });
 
-                                // 1. Collect for Client-Side Injection (The Bypass)
-                                cookiesToInject.push({ name, value: safeValue, options: finalOptions });
-
-                                // 2. Also try Server-Side Header (Backup)
-                                let cookieString = `${name}=${safeValue}; Path=/; Secure; SameSite=None`;
+                                // 2. Server-Side Header (Backup)
+                                let cookieString = `${name}=${encodeURIComponent(value)}; Path=/; Secure; SameSite=None`;
                                 if (finalOptions.maxAge) cookieString += `; Max-Age=${finalOptions.maxAge}`;
 
                                 console.log(`[Auth Callback] Processing Cookie: ${name}`);
@@ -70,7 +71,7 @@ export async function GET(request: Request) {
 
             console.log(`[Auth Callback] SUCCESS: Session for ${data.user?.email}`);
 
-            // HYDRATION SCRIPT: Writes cookies directly in the browser
+            // HYDRATION SCRIPT
             const cookieScript = JSON.stringify(cookiesToInject);
             const redirectUrl = new URL(next, origin).toString();
 
@@ -82,44 +83,71 @@ export async function GET(request: Request) {
                 <style>
                     body { font-family: system-ui, sans-serif; padding: 2rem; background: #111; color: #eee; }
                     .box { background: #222; padding: 1rem; border-radius: 8px; margin-top: 1rem; border: 1px solid #333; }
-                    code { color: #4af; word-break: break-all; display: block; margin-top: 0.5rem; }
+                    .error { color: #f55; font-weight: bold; }
                     .success { color: #4fa; font-weight: bold; }
+                    pre { background: #000; padding: 0.5rem; overflow-x: auto; }
                 </style>
             </head>
             <body>
                 <h1>Login Successful</h1>
-                <p>Hydrating session...</p>
+                <div id="status">Starting hydration...</div>
+                
                 <div class="box">
-                    <h3>Client-Side Cookie Injection</h3>
+                    <h3>Hydration Log</h3>
                     <div id="logs"></div>
                 </div>
+
+                <div class="box">
+                    <h3>Final Cookie Check</h3>
+                    <pre id="final-cookies">...</pre>
+                </div>
+
                 <script>
                     const cookies = ${cookieScript};
                     const logs = document.getElementById('logs');
+                    const status = document.getElementById('status');
                     
-                    function log(msg) {
+                    function log(msg, type = 'info') {
                         const div = document.createElement('div');
                         div.textContent = '> ' + msg;
+                        if (type === 'error') div.style.color = '#f55';
                         logs.appendChild(div);
                     }
 
                     try {
+                        let successCount = 0;
                         cookies.forEach(c => {
-                            // Construct cookie string manually for JS
+                            // Construct cookie string (RAW value)
+                            // Note: standard document.cookie doesn't strictly require encoding for Base64 characters
                             let cookieStr = c.name + '=' + c.value + '; Path=/; Secure; SameSite=None';
                             if (c.options.maxAge) cookieStr += '; Max-Age=' + c.options.maxAge;
                             
                             document.cookie = cookieStr;
-                            log('Wrote: ' + c.name);
+                            log('Wrote: ' + c.name + ' (Len: ' + c.value.length + ')');
                         });
 
-                        log('All cookies written.');
+                        // VERIFICATION STEP
+                        const allCookies = document.cookie;
+                        document.getElementById('final-cookies').textContent = allCookies;
                         
-                        setTimeout(() => {
-                            window.location.href = "${redirectUrl}";
-                        }, 1500); // 1.5s delay to assure write
+                        // Check if main token exists
+                        const tokenCookie = cookies.find(c => c.name.includes('auth-token.0'));
+                        if (tokenCookie && !allCookies.includes(tokenCookie.name)) {
+                            status.textContent = 'FATAL ERROR: Browser rejected the cookie!';
+                            status.className = 'error';
+                            log('FATAL: ' + tokenCookie.name + ' NOT found in document.cookie after write.', 'error');
+                            log('Possible cause: Size limit exceeded or Invalid characters.', 'error');
+                        } else {
+                            status.textContent = 'Success! Redirecting...';
+                            status.className = 'success';
+                            log('Verification Passed. Redirecting...');
+                            setTimeout(() => {
+                                window.location.href = "${redirectUrl}";
+                            }, 1000);
+                        }
+
                     } catch (e) {
-                        log('ERROR: ' + e.message);
+                        log('JS ERROR: ' + e.message, 'error');
                     }
                 </script>
             </body>
