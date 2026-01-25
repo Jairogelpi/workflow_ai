@@ -22,6 +22,7 @@ export const NodeMetadataSchema = z.object({
     // Critical operational fields
     confidence: ConfidenceSchema.default(1.0), // 1.0 = Human certainty, <1.0 = AI estimation
     validated: z.boolean().default(false),     // Explicit human validation flag
+    rice_score: z.number().optional(),         // Added for ProductEngine RICE scoring
     pin: z.boolean().default(false),           // Invariant marker (Canon enforcement)
     // RBAC: Enterprise Access Control (Hito 4.1)
     access_control: z.object({

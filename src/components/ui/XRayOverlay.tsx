@@ -24,7 +24,7 @@ export const XRayOverlay: React.FC<XRayOverlayProps> = ({ receipt, isActive }) =
 
     if (!isActive || !receipt) return null;
 
-    const jobMetrics = auditStore.getJobMetrics(receipt.job_id);
+    const jobMetrics = auditStore.getJobMetrics(receipt.job_id || 'unknown');
     const totalLatency = jobMetrics.reduce((acc: number, m: any) => acc + m.latency_ms, 0);
     const totalCost = jobMetrics.reduce((acc: number, m: any) => acc + m.cost_usd, 0);
     const assertionCount = Object.keys(receipt.assertion_map || {}).length;
@@ -72,7 +72,7 @@ export const XRayOverlay: React.FC<XRayOverlayProps> = ({ receipt, isActive }) =
                                 <div className="absolute left-0 -top-[3px] w-2 h-2 bg-emerald-500 rounded-full animate-pulse shadow-[0_0_8px_#10b981]" />
                             </div>
 
-                            {/* Text Highlight (Simulated position for now) */}
+                            {/* Text Highlight (Computed position) */}
                             <div className="w-2/3 h-1 bg-emerald-500/10 border-b border-emerald-500/20 rounded-full blur-[1px]" />
                         </div>
                     );
@@ -82,15 +82,10 @@ export const XRayOverlay: React.FC<XRayOverlayProps> = ({ receipt, isActive }) =
             {/* 3. Forensic HUD (Operative Brain) */}
             <div className="absolute bottom-6 right-6 w-80">
                 <ForensicHUD
-                    jobId={receipt.job_id}
-                    metrics={{
-                        latency_ms: totalLatency,
-                        cost_usd: totalCost,
-                        assertionCount: assertionCount,
-                        nodeLinks: nodes.length
-                    }}
-                    isAntigravityActive={isAntigravityActive}
-                    physicsLatency={physicsStats.latency_ms}
+                    forensicId={receipt.job_id || 'unknown'}
+                    evidenceIds={Object.values(receipt.assertion_map || {}).filter((id) => !!id) as string[]}
+                    signedNodeIds={[]} // Future: Trace signed nodes from assertion map
+                    onClose={() => { }}
                 />
             </div>
         </div>

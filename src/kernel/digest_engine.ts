@@ -35,8 +35,11 @@ STRICT COMPILATION RULES (The Gate 7 Protocol):
 
 OUTPUT FORMAT (JSON ONLY):
 {
-  "digest_text": "Markdown summary with [ref:UUID] links.",
-  "key_invariants": ["List of PIN rules found"],
+  "summary_text": "Markdown summary with [ref:UUID] links covering the general narrative.",
+  "invariants": ["List of PIN rules found (Absolute truths)"],
+  "decisions": ["List of VALIDATED decisions made"],
+  "open_questions": ["List of PENDING claims or tasks"],
+  "technical_details": ["List of specific implementation details/constraints"],
   "warnings": [
     { "code": "contradiction" | "staleness" | "low_confidence", "node_ids": ["uuid"], "message": "explanation" }
   ],
@@ -48,14 +51,17 @@ OUTPUT FORMAT (JSON ONLY):
 
 interface RetrievalContext {
     text: string;
-    strategy: 'RAW' | 'DIGEST';
+    strategy: 'RAW' | 'DIGEST' | 'SELECTIVE';
     sourceCount: number;
     warnings?: any[];
 }
 
 interface DigestResult {
-    digest_text: string;
-    key_invariants: string[];
+    summary_text: string;
+    invariants: string[];
+    decisions: string[];
+    open_questions: string[];
+    technical_details: string[];
     warnings: Array<{ code: string; node_ids: string[]; message: string }>;
     stats: { node_count: number };
 }
@@ -69,7 +75,8 @@ interface DigestResult {
 export async function retrieveContext(
     query: string,
     branchId: string,
-    forceHighPrecision: boolean = false
+    forceHighPrecision: boolean = false,
+    focus: 'general' | 'planning' | 'coding' = 'general' // [NEW] Selective Focus
 ): Promise<RetrievalContext> {
     return traceSpan('retrieve_context', { query_length: query.length, branchId }, async () => {
         const supabase = await createClient();
@@ -88,11 +95,23 @@ export async function retrieveContext(
         const isGeneralQuery = query.length < 60 || /resumen|estado|summary|status/i.test(query);
 
         if (digest && (isGeneralQuery && !forceHighPrecision)) {
+            let finalText = digest.summary_text;
+
+            // [SELECTIVE RETRIEVAL]
+            // We parse the stored Summary JSON from the Supabase JSONB column (metadata).
+            if (focus === 'coding') {
+                const data = digest.metadata || {};
+                finalText = `[CODING FOCUS]\n\nDecisions:\n${(data.decisions || []).join('\n')}\n\nTechnical:\n${(data.technical_details || []).join('\n')}`;
+            } else if (focus === 'planning') {
+                const data = digest.metadata || {};
+                finalText = `[PLANNING FOCUS]\n\nInvariants:\n${(data.invariants || []).join('\n')}\n\nQuestions:\n${(data.open_questions || []).join('\n')}`;
+            }
+
             return {
-                text: digest.summary_text,
-                strategy: 'DIGEST',
+                text: finalText,
+                strategy: 'SELECTIVE',
                 sourceCount: 1,
-                warnings: digest.warnings // Include cached warnings for UI
+                warnings: digest.warnings
             };
         }
 
@@ -165,27 +184,30 @@ export async function regenerateBranchDigest(branchId: string): Promise<void> {
         // Observability: Track input size
         console.log(`[DigestEngine] Compiling ${nodes.length} nodes for branch ${branchId}`);
 
-        // 3. Call LLM (Stub for now)
-        // const result = await ai.generateJSON({ model: 'gpt-4o', system: DIGEST_SYSTEM_PROMPT, input: payload });
+        // 3. Call LLM
+        // STRICT: We dynamically import the gateway. If it fails, we throw.
+        const { generateText } = await import('./llm/gateway');
 
-        const mockResult: DigestResult = {
-            digest_text: `**System Digest (Simulated)**: The branch contains ${nodes.length} nodes. Logic appears consistent. [ref:${nodes[0]?.id || 'unknown'}]`,
-            key_invariants: [],
-            warnings: [],
-            stats: { node_count: nodes.length }
-        };
-        const result = mockResult;
+        const resultRaw = await generateText(DIGEST_SYSTEM_PROMPT, payload);
+        const cleanJson = resultRaw.content.replace(/```json/g, '').replace(/```/g, '').trim();
+        const result: DigestResult = JSON.parse(cleanJson);
 
         // 4. Upsert Digest
         const { error } = await supabase.from('digests').upsert({
             entity_id: branchId,
             entity_type: 'branch',
             digest_flavor: 'standard',
-            summary_text: result.digest_text,
+            summary_text: result.summary_text,
             warnings: result.warnings,
-            is_stale: false, // Reset staleness
+            is_stale: false,
             last_generated_at: new Date().toISOString(),
-            // Metrics
+            // Store rich structure for selective retrieval
+            metadata: {
+                invariants: result.invariants,
+                decisions: result.decisions,
+                open_questions: result.open_questions,
+                technical_details: result.technical_details
+            },
             token_cost_input: Math.ceil(payload.length / 4)
         }, { onConflict: 'entity_type, entity_id, digest_flavor' });
 
@@ -202,11 +224,19 @@ export async function createHierarchicalDigest(nodes: WorkNode[]): Promise<{ sum
         // 1. Serialize cluster
         const payload = serializeBranchForLLM(nodes, []); // No structure simplified for now
 
-        // 2. Request AI synthesis (Draft mode)
-        // In production 2026, this calls Gemini/GPT-4 with a specific "Abstractor" prompt
+        // 2. Request AI synthesis (Real Mode)
+        // STRICT: We dynamically import the gateway. If it fails, we throw.
+        const { generateText } = await import('./llm/gateway');
         console.log(`[DigestEngine] Abstracting cluster of ${nodes.length} nodes...`);
 
-        const summary = `Síntesis Automática: Este clúster consolida ${nodes.length} evidencias relacionadas con [${(nodes[0] as any).statement || 'contexto'}] a través de un proceso de Abstracción Recursiva.`;
+        const ABSTRACT_SYSTEM = `
+            ROLE: Knowledge Synthesizer.
+            GOAL: Create a high-level abstract summary of the provided nodes.
+            OUTPUT: Standard Markdown text. One paragraph.
+        `;
+
+        const res = await generateText(ABSTRACT_SYSTEM, `Context:\n${payload}`);
+        const summary = res.content;
 
         return {
             summary,

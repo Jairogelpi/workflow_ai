@@ -13,6 +13,7 @@ import { useGraphStore } from '@/store/useGraphStore';
 import { supabase } from '@/lib/supabase';
 import { BootSequence } from '@/components/ui/BootSequence';
 import { TrafficLightHUD } from '@/components/workflow/TrafficLightHUD';
+import { CircuitBreakerOverlay } from '@/components/ui/CircuitBreaker';
 
 export default function ProjectWorkspace() {
     const params = useParams();
@@ -62,11 +63,11 @@ export default function ProjectWorkspace() {
                         <CommandHUD />
                         <NeuralRipple />
                         <GraphCanvas />
-                        <MediatorHUD />
                         <SwarmDashboard />
                         <TrafficLightHUD /> {/* [Circuit Breaker] */}
                     </div>
                     <WindowManager />
+                    <CircuitBreakerOverlay /> {/* [Safety Core] */}
                 </main>
             </GlobalDropzone>
         </Desktop>

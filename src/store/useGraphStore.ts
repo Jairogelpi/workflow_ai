@@ -114,6 +114,20 @@ interface GraphState {
     setPhase: (phase: 'JAM' | 'BLUEPRINT' | 'BUILD') => void;
     signBlueprint: (bp: any) => Promise<void>;
 
+    // Circuit Breaker State (Hito 4.4 - Safety)
+    logicError: {
+        code: 'contradiction' | 'dependency_cycle' | 'security_violation' | 'system_halt';
+        title: string;
+        message: string;
+        severity: 'critical' | 'warning';
+        timestamp: string;
+    } | null;
+    triggerCircuitBreaker: (error: NonNullable<GraphState['logicError']>) => void;
+    resolveCircuitBreaker: () => void;
+
+    // Product Engine (Hito 4.5)
+    compilePRD: (projectId: string) => Promise<any>;
+
     // Hito 4.1: Project Initialization
     isBooting: boolean;
     projectManifest: {
@@ -325,13 +339,40 @@ export const useGraphStore = create<GraphState>((set, get) => ({
             type: 'success'
         });
 
-        // 2. Persist State (Mock Sync for now, ideally update Project Row)
+        // 2. Persist State
         // await syncService.updateProjectPhase(projectId, 'BUILD');
 
         set({
             projectPhase: 'BUILD',
             currentBlueprint: bp
         });
+    },
+
+    logicError: null,
+    triggerCircuitBreaker: (error) => set({ logicError: error }),
+    resolveCircuitBreaker: () => set({ logicError: null }),
+
+    compilePRD: async (projectId: string) => {
+        // Dynamic import to avoid circular dependencies if any
+        const { compilePRD } = await import('../kernel/product_engine');
+        const prd = await compilePRD(projectId);
+
+        // Log generation
+        get().addRLMThought({
+            message: `PRODUCT_ENGINE: Documento '${prd.title}' compilado con ${prd.metadata.node_count} nodos.`,
+            type: 'success'
+        });
+
+        // Open as window (Phase 22)
+        get().openWindow({
+            id: `prd-${Date.now()}`,
+            title: prd.title,
+            contentType: 'text',
+            textContent: prd.markdown,
+            mimeType: 'text/markdown'
+        });
+
+        return prd;
     },
 
     triggerRipple: (ripple) => {

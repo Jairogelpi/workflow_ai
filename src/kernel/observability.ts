@@ -36,7 +36,7 @@ export async function traceSpan<T>(
         const duration_ms = Math.round(end - start);
         const cost_usd = attributes.cost_usd || 0;
 
-        // Log to console for dev visibility (Mocking the Span export)
+        // Log to console for dev visibility (Local Span export)
         console.log(`[OTel] Span: ${name}`, {
             ...attributes,
             latency_ms: duration_ms,

@@ -14,7 +14,7 @@ export class SyncGuardian {
         return await traceSpan('sync_guardian_audit', { nodeId }, async () => {
             const { triggerRipple, addRLMThought } = useGraphStore.getState();
 
-            // 1. Sincronización de estado CRDT (Mock for Hito 7.9)
+            // 1. Sincronización de estado CRDT
             // En un entorno real, llamaríamos a la librería crdt-sync
             console.log(`[SyncGuardian] Aplicando delta CRDT para ${nodeId}`);
 

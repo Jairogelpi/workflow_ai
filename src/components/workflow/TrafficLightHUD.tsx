@@ -84,10 +84,19 @@ export const TrafficLightHUD = () => {
                     )}
 
                     {projectPhase === 'BUILD' && (
-                        <div className="px-2 py-1 bg-green-100 text-green-700 rounded-full flex items-center gap-1">
-                            <Unlock size={10} />
-                            <span className="text-[10px] font-bold">Activo</span>
-                        </div>
+                        <>
+                            <div className="px-2 py-1 bg-green-100 text-green-700 rounded-full flex items-center gap-1">
+                                <Unlock size={10} />
+                                <span className="text-[10px] font-bold">Activo</span>
+                            </div>
+                            <button
+                                onClick={() => useGraphStore.getState().compilePRD('current-project')}
+                                className="p-1.5 hover:bg-slate-100 text-slate-400 hover:text-slate-600 rounded-full transition-colors"
+                                title="Compilar Documentación (PRD)"
+                            >
+                                <FileText size={14} />
+                            </button>
+                        </>
                     )}
                 </div>
             </div>

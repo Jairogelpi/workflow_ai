@@ -4,21 +4,25 @@ import React from 'react';
 import { useXRayMode } from '../../hooks/useXRayMode';
 import { useGraphStore } from '../../store/useGraphStore';
 import { ShieldCheck, Cpu, DollarSign, Clock, AlertTriangle, Zap } from 'lucide-react';
+import { auditStore } from '../../kernel/observability';
 
 /**
  * FORENSIC AUDIT VIEW v1.0 [2026]
  * Session metrics and reasoning timeline for total transparency.
  */
 export function ForensicAuditView() {
-    const { rlmThoughts } = useGraphStore();
+    const { rlmThoughts, nodes } = useGraphStore();
     const { isXRayActive } = useXRayMode();
 
     if (!isXRayActive) return null;
 
-    // Mock metrics (would come from auditStore in production)
-    const sessionSpend = 0.0042;
-    const burnRate = 0.12;
-    const integrityScore = 100;
+    // Real metrics from AuditStore
+    const sessionSpend = auditStore?.getSessionSpend() || 0;
+    const burnRate = auditStore?.getBurnRate().toFixed(2) || '0.00';
+    // Integrity: Ratio of nodes with 'validated: true' vs total nodes
+    const integrityScore = nodes.length > 0
+        ? Math.round((nodes.filter(n => n.data.metadata?.validated).length / nodes.length) * 100)
+        : 100;
 
     return (
         <div className="fixed bottom-4 right-4 w-96 max-h-[50vh] bg-slate-950/95 border border-cyan-500/30 rounded-3xl backdrop-blur-2xl shadow-[0_0_40px_rgba(6,182,212,0.15)] z-[100] flex flex-col overflow-hidden animate-in slide-in-from-right-4 duration-500">
@@ -60,9 +64,9 @@ export function ForensicAuditView() {
                     >
                         <div className="flex justify-between items-start mb-1">
                             <span className={`text-[8px] font-black uppercase tracking-tighter px-1.5 py-0.5 rounded ${thought.type === 'success' ? 'bg-emerald-500/10 text-emerald-400' :
-                                    thought.type === 'error' ? 'bg-red-500/10 text-red-400' :
-                                        thought.type === 'reasoning' ? 'bg-cyan-500/10 text-cyan-400' :
-                                            'bg-slate-500/10 text-slate-400'
+                                thought.type === 'error' ? 'bg-red-500/10 text-red-400' :
+                                    thought.type === 'reasoning' ? 'bg-cyan-500/10 text-cyan-400' :
+                                        'bg-slate-500/10 text-slate-400'
                                 }`}>
                                 {thought.type}
                             </span>

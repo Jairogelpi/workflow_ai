@@ -19,6 +19,21 @@ Devuelve SOLO un JSON válido con esta estructura exacta, sin markdown ni explic
 NOTA: Marca como "complex" cualquier paso que requiera múltiples sub-tareas o sea ambiguo.
 `;
 
+const VERIFIER_SYSTEM_PROMPT = `
+Eres el Lógica Crítica (Critic) de WorkGraph OS.
+Tu trabajo es revisar un plan JSON y detectar:
+1. Pasos ambiguos ("Implementar auth" es ambiguo -> "Configurar Supabase Auth + Crear Login Form").
+2. Dependencias circulares.
+3. Falta de validación.
+
+Devuelve:
+{
+  "is_valid": boolean,
+  "critique": "Explicación breve",
+  "refined_plan": { ... PLAN CORREGIDO ... } (Opcional, si puedes arreglarlo)
+}
+`;
+
 const MAX_RECURSION_DEPTH = 3;
 
 export async function createPlan(goal: string, depth: number = 0): Promise<Plan> {
@@ -37,10 +52,25 @@ export async function createPlan(goal: string, depth: number = 0): Promise<Plan>
 
       const result = await generateText(PLANNER_SYSTEM_PROMPT, prompt);
       const jsonOutput = result.content;
-
-      // Limpieza básica
       const cleanJson = jsonOutput.replace(/```json/g, '').replace(/```/g, '').trim();
-      const parsedPlan = JSON.parse(cleanJson) as Plan;
+      let parsedPlan = JSON.parse(cleanJson) as Plan;
+
+      // [VERIFICATION STEP] (Gate 5)
+      if (depth === 0) {
+        console.log(`[PLANNER] Verificando lógica del plan...`);
+        const verifyRes = await generateText(VERIFIER_SYSTEM_PROMPT, JSON.stringify(parsedPlan));
+        try {
+          const critique = JSON.parse(verifyRes.content.replace(/```json/g, '').replace(/```/g, '').trim());
+          if (!critique.is_valid && critique.refined_plan) {
+            console.warn(`[PLANNER] Plan refinado por Logic Critic: ${critique.critique}`);
+            parsedPlan = critique.refined_plan;
+          } else if (!critique.is_valid) {
+            console.warn(`[PLANNER] Advertencia Lógica: ${critique.critique}`);
+          }
+        } catch (vErr) {
+          console.warn('[PLANNER] Fallo en verificación JSON', vErr);
+        }
+      }
 
       // Recursión: Identificar pasos complejos y subdividirlos
       if (depth < MAX_RECURSION_DEPTH) {

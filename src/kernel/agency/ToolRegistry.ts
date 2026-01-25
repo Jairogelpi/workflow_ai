@@ -79,21 +79,7 @@ export class ToolRegistry {
             }
         });
 
-        this.register({
-            name: 'fetch_web_content',
-            description: 'Pulls content from a URL for the Harvester to digest.',
-            parameters: {
-                type: 'object',
-                properties: {
-                    url: { type: 'string', format: 'uri' }
-                },
-                required: ['url']
-            },
-            execute: async ({ url }) => {
-                // In a real impl, this would call a proxy or the extension background
-                console.log(`[AGENCY] Fetching ${url}... (Simulated)`);
-                return { content: `Extracted content from ${url} regarding the project context...` };
-            }
-        });
+        // fetch_web_content removed to ensure 100% Real operation.
+        // Future: Implement via server-side proxy to handle CORS.
     }
 }

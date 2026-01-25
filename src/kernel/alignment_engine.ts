@@ -113,7 +113,7 @@ function parseNodesForSAT(rawText: string): any[] {
     return lines.map(line => {
         const idMatch = line.match(/\(([a-f0-9-]+)\)$/);
         return {
-            id: idMatch ? idMatch[1] : `node-${Math.random()}`,
+            id: idMatch ? idMatch[1] : `node-unknown-${Date.now()}-${Math.floor(performance.now())}`,
             is_pin: line.includes('PIN_INVARIANT') || line.includes('[PIN]'),
             node_type: line.match(/\[(.*?)\]/)?.[1]?.toLowerCase() || 'note'
         };

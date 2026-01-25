@@ -57,7 +57,7 @@ function GraphContent() {
     const toggleAntigravity = useGraphStore(state => state.toggleAntigravity);
     const draftNodes = useGraphStore(state => state.draftNodes);
     const ghostNodes = useGraphStore(state => state.ghostNodes);
-    const isXRayActive = useGraphStore(state => state.isXRayActive);
+    const isXRayActive = useXRayMode((state) => state.isXRayActive); // Selector for re-renders
     const setXRayActive = useGraphStore(state => state.setXRayActive);
     const clearGhosts = useGraphStore(state => state.clearGhosts);
 
@@ -160,23 +160,35 @@ function GraphContent() {
     }, [setSelectedNode, toggleWindow, fitView, nodes, edges]);
 
     const allNodesComp = React.useMemo(() => {
-        return [...nodes, ...draftNodes, ...ghostNodes];
-    }, [nodes, draftNodes, ghostNodes]);
+        // [X-Ray Mode] Logic
+        // If active, we show Ghost Nodes (predicted) and potentially Structure Wrappers
+        if (useXRayMode.getState().isXRayActive) {
+            return [...nodes, ...draftNodes, ...ghostNodes];
+        }
+        // Default: Only real nodes and drafts
+        return [...nodes, ...draftNodes];
+    }, [nodes, draftNodes, ghostNodes, useXRayMode.getState().isXRayActive]);
 
     const flowEdges: Edge[] = edges.map(e => {
+        const isXRay = useXRayMode.getState().isXRayActive;
         const isContradiction = e.data?.relation === 'contradicts';
         const isEvidence = e.data?.relation === 'evidence_for';
+
+        // [X-Ray Mode] Reveal structural/hidden edges
+        const isHidden = !isXRay && (e.data?.relation === 'part_of' || e.data?.relation === 'relates_to');
 
         const style: React.CSSProperties = isContradiction
             ? { stroke: '#ef4444', strokeWidth: 3, filter: 'drop-shadow(0 0 5px #ef4444)' }
             : isEvidence
                 ? { stroke: '#10b981', strokeWidth: 2 }
-                : {};
+                : { stroke: isHidden ? '#cbd5e1' : '#94a3b8', strokeWidth: isHidden ? 1 : 1.5, strokeDasharray: isHidden ? '4 4' : '0' };
 
         return {
             ...e,
-            animated: isContradiction,
-            style
+            hidden: isHidden && !isXRay,
+            animated: isContradiction || (isXRay && e.data?.relation === 'relates_to'), // Animate structural flow in X-Ray
+            style,
+            opacity: isHidden ? 0.5 : 1
         };
     });
 

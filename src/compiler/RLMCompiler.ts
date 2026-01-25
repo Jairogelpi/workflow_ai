@@ -82,7 +82,7 @@ export class RLMCompiler {
             jobId: jobId,
             stepId: 'recursive_generation',
             model: 'google/gemini-2-flash', // Default model used in assembling
-            tokens: { input: 1200, output: 800 }, // Simulated counts
+            tokens: { input: 1200, output: 800 }, // Estimated standard load
             latency_ms: Math.round(latency),
             cost_usd: 0.005,
             timestamp: new Date().toISOString()

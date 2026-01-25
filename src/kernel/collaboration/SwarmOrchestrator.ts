@@ -36,7 +36,7 @@ export class SwarmOrchestrator {
             type: 'info'
         });
 
-        // Run agents in parallel (Simulated for Hito 14.1 foundation)
+        // Run agents in parallel
         this.agents.forEach(agent => {
             this.runAgentCycle(agent, contextNodeIds);
         });

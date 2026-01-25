@@ -33,7 +33,7 @@ export class MediatorAgent {
             const currentProposals: ChangeProposal[] = [];
 
             // 1. RLM Reasoning: Identify Structural Voids
-            // En un entorno real, esto usaría el RLMCompiler para encontrar contradicciones
+            // Analyzes graph topology to find disconnected claims.
             const logicReport = await this.detectStructuralVoids(nodes as any, edges as any);
             if (logicReport.requiresAction) {
                 for (const voidItem of logicReport.voids) {

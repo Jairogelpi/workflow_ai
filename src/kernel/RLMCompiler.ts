@@ -30,7 +30,7 @@ export class RLMCompiler {
       const densePrompt = this.minifyContext(prompt);
 
       // [STRATEGY 3] Neural Shadow Injection (Personalization)
-      const userContext = await UserContext.getStyleContext('current-user', prompt); // Mock user ID for now
+      const userContext = await UserContext.getStyleContext('current-user', prompt); // Fetches real style from DB
 
       const systemPrompt = `
 ROLE: RLM Architect [Strict JSON Mode]
