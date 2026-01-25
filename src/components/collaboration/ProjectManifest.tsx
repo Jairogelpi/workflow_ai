@@ -61,9 +61,22 @@ export const ProjectManifest: React.FC<{ onClose: () => void }> = ({ onClose }) 
     };
 
     return (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-50/80 backdrop-blur-sm animate-in fade-in duration-300">
+        <div
+            className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-950/40 backdrop-blur-md animate-in fade-in duration-300"
+            onClick={onClose} // [UX] Close on backdrop click
+        >
             {/* Main Card: Centered, Focused, minimal margins */}
-            <div className="w-full max-w-[520px] bg-white rounded-2xl shadow-xl shadow-slate-200/50 border border-slate-100 overflow-hidden transform transition-all animate-in zoom-in-95 duration-300">
+            <div
+                className="relative w-full max-w-[520px] bg-white rounded-2xl shadow-2xl shadow-slate-900/20 border border-slate-100 overflow-hidden transform transition-all animate-in zoom-in-95 duration-300"
+                onClick={(e) => e.stopPropagation()} // [UX] Prevent close on card click
+            >
+                {/* [UX] Close Button */}
+                <button
+                    onClick={onClose}
+                    className="absolute top-4 right-4 p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full transition-all z-10"
+                >
+                    <X size={20} />
+                </button>
 
                 {/* Header Section */}
                 <div className="px-10 pt-10 pb-6 text-center">
