@@ -53,60 +53,66 @@ export default function ProjectsPage() {
     if (!user) return null;
 
     return (
-        <div className="min-h-screen bg-slate-50 text-slate-900 font-sans selection:bg-blue-100 selection:text-blue-900">
+        <div className="min-h-screen bg-slate-50 text-slate-900 font-sans selection:bg-blue-100 selection:text-blue-900 overflow-hidden relative">
+            {/* Cinematic Background Bloom (Subtle) */}
+            <div className="fixed top-[-50%] left-[-50%] w-[200%] h-[200%] bg-gradient-to-tr from-blue-50/50 via-white/80 to-indigo-50/50 blur-[120px] pointer-events-none opacity-60 z-0" />
+
             {/* Header */}
-            <header className="sticky top-0 z-10 bg-white/80 backdrop-blur-md border-b border-slate-200 px-6 py-4 flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 bg-black rounded-lg flex items-center justify-center">
-                        <span className="text-white font-bold text-sm">A</span>
+            <header className="sticky top-0 z-50 bg-white/70 backdrop-blur-xl border-b border-slate-200/60 px-6 py-4 flex items-center justify-between transition-all duration-300">
+                <div className="flex items-center gap-4">
+                    {/* Brand Logo */}
+                    <div className="w-8 h-8 md:w-10 md:h-10 relative group cursor-pointer hover:scale-105 transition-transform" onClick={() => router.push('/')}>
+                        <img src="/logo.png" alt="Axiom" className="w-full h-full object-contain drop-shadow-sm" />
                     </div>
-                    <span className="font-bold text-lg tracking-tight">Axiom Workspace</span>
+                    <div className="h-6 w-[1px] bg-slate-200 mx-1 hidden md:block" />
+                    <span className="font-bold text-lg tracking-tight text-slate-800 hidden md:block">Workspace</span>
                 </div>
 
                 <div className="flex items-center gap-4">
-                    <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-100 rounded-full border border-slate-200">
-                        <div className="w-6 h-6 rounded-full bg-blue-500 flex items-center justify-center text-[10px] text-white font-bold">
+                    <div className="flex items-center gap-2 px-3 py-1.5 bg-white/80 rounded-full border border-slate-200/80 shadow-sm hover:shadow-md transition-all cursor-pointer">
+                        <div className="w-6 h-6 rounded-full bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center text-[10px] text-white font-bold shadow-inner">
                             {user.email?.charAt(0).toUpperCase()}
                         </div>
-                        <span className="text-xs font-medium text-slate-600 hidden md:block">{user.email}</span>
+                        <span className="text-xs font-semibold text-slate-600 hidden md:block">{user.email}</span>
                     </div>
-                    <button onClick={handleLogout} className="p-2 hover:bg-slate-100 rounded-full text-slate-400 hover:text-red-500 transition-colors">
+                    <button onClick={handleLogout} className="p-2.5 bg-white hover:bg-red-50 rounded-full text-slate-400 hover:text-red-500 border border-transparent hover:border-red-100 transition-all shadow-sm">
                         <LogOut size={18} />
                     </button>
                 </div>
             </header>
 
             {/* Main Content */}
-            <main className="max-w-6xl mx-auto px-6 py-12">
+            <main className="max-w-6xl mx-auto px-6 py-12 relative z-10">
 
                 {/* Hero / Action Bar */}
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-12">
-                    <div>
-                        <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">Tus Proyectos</h1>
-                        <p className="text-slate-500 mt-1 font-medium">Gestiona tus enjambres de inteligencia.</p>
+                    <div className="animate-in slide-in-from-left-4 fade-in duration-700">
+                        <h1 className="text-4xl font-extrabold text-slate-900 tracking-tight">Tus Proyectos</h1>
+                        <p className="text-slate-500 mt-2 font-medium text-lg">Gestiona tus enjambres de inteligencia.</p>
                     </div>
 
-                    <div className="flex items-center gap-4">
-                        <div className="flex bg-white p-1 rounded-lg border border-slate-200 shadow-sm">
+                    <div className="flex items-center gap-4 animate-in slide-in-from-right-4 fade-in duration-700 delay-100">
+                        <div className="flex bg-white/80 backdrop-blur-md p-1 rounded-xl border border-slate-200 shadow-sm">
                             <button
                                 onClick={() => setViewMode('grid')}
-                                className={`p-2 rounded-md transition-all ${viewMode === 'grid' ? 'bg-slate-100 text-blue-600' : 'text-slate-400 hover:text-slate-600'}`}
+                                className={`p-2.5 rounded-lg transition-all ${viewMode === 'grid' ? 'bg-slate-100/80 text-blue-600 shadow-inner' : 'text-slate-400 hover:text-slate-600'}`}
                             >
-                                <Grid size={18} />
+                                <Grid size={20} />
                             </button>
                             <button
                                 onClick={() => setViewMode('list')}
-                                className={`p-2 rounded-md transition-all ${viewMode === 'list' ? 'bg-slate-100 text-blue-600' : 'text-slate-400 hover:text-slate-600'}`}
+                                className={`p-2.5 rounded-lg transition-all ${viewMode === 'list' ? 'bg-slate-100/80 text-blue-600 shadow-inner' : 'text-slate-400 hover:text-slate-600'}`}
                             >
-                                <List size={18} />
+                                <List size={20} />
                             </button>
                         </div>
 
                         <button
                             onClick={() => setShowManifest(true)}
-                            className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-xl font-bold shadow-lg shadow-blue-600/20 active:scale-95 transition-all flex items-center gap-2"
+                            className="group bg-slate-900 hover:bg-slate-800 text-white px-6 py-3.5 rounded-xl font-bold shadow-xl shadow-slate-900/20 active:scale-95 transition-all flex items-center gap-3 overflow-hidden relative"
                         >
-                            <Plus size={20} />
+                            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent translate-x-[-100%] group-hover:animate-[shimmer_1.5s_infinite]" />
+                            <Plus size={20} className="group-hover:rotate-90 transition-transform duration-300" />
                             <span>Nuevo Proyecto</span>
                         </button>
                     </div>
@@ -118,41 +124,48 @@ export default function ProjectsPage() {
                     {/* Create New Card (Ghost) */}
                     <div
                         onClick={() => setShowManifest(true)}
-                        className={`group cursor-pointer border-2 border-dashed border-slate-200 rounded-2xl flex flex-col items-center justify-center text-slate-400 hover:border-blue-400 hover:text-blue-500 hover:bg-blue-50/30 transition-all
-                            ${viewMode === 'grid' ? 'h-[220px]' : 'h-24 flex-row gap-4'}
+                        className={`group cursor-pointer border-2 border-dashed border-slate-300/60 rounded-3xl flex flex-col items-center justify-center text-slate-400 hover:border-blue-400 hover:text-blue-600 hover:bg-blue-50/40 transition-all duration-300
+                            ${viewMode === 'grid' ? 'h-[240px]' : 'h-28 flex-row gap-6'}
                         `}
                     >
-                        <div className="p-4 bg-slate-50 rounded-full group-hover:bg-white group-hover:scale-110 transition-transform shadow-sm">
-                            <Plus size={24} />
+                        <div className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center shadow-lg shadow-slate-200/50 group-hover:scale-110 group-hover:rotate-3 transition-all duration-300 border border-slate-100">
+                            <Plus size={32} className="text-slate-300 group-hover:text-blue-500 transition-colors" />
                         </div>
-                        <span className="font-bold text-sm tracking-wide mt-3">Crear nuevo espacio</span>
+                        <span className="font-bold text-sm tracking-wide mt-4">Crear nuevo espacio</span>
                     </div>
 
                     {/* Existing Projects */}
-                    {projects.map(project => (
+                    {projects.map((project, idx) => (
                         <div
                             key={project.id}
                             onClick={() => handleOpenProject(project.id)}
-                            className={`group relative bg-white border border-slate-200 rounded-2xl overflow-hidden hover:shadow-xl hover:shadow-slate-200/50 hover:border-blue-300/50 transition-all cursor-pointer
-                                ${viewMode === 'grid' ? 'p-6 flex flex-col justify-between h-[220px]' : 'p-6 flex items-center justify-between'}
+                            className={`group relative bg-white/80 backdrop-blur-md border border-slate-200/60 rounded-3xl overflow-hidden hover:shadow-[0_20px_40px_-12px_rgba(0,0,0,0.1)] hover:border-blue-300/30 hover:translate-y-[-2px] transition-all duration-300 cursor-pointer animate-in fade-in zoom-in-50 fill-mode-forwards
+                                ${viewMode === 'grid' ? 'p-8 flex flex-col justify-between h-[240px]' : 'p-6 flex items-center justify-between'}
                             `}
+                            style={{ animationDelay: `${idx * 100}ms` }}
                         >
                             {/* Card Content */}
-                            <div className="flex items-start justify-between">
-                                <div className="space-y-1">
-                                    <div className="w-10 h-10 bg-slate-900 rounded-lg flex items-center justify-center mb-3 shadow-md group-hover:scale-105 transition-transform">
-                                        <FolderOpen className="text-white w-5 h-5" />
+                            <div className="flex items-start justify-between w-full">
+                                <div className="space-y-4 w-full">
+                                    <div className="flex justify-between items-start">
+                                        <div className="w-12 h-12 bg-gradient-to-br from-slate-50 to-slate-100 rounded-2xl flex items-center justify-center shadow-inner group-hover:scale-105 transition-transform border border-slate-100">
+                                            <FolderOpen className="text-slate-400 group-hover:text-blue-500 w-6 h-6 transition-colors" />
+                                        </div>
+                                        {viewMode === 'grid' && <ChevronRight className="text-slate-200 group-hover:text-blue-400 group-hover:translate-x-1 transition-all" />}
                                     </div>
-                                    <h3 className="font-extrabold text-lg text-slate-800 group-hover:text-blue-600 transition-colors">{project.name}</h3>
-                                    <p className="text-sm text-slate-500 font-medium line-clamp-2">{project.description}</p>
+
+                                    <div>
+                                        <h3 className="font-extrabold text-xl text-slate-800 group-hover:text-blue-600 transition-colors line-clamp-1">{project.name}</h3>
+                                        <p className="text-sm text-slate-500 font-medium line-clamp-2 mt-2 leading-relaxed">{project.description}</p>
+                                    </div>
                                 </div>
-                                {viewMode === 'list' && <ChevronRight className="text-slate-300" />}
+                                {viewMode === 'list' && <ChevronRight className="text-slate-300 group-hover:text-blue-500 ml-4" />}
                             </div>
 
                             {viewMode === 'grid' && (
-                                <div className="pt-4 mt-4 border-t border-slate-100 flex items-center justify-between text-xs text-slate-400 font-medium uppercase tracking-wider">
-                                    <span className="flex items-center gap-1"><Clock size={12} /> {project.updated_at}</span>
-                                    <span className="group-hover:translate-x-1 transition-transform text-blue-500 font-bold">Abrir &rarr;</span>
+                                <div className="pt-6 mt-2 border-t border-slate-100/80 flex items-center justify-between text-[11px] text-slate-400 font-bold uppercase tracking-wider">
+                                    <span className="flex items-center gap-1.5"><Clock size={12} className="text-slate-300" /> {project.updated_at ? new Date(project.updated_at).toLocaleDateString() : 'Reciente'}</span>
+                                    <span className="opacity-0 group-hover:opacity-100 transition-opacity text-blue-500">Entrar</span>
                                 </div>
                             )}
                         </div>

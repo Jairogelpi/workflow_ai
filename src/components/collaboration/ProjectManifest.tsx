@@ -68,8 +68,8 @@ export const ProjectManifest: React.FC<{ onClose: () => void }> = ({ onClose }) 
                 {/* Header Section */}
                 <div className="px-10 pt-10 pb-6 text-center">
                     <div className="flex justify-center mb-6">
-                        <div className="w-12 h-12 bg-blue-600 rounded-xl flex items-center justify-center shadow-lg shadow-blue-600/20">
-                            <Globe className="text-white w-6 h-6" />
+                        <div className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center shadow-lg shadow-blue-500/10 border border-slate-100 p-3">
+                            <img src="/logo.png" alt="Axiom" className="w-full h-full object-contain" />
                         </div>
                     </div>
                     <h2 className="text-2xl font-bold text-slate-800 tracking-tight">Nuevo Proyecto</h2>
