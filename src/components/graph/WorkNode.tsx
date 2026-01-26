@@ -15,7 +15,9 @@ import {
     BrainCircuit,
     Lock,
     Link,
-    Zap
+    Zap,
+    AlertTriangle,
+    ShieldCheck
 } from 'lucide-react';
 import { AppNode, AppEdge } from '../../store/useGraphStore';
 
@@ -131,10 +133,18 @@ export const WorkNodeComponent = React.memo((props: any) => {
     const rawContent = (data as any).content || (data as any).statement || (data as any).rationale || (data as any).summary || (data as any).description || (data as any).name || (data as any).rule || '';
     const content = typeof rawContent === 'object' ? (rawContent.name || rawContent.content || JSON.stringify(rawContent)) : String(rawContent);
 
-    // Neuro-Symbolic Interception Detection
-    const isNeuroIntercepted = content.includes('⚠️ INTERVENCIÓN LÓGICA:');
+    // Neuro-Symbolic Speculative Truth Detection
+    const isUncertain = content.includes('⚠️');
+    const isCorrected = content.includes('🛡️ [AUTO-CORRECCIÓN:');
+    const isInterrupted = content.includes('[INTERRUPT:');
 
-    const preview = content.replace(/<[^>]*>?/gm, '').slice(0, 60) + (content.length > 60 ? '...' : '');
+    // Clean content for display
+    const cleanContent = content
+        .replace('⚠️', '')
+        .replace(/🛡️ \[AUTO-CORRECCIÓN:.*?\]/, '🛡️ [Corregido por Integridad Semántica]')
+        .replace(/\[INTERRUPT:.*?\]/, '🛑 [Inferencia Interrumpida por Seguridad]');
+
+    const preview = cleanContent.replace(/<[^>]*>?/gm, '').slice(0, 60) + (cleanContent.length > 60 ? '...' : '');
 
     return (
         <>
@@ -176,7 +186,9 @@ export const WorkNodeComponent = React.memo((props: any) => {
                     ${data.metadata.origin === 'ai' && !isGhost ? 'opacity-80 border-dashed border-slate-200' : ''}
                     ${hasHiddenConflict && !isXRayActive ? 'animate-heartbeat ring-2 ring-amber-500/50' : ''}
                     ${hasHiddenConflict && isXRayActive ? 'ring-4 ring-red-600 shadow-[0_0_30px_rgba(220,38,38,0.6)]' : ''}
-                    ${isNeuroIntercepted ? 'ring-2 ring-red-500/50 shadow-[0_0_20px_rgba(239,68,68,0.3)]' : ''}
+                    ${isUncertain ? 'ring-2 ring-yellow-500/40 bg-yellow-50/5' : ''}
+                    ${isCorrected ? 'ring-2 ring-emerald-500/40 bg-emerald-50/5' : ''}
+                    ${isInterrupted ? 'ring-4 ring-red-600 animate-vibration' : ''}
                 `}
                 style={{
                     backgroundColor: colors.bg,
@@ -221,10 +233,24 @@ export const WorkNodeComponent = React.memo((props: any) => {
                     </div>
                 )}
 
-                {isNeuroIntercepted && (
-                    <div className="absolute -top-10 left-0 flex items-center gap-2 bg-red-900/90 text-red-100 px-3 py-1.5 rounded-full border border-red-500/40 backdrop-blur-xl shadow-2xl z-20 animate-in fade-in zoom-in-95 duration-300">
-                        <BrainCircuit size={14} className="animate-pulse text-red-400" />
-                        <span className="text-[10px] font-black uppercase tracking-tighter">Intervención Lógica Activa</span>
+                {isUncertain && (
+                    <div className="absolute -top-3 left-4 px-2 py-0.5 bg-yellow-500 text-black text-[9px] font-black uppercase tracking-tighter rounded-full flex items-center gap-1 shadow-lg ring-1 ring-yellow-400">
+                        <AlertTriangle size={10} />
+                        <span>Verificación Pendiente</span>
+                    </div>
+                )}
+
+                {isCorrected && (
+                    <div className="absolute -top-3 left-4 px-2 py-0.5 bg-emerald-500 text-white text-[9px] font-black uppercase tracking-tighter rounded-full flex items-center gap-1 shadow-lg ring-1 ring-emerald-400">
+                        <ShieldCheck size={10} />
+                        <span>Auto-Corregido</span>
+                    </div>
+                )}
+
+                {isInterrupted && (
+                    <div className="absolute -top-3 left-4 px-2 py-0.5 bg-red-600 text-white text-[9px] font-black uppercase tracking-tighter rounded-full flex items-center gap-1 shadow-lg ring-1 ring-red-400">
+                        <BrainCircuit size={10} className="animate-pulse" />
+                        <span>Intervención de Seguridad</span>
                     </div>
                 )}
                 <div className="px-4 py-3 flex items-start gap-3">
