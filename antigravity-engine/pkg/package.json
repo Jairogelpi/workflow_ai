@@ -1,0 +1,17 @@
+{
+  "name": "antigravity-engine",
+  "type": "module",
+  "version": "0.1.0",
+  "files": [
+    "antigravity_engine_bg.wasm",
+    "antigravity_engine.js",
+    "antigravity_engine_bg.js",
+    "antigravity_engine.d.ts"
+  ],
+  "main": "antigravity_engine.js",
+  "types": "antigravity_engine.d.ts",
+  "sideEffects": [
+    "./antigravity_engine.js",
+    "./snippets/*"
+  ]
+}
