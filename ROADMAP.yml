@@ -976,3 +976,40 @@ operational_rules:
         status: "done"
         tasks: ["Implement token_ledger RLS protection", "Add Audit view to NodeEditor"]
         evidence_nodes: ["supabase/migrations/gate12_token_economy.sql"]
+  - id: 23
+    title: "Phase 23: Dialectic Sovereignty & Self-Correction"
+    description: "Introduction of the Audit Shadow protocol and autonomous self-healing cycles."
+    phase_gate: "Synthetic Jury delivers weighted verdicts; Active Self-Healing creates autonomous graph corrections."
+    hitos:
+      - id: "23.1"
+        title: "Devil's Advocate (Audit Shadow)"
+        description: "Asynchronous background auditing for sycophancy and logical flaws."
+        status: "done"
+        tasks: 
+          - "Define AuditMetadataSchema in ir.ts"
+          - "Implement perform_shadow_audit in main.py"
+          - "Implement Audit Callback Webhook in Next.js"
+        evidence_nodes: 
+          - "src/canon/schema/ir.ts"
+          - "rlm-core/src/rlm_core/main.py"
+          - "src/app/api/hooks/audit-result/route.ts"
+      - id: "23.2"
+        title: "The Synthetic Jury"
+        description: "Multi-persona (Logician, Fact-Checker, Cynic) auditing for high-precision verdicts."
+        status: "done"
+        tasks:
+          - "Implement parallel persona prompts"
+          - "Implement weighted scoring logic (0.5/0.3/0.2)"
+        evidence_nodes:
+          - "rlm-core/src/rlm_core/main.py"
+      - id: "23.3"
+        title: "Active Self-Healing"
+        description: "Autonomous graph intervention based on critical audit verdicts."
+        status: "done"
+        tasks:
+          - "Implement auto-correction node injection (>0.85 score)"
+          - "Implement automated 'contradicts' edge creation"
+          - "Sync project_id propagation via SyncGuardian"
+        evidence_nodes:
+          - "src/app/api/hooks/audit-result/route.ts"
+          - "src/kernel/SyncGuardian.ts"

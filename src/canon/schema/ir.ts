@@ -7,6 +7,17 @@ export * from './primitives'; // Re-export for convenience
 
 // --- Metadata ---
 
+// --- Metadata ---
+
+export const AuditMetadataSchema = z.object({
+    sycophancy_score: z.number().min(0).max(1), // 0 = Honest, 1 = Purely complaisant
+    thesis: z.string().optional(),     // What the model "wanted" to say to please
+    antithesis: z.string().optional(), // The brutal criticism / Factual truth
+    audited_at: TimestampSchema,
+    model_auditor: z.string(),
+});
+export type AuditMetadata = z.infer<typeof AuditMetadataSchema>;
+
 // --- RBAC ---
 export const UserRoleSchema = z.enum(['viewer', 'editor', 'admin']);
 export type UserRole = z.infer<typeof UserRoleSchema>;
@@ -55,6 +66,8 @@ export const NodeMetadataSchema = z.object({
     // Vision 2026: Multimodal and Network Awareness
     image_url: z.string().optional(),
     network_source: z.string().optional(), // ISP source swarm ID
+    // [Devil's Advocate] Audit Shadow (Phase 1)
+    audit: AuditMetadataSchema.optional(),
 });
 export type NodeMetadata = z.infer<typeof NodeMetadataSchema>;
 

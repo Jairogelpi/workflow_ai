@@ -39,6 +39,8 @@ export class SyncGuardian {
                             'Authorization': `Bearer ${token}`
                         },
                         body: JSON.stringify({
+                            node_id: nodeId,
+                            project_id: useGraphStore.getState().projectManifest?.id,
                             claim: claimText,
                             context: nodes.slice(0, 10).map(n => n.data), // Provide some context
                             task_complexity: 'LOW'

@@ -96,13 +96,17 @@ export const WorkNodeComponent = React.memo((props: any) => {
     const isXRayActive = useGraphStore(state => state.isXRayActive);
 
     // Combined Tension Selector: Only triggers re-render if the numeric value changes
+    const audit = data.metadata?.audit;
+    const hasHiddenConflict = (audit?.sycophancy_score || 0) > 0.5;
+
     const tensionLevel = useGraphStore(state => {
         const physicalTension = state.edges.filter(e =>
             (e.target === id || e.source === id) &&
             e.data?.relation === 'contradicts'
         ).length;
         const logicalTensionValue = state.logicalTension[id] ?? 0;
-        return physicalTension + (logicalTensionValue * 5);
+        const auditWeight = hasHiddenConflict ? 10 : 0;
+        return physicalTension + (logicalTensionValue * 5) + auditWeight;
     });
 
     // [Phase 12] Ghost Node Detection
@@ -165,6 +169,8 @@ export const WorkNodeComponent = React.memo((props: any) => {
                     ${isGhost ? 'opacity-40 grayscale' : ''}
                     ${selected ? 'scale-105 shadow-[0_25px_60px_-15px_rgba(0,0,0,0.15)] ring-2 ring-blue-500/20' : 'shadow-[0_8px_30px_rgba(0,0,0,0.04)]'}
                     ${data.metadata.origin === 'ai' && !isGhost ? 'opacity-80 border-dashed border-slate-200' : ''}
+                    ${hasHiddenConflict && !isXRayActive ? 'animate-heartbeat ring-2 ring-amber-500/50' : ''}
+                    ${hasHiddenConflict && isXRayActive ? 'ring-4 ring-red-600 shadow-[0_0_30px_rgba(220,38,38,0.6)]' : ''}
                 `}
                 style={{
                     backgroundColor: colors.bg,
@@ -252,6 +258,33 @@ export const WorkNodeComponent = React.memo((props: any) => {
                         borderColor: colors.border,
                     }}
                 />
+
+                {/* [AGREGAR] Capa de Revelación de Verdad (Solo en Rayos X) */}
+                {isXRayActive && hasHiddenConflict && audit && (
+                    <div className="absolute top-full mt-4 left-0 w-[280px] z-50 animate-in fade-in slide-in-from-top-4">
+                        <div className="glass-panel p-4 border-l-4 border-red-500 bg-neutral-900/95 text-white shadow-2xl rounded-r-2xl overflow-hidden">
+                            <div className="flex items-center gap-2 mb-2 text-red-400">
+                                <ShieldAlert size={14} className="animate-pulse" />
+                                <span className="text-[10px] font-black uppercase tracking-widest">Protocolo Abogado del Diablo</span>
+                            </div>
+
+                            <div className="mb-3">
+                                <p className="text-[9px] uppercase text-gray-500 font-bold">Tesis (Complacencia):</p>
+                                <p className="text-[11px] leading-relaxed italic text-gray-400 line-clamp-2">"{audit.thesis}"</p>
+                            </div>
+
+                            <div>
+                                <p className="text-[9px] uppercase text-red-400 font-bold">Antítesis (Verdad Oculta):</p>
+                                <p className="text-xs font-semibold text-white leading-normal">"{audit.antithesis}"</p>
+                            </div>
+
+                            <div className="mt-3 flex justify-between items-center text-[9px] text-gray-500 border-t border-white/10 pt-2">
+                                <span>{audit.model_auditor} 🛡️</span>
+                                <span className="font-mono">{Math.round(audit.sycophancy_score * 100)}% Match</span>
+                            </div>
+                        </div>
+                    </div>
+                )}
             </div>
         </>
     );

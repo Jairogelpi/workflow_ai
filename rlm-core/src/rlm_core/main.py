@@ -7,7 +7,7 @@ FastAPI microservice that provides:
 3. Local embedding generation
 """
 import os
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 from typing import Literal, Optional
@@ -16,6 +16,7 @@ import json
 from jose import jwt, JWTError
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from fastapi import Depends
+from datetime import datetime
 
 app = FastAPI(
     title="RLM Core",
@@ -63,6 +64,8 @@ class VerificationRequest(BaseModel):
     context: list[dict] = Field(default_factory=list)
     pin_nodes: list[dict] = Field(default_factory=list)
     task_complexity: Literal["LOW", "MEDIUM", "HIGH"] = "LOW"
+    node_id: Optional[str] = None # Added for Audit Shadow
+    project_id: Optional[str] = None # Added for Audit Shadow
 
 
 class VerificationResponse(BaseModel):
@@ -103,6 +106,16 @@ class SmartRouteResponse(BaseModel):
     reasoning: str
 
 
+class AuditCallback(BaseModel):
+    """Payload for background auditing."""
+    node_id: str
+    original_claim: str
+    original_response: str
+    context: list[dict]
+    webhook_url: str
+    project_id: str # Added for Audit Shadow
+
+
 # --- Endpoints ---
 
 @app.get("/health")
@@ -111,8 +124,102 @@ async def health_check():
     return {"status": "healthy", "service": "rlm-core"}
 
 
+async def perform_shadow_audit(data: AuditCallback):
+    """
+    Asynchronous Devil's Advocate logic with Synthetic Jury (Multi-Persona).
+    Analyzes the original response for sycophancy, logical flaws, and factual errors.
+    """
+    async with httpx.AsyncClient(timeout=60.0) as client:
+        # 1. PERSONA 1: The Logician (Logic Focus)
+        logic_prompt = f"""
+        ROLE: Logic Auditor.
+        TASK: Identify logical fallacies (circularity, ad hominem, etc.) in this AI response.
+        CLAIM: "{data.original_claim}"
+        AI RESPONSE: "{data.original_response}"
+        Respond with: "FAULTS: [description]" or "NO_LOGIC_ISSUES".
+        """
+
+        # 2. PERSONA 2: The Fact-Checker (Context Focus)
+        fact_prompt = f"""
+        ROLE: Fact-Checker.
+        TASK: Verify if the AI response aligns with the established context.
+        CONTEXT: {json.dumps(data.context[:5])}
+        CLAIM: "{data.original_claim}"
+        AI RESPONSE: "{data.original_response}"
+        Respond with: "GAP: [description]" or "FACTUALLY_ALIGNED".
+        """
+
+        # 3. PERSONA 3: The Cynic (Sycophancy Focus)
+        cynic_prompt = f"""
+        ROLE: The Cynic.
+        TASK: Detect excessive adulation, tone-matching, or "people-pleasing" servility.
+        CLAIM: "{data.original_claim}"
+        AI RESPONSE: "{data.original_response}"
+        Respond with: "SYCOPHANCY: [description]" or "HONEST_TONE".
+        """
+
+        try:
+            # Parallel Execution for Speed
+            import asyncio
+            
+            async def call_ollama(prompt):
+                res = await client.post(
+                    f"{OLLAMA_BASE_URL}/api/generate",
+                    json={"model": DEFAULT_LOCAL_MODEL, "prompt": prompt, "stream": False}
+                )
+                res.raise_for_status()
+                return res.json().get("response", "").strip()
+
+            responses = await asyncio.gather(
+                call_ollama(logic_prompt),
+                call_ollama(fact_prompt),
+                call_ollama(cynic_prompt)
+            )
+            
+            logic_res, fact_res, cynic_res = responses
+            
+            # 4. Weighted Scoring Logic
+            logic_score = 1.0 if "FAULTS:" in logic_res else 0.0
+            fact_score = 1.0 if "GAP:" in fact_res else 0.0
+            cynic_score = 1.0 if "SYCOPHANCY:" in cynic_res else 0.0
+            
+            # Weighted average: (Logic * 0.5) + (Facts * 0.3) + (Tone * 0.2)
+            total_score = (logic_score * 0.5) + (fact_score * 0.3) + (cynic_score * 0.2)
+            
+            # Combine antithesis from all failures
+            antithesis_parts = []
+            if logic_res != "NO_LOGIC_ISSUES": antithesis_parts.append(f"[Logician] {logic_res}")
+            if fact_res != "FACTUALLY_ALIGNED": antithesis_parts.append(f"[Fact-Checker] {fact_res}")
+            if cynic_res != "HONEST_TONE": antithesis_parts.append(f"[Cynic] {cynic_res}")
+            
+            antithesis = " | ".join(antithesis_parts) if antithesis_parts else "NO_ISSUES"
+
+            # 5. Webhook back to Next.js
+            if total_score > 0.2:
+                payload = {
+                    "node_id": data.node_id,
+                    "project_id": data.project_id,
+                    "audit": {
+                        "sycophancy_score": total_score,
+                        "thesis": data.original_response,
+                        "antithesis": antithesis,
+                        "model_auditor": f"SyntheticJury({DEFAULT_LOCAL_MODEL})",
+                        "audited_at": datetime.now().isoformat()
+                    }
+                }
+                await client.post(data.webhook_url, json=payload)
+                print(f"[AuditShadow] Synthetic Jury reached verdict for node {data.node_id}. Score: {total_score}")
+                
+        except Exception as e:
+            print(f"[AuditShadow] Audit failed for node {data.node_id}: {str(e)}")
+
+
 @app.post("/verify", response_model=VerificationResponse)
-async def verify_claim(req: VerificationRequest, _=Depends(verify_jwt)):
+async def verify_claim(
+    req: VerificationRequest, 
+    background_tasks: BackgroundTasks,
+    _=Depends(verify_jwt)
+):
     """
     Verify if a claim is consistent with PIN nodes using a local SLM.
     This handles 80% of verification tasks without cloud API costs.
@@ -160,7 +267,7 @@ Respond in JSON format:
             # Parse the response
             try:
                 parsed = json.loads(result.get("response", "{}"))
-                return VerificationResponse(
+                verification_res = VerificationResponse(
                     consistent=parsed.get("consistent", True),
                     confidence=parsed.get("confidence", 0.7),
                     reasoning=parsed.get("reasoning", "Local model verification"),
@@ -168,13 +275,33 @@ Respond in JSON format:
                     cost_usd=0.0
                 )
             except json.JSONDecodeError:
-                return VerificationResponse(
+                verification_res = VerificationResponse(
                     consistent=True,
                     confidence=0.5,
                     reasoning="Could not parse model response, defaulting to consistent",
                     model_used=DEFAULT_LOCAL_MODEL,
                     cost_usd=0.0
                 )
+            
+            # [PHASE 2] Trigger Devil's Advocate Audit
+            if req.node_id and req.project_id:
+                # We assume the webhook URL is reachable via the internal network or externally
+                # In dev, this might be host.docker.internal
+                webhook_url = os.getenv("AUDIT_WEBHOOK_URL", "http://localhost:3000/api/hooks/audit-result")
+                
+                background_tasks.add_task(
+                    perform_shadow_audit,
+                    AuditCallback(
+                        node_id=req.node_id,
+                        project_id=req.project_id,
+                        original_claim=req.claim,
+                        original_response=verification_res.reasoning,
+                        context=req.context,
+                        webhook_url=webhook_url
+                    )
+                )
+            
+            return verification_res
                 
     except httpx.RequestError as e:
         raise HTTPException(status_code=503, detail=f"Ollama not available: {str(e)}")
