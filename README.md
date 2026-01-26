@@ -5,7 +5,7 @@
 ---
 
 ## 🏗️ Arquitectura del Sistema
-> **Status**: v1.0 (Zero Mock). See [ROADMAP.md](docs/ROADMAP.md) for future plans.
+> **Status**: v2.1.0 (100% Zero-Mock Production). See [ROADMAP.md](docs/ROADMAP.md) for future plans.
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
