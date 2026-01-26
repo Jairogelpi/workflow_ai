@@ -24,8 +24,8 @@ export async function retrieveContext(plan: Plan, graph: WorkGraph, projectId: s
     try {
         queryEmbedding = await EmbeddingService.embed(query);
     } catch (e) {
-        console.warn('[RETRIEVER] Embedding failed, falling back to heuristic:', e);
-        return fallbackHeuristic(graph);
+        console.warn('[RETRIEVER] Embedding failed, returning empty context (Safety Veto):', e);
+        return [];
     }
 
     // 2.5 [PHASE 3] HIERARCHICAL DIGEST CHECK
@@ -71,7 +71,7 @@ export async function retrieveContext(plan: Plan, graph: WorkGraph, projectId: s
 
     if (error) {
         console.error('[RETRIEVER] Vector Search Error:', error);
-        return fallbackHeuristic(graph);
+        return [];
     }
 
     // 4. Graph Topology Boosting
@@ -123,10 +123,4 @@ export async function retrieveContext(plan: Plan, graph: WorkGraph, projectId: s
             retrieval_score: item.score
         }
     })) as WorkNode[];
-}
-
-function fallbackHeuristic(graph: WorkGraph): WorkNode[] {
-    console.log('[RETRIEVER] Using Fallback Heuristic.');
-    // Simple truncation logic (Original Mock)
-    return Object.values(graph.nodes).slice(0, 10) as WorkNode[];
 }

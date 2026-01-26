@@ -12,6 +12,7 @@ import {
     CheckSquare,
     FileText,
     Brain,
+    BrainCircuit,
     Lock,
     Link,
     Zap
@@ -129,6 +130,10 @@ export const WorkNodeComponent = React.memo((props: any) => {
 
     const rawContent = (data as any).content || (data as any).statement || (data as any).rationale || (data as any).summary || (data as any).description || (data as any).name || (data as any).rule || '';
     const content = typeof rawContent === 'object' ? (rawContent.name || rawContent.content || JSON.stringify(rawContent)) : String(rawContent);
+
+    // Neuro-Symbolic Interception Detection
+    const isNeuroIntercepted = content.includes('⚠️ INTERVENCIÓN LÓGICA:');
+
     const preview = content.replace(/<[^>]*>?/gm, '').slice(0, 60) + (content.length > 60 ? '...' : '');
 
     return (
@@ -171,6 +176,7 @@ export const WorkNodeComponent = React.memo((props: any) => {
                     ${data.metadata.origin === 'ai' && !isGhost ? 'opacity-80 border-dashed border-slate-200' : ''}
                     ${hasHiddenConflict && !isXRayActive ? 'animate-heartbeat ring-2 ring-amber-500/50' : ''}
                     ${hasHiddenConflict && isXRayActive ? 'ring-4 ring-red-600 shadow-[0_0_30px_rgba(220,38,38,0.6)]' : ''}
+                    ${isNeuroIntercepted ? 'ring-2 ring-red-500/50 shadow-[0_0_20px_rgba(239,68,68,0.3)]' : ''}
                 `}
                 style={{
                     backgroundColor: colors.bg,
@@ -212,6 +218,13 @@ export const WorkNodeComponent = React.memo((props: any) => {
                 {tensionLevel > 0 && (
                     <div className="absolute -top-2 -right-2 bg-red-400 text-white rounded-full p-1.5 shadow-md z-10 animate-bounce">
                         <Zap size={10} fill="currentColor" />
+                    </div>
+                )}
+
+                {isNeuroIntercepted && (
+                    <div className="absolute -top-10 left-0 flex items-center gap-2 bg-red-900/90 text-red-100 px-3 py-1.5 rounded-full border border-red-500/40 backdrop-blur-xl shadow-2xl z-20 animate-in fade-in zoom-in-95 duration-300">
+                        <BrainCircuit size={14} className="animate-pulse text-red-400" />
+                        <span className="text-[10px] font-black uppercase tracking-tighter">Intervención Lógica Activa</span>
                     </div>
                 )}
                 <div className="px-4 py-3 flex items-start gap-3">

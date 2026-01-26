@@ -13,6 +13,7 @@ export interface DualModelConfig {
     efficiencyModel: ModelConfig;
     qualityMode: 'hybrid' | 'high-fidelity';
     maxCostPerTask: number; // USD threshold for circuit breaker
+    ollamaBaseUrl?: string; // Standardized local endpoint
 }
 
 interface SettingsState {
@@ -36,7 +37,8 @@ export const useSettingsStore = create<SettingsState>()(
                 reasoningModel: { provider: 'openai', modelId: 'gpt-4o', apiKey: '' },
                 efficiencyModel: { provider: 'gemini', modelId: 'gemini-1.5-flash', apiKey: '' },
                 qualityMode: 'hybrid',
-                maxCostPerTask: 0.10
+                maxCostPerTask: 0.10,
+                ollamaBaseUrl: 'http://localhost:11434'
             },
             availableModels: [
                 { id: 'gpt-4o', name: 'GPT-4o (Omni)', provider: 'openai' },

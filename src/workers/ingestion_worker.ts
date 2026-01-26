@@ -79,6 +79,19 @@ self.onmessage = (e: MessageEvent) => {
 };
 
 
+// [Metadata Cache]
+const metaCache = new Map<string, any>();
+const getCachedNode = async (id: string) => {
+    if (metaCache.has(id)) return metaCache.get(id);
+    const { data } = await supabase!
+        .from('work_nodes')
+        .select('metadata')
+        .eq('id', id)
+        .single();
+    if (data) metaCache.set(id, data);
+    return data;
+};
+
 async function workLoop() {
     console.log("[Worker] 🚜 Omni-Ingestor Online. Polling queue...");
 
@@ -96,56 +109,52 @@ async function workLoop() {
                 .select('*')
                 .eq('status', 'pending')
                 .order('created_at', { ascending: true })
-                .limit(1)
+                .limit(5)
                 .returns<IngestionJob[]>();
 
             if (error) throw error;
 
             if (jobs && jobs.length > 0) {
-                const job = jobs[0];
-                if (!job) continue; // Safety check
+                console.log(`[Worker] 🏎️ Processing ${jobs.length} jobs concurrently.`);
 
-                console.log(`[Worker] 📥 Processing Job ${job.id} (Project: ${job.project_id})`);
-
-                // 2. Lock Job
-                await (supabase.from('ingestion_jobs') as any).update({
+                // 2. Batch Lock Jobs
+                const jobIds = jobs.map(j => j.id);
+                await (supabase!.from('ingestion_jobs') as any).update({
                     status: 'processing',
-                    started_at: new Date().toISOString(),
-                    attempts: (job.attempts || 0) + 1
-                }).eq('id', job.id);
+                    started_at: new Date().toISOString()
+                }).in('id', jobIds);
 
-                // 3. Process
+                await Promise.allSettled(jobs.map(async (job) => {
+                    try {
+                        // 3. Process
+                        const node = await getCachedNode(job.node_id) as WorkNode | null;
 
-                // Fetch Source Node to get storage path
-                const { data: node } = await supabase
-                    .from('work_nodes')
-                    .select('metadata')
-                    .eq('id', job.node_id)
-                    .single() as { data: WorkNode | null, error: any };
+                        if (!node) throw new Error("Source node not found");
+                        const storagePath = node.metadata?.storage_path;
+                        if (!storagePath) throw new Error("Source node missing storage path");
 
-                if (!node) throw new Error("Source node not found");
+                        const { data: fileData, error: downloadError } = await supabase!.storage.from('artifacts').download(storagePath);
+                        if (downloadError) throw downloadError;
 
-                const storagePath = node.metadata?.storage_path;
+                        const fileBlob = new Blob([fileData], { type: node.metadata?.mimeType || 'application/octet-stream' });
+                        (fileBlob as any).name = node.metadata?.source_title || 'production_artifact';
 
-                if (!storagePath) throw new Error("Source node missing storage path");
+                        if ((job as any).type === 'digest_branch') {
+                            const { processHierarchicalDigest } = await import('../kernel/digest_engine');
+                            await processHierarchicalDigest(job.id, job.node_id, job.project_id);
+                        } else {
+                            await digestFile(job.node_id, fileBlob as any, job.project_id, job.id);
+                        }
 
-                const { data: fileData, error: downloadError } = await supabase.storage.from('artifacts').download(storagePath);
-
-                if (downloadError) throw downloadError;
-
-                // Mock a File object (Node.js doesn't have File native in all versions, using Blob)
-                const fileBlob = new Blob([fileData], { type: node.metadata?.mimeType || 'application/octet-stream' });
-                // We fake the 'name' property
-                (fileBlob as any).name = node.metadata?.source_title || 'unknown_file';
-
-                if ((job as any).type === 'digest_branch') {
-                    const { processHierarchicalDigest } = await import('../kernel/digest_engine');
-                    await processHierarchicalDigest(job.id, job.node_id, job.project_id);
-                } else {
-                    await digestFile(job.node_id, fileBlob as any, job.project_id, job.id);
-                }
-
-                console.log(`[Worker] ✅ Job ${job.id} Completed.`);
+                        console.log(`[Worker] ✅ Job ${job.id} Completed.`);
+                    } catch (jobErr) {
+                        console.error(`[Worker] ❌ Failed Job ${job.id}:`, jobErr);
+                        await (supabase!.from('ingestion_jobs') as any).update({
+                            status: 'failed',
+                            metadata: { error: String(jobErr) }
+                        }).eq('id', job.id);
+                    }
+                }));
             } else {
                 // Sleep if empty
                 await new Promise(r => setTimeout(r, 5000));
