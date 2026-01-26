@@ -85,23 +85,48 @@ class WasmEngine implements PhysicsEngine {
             // [Rust Core] Call the Antigravity Engine
             // Expects: apply_forces(nodes, edges) -> updated_nodes
             if (this.wasmModule.apply_forces) {
-                // Must serialize/deserialize at the boundary if WASM expects JsValue
-                // Note: In refined versions, we'd use SharedArrayBuffer for zero-copy
                 const result = this.wasmModule.apply_forces(this.nodes, this.edges);
 
                 if (result) {
-                    // Update local state with result
+                    // [Performance] Calculate Kinetic Energy (Displacement)
+                    // If the system has settled, we notify the main thread to sync to DB.
+                    let totalDisplacement = 0;
+                    // Optimization: Use simple loop assuming order preservation from WASM
+                    const len = result.length;
+                    for (let i = 0; i < len; i++) {
+                        const oldNode = this.nodes[i];
+                        const newNode = result[i];
+                        if (oldNode && newNode && oldNode.id === newNode.id) {
+                            const dx = (newNode.x || 0) - (oldNode.x || 0);
+                            const dy = (newNode.y || 0) - (oldNode.y || 0);
+                            totalDisplacement += Math.abs(dx) + Math.abs(dy);
+                        }
+                    }
+
+                    // Update local state
                     this.nodes = result;
 
-                    // Send back to Main Thread
-                    postMessage({
-                        type: 'TICK_RESULT',
-                        nodes: result
-                    });
+                    // Threshold: 1.0 total pixel movement across all nodes
+                    if (totalDisplacement < 0.5) {
+                        postMessage({
+                            type: 'SIMULATION_END',
+                            nodes: result
+                        });
+                        // Optional: Stop loop or sleep? 
+                        // For now, continue loop but maybe with reduced frequency or just send END messages repeatedly?
+                        // Better: Stop sending TICKs, just sends END once then waits for interaction?
+                        // Let sends END every frame if settled? No, that spams.
+                        // We should probably check if we *was* running. 
+                        // But simplification: The hook will handle the debounce/idempotency.
+                    } else {
+                        postMessage({
+                            type: 'TICK_RESULT',
+                            nodes: result
+                        });
+                    }
                 }
             }
 
-            // Loop
             requestAnimationFrame(() => this.loop());
 
         } catch (e) {

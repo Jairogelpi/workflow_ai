@@ -61,6 +61,10 @@
 - [🐝 Inteligencia de Enjambre (Swarm)](documentacion/SWARM_INTELLIGENCE.md)
 - [⚡ UX Performance (Transient Updates)](documentacion/UX_PERFORMANCE.md)
 
+## 💸 Economía y Memoria (Fase 3)
+- [📉 Token Economy & Pricing](docs/TOKEN_ECONOMY.md)
+- [🧩 Digest Engine (Hierarchical Memory)](docs/DIGEST_ENGINE.md)
+
 ---
 
 ## 🚀 Quick Start (Critical: Read This)

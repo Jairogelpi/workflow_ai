@@ -52,15 +52,13 @@ export async function POST(req: NextRequest) {
 
         if (jobError) throw new Error(`Job creation failed: ${jobError.message}`);
 
-        // 4. Trigger digestion in background (Don't await to avoid timeout)
-        // [Next.js 15] Use 'after' to ensure background tasks complete without blocking response
-        after(async () => {
-            try {
-                await digestFile(uploadResult.nodeId, file, projectId, job.id);
-            } catch (err) {
-                console.error('[API Background] Digestion failed:', err);
-            }
-        });
+        // [ASYNC PATTERN] The API responsibility ends here.
+        // We have:
+        // 1. Uploaded the raw file to Storage.
+        // 2. Created a 'pending' job in the Queue.
+        // 3. The External Worker (Rust/Node) will pick this up via PgQueue/Webhooks.
+
+        console.log(`[API] Job ${job.id} enqueued. Handing off to Worker.`);
 
         return NextResponse.json({
             success: true,

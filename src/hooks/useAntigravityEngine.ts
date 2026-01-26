@@ -26,27 +26,39 @@ export function useAntigravityEngine() {
             // Listen for ticks
             workerRef.current.onmessage = (e: MessageEvent) => {
                 const { type, nodes: updatedPositions } = e.data;
-                if (type === 'TICK_RESULT') {
-                    // [Performance] Update React Flow's internal state directly
-                    // This bypasses the Zustand re-render cycle for high-frequency position updates
-                    let latestNodes: AppNode[] = [];
+
+                // [TRANSIENT UPDATE] 60fps Animation Loop
+                // Updates ONLY the React Flow internal state (Visuals)
+                // Does NOT touch Zustand or Supabase
+                if (type === 'TICK_RESULT' || type === 'SIMULATION_END') {
                     setNodesFlow((currentFlowNodes) => {
-                        latestNodes = currentFlowNodes.map(n => {
+                        return currentFlowNodes.map(n => {
                             const update = updatedPositions.find((u: any) => u.id === n.id);
                             if (update) {
                                 return {
                                     ...n,
-                                    position: { x: update.x, y: update.y }
+                                    position: { x: update.x, y: update.y },
+                                    // Optimization: Only update if position actually changed > epsilon
+                                    // But map is cheap enough for now
                                 };
                             }
                             return n;
                         });
-                        return latestNodes as any;
+                    });
+                }
+
+                // [PERSISTENCE UPDATE] Only when physics settles
+                // Sincroniza con el Store de Zustand solo cuando el movimiento se detenga
+                if (type === 'SIMULATION_END') {
+                    // Reconstruct full nodes from latest visual state to sync
+                    // Since setNodesFlow is async, we use the data from worker directly for sync
+                    // We need to map the worker 'nodes' back to AppNodes structure
+                    const appNodes = nodes.map(n => {
+                        const update = updatedPositions.find((u: any) => u.id === n.id);
+                        return update ? { ...n, position: { x: update.x, y: update.y } } : n;
                     });
 
-                    // [Sync] Trigger a debounced sync to the global store and backend
-                    // We pass the latestNodes directly to avoid reading from potentially stale state
-                    syncPositions(latestNodes);
+                    syncPositions(appNodes);
                 }
             };
         }
