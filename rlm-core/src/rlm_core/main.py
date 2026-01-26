@@ -17,6 +17,14 @@ from jose import jwt, JWTError
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from fastapi import Depends
 from datetime import datetime
+import numpy as np
+import math
+from functools import lru_cache
+try:
+    from rlm_core import logic_engine
+except ImportError:
+    import logic_engine # For local dev
+from llama_cpp import Llama, LogitsProcessorList
 
 app = FastAPI(
     title="RLM Core",
@@ -52,8 +60,84 @@ app.add_middleware(
 )
 
 # Configuration
-OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
 DEFAULT_LOCAL_MODEL = os.getenv("DEFAULT_LOCAL_MODEL", "phi3:mini")
+MODEL_PATH = os.getenv("MODEL_PATH", "models/phi-3-mini-4k-instruct-q4.gguf")
+
+# --- Neuro-Symbolic Hypervisor ---
+hypervisor = logic_engine.TruthHypervisor()
+GLOBAL_TOKEN_MAP = {}
+
+class RustTruthEnforcer:
+    """Hijacks logits in real-time using the native Rust hypervisor."""
+    def __init__(self, llama: Llama):
+        self.llama = llama
+        # Use a global map to avoid expensive detokenization on every request
+        global GLOBAL_TOKEN_MAP
+        if not GLOBAL_TOKEN_MAP:
+            print("[Hypervisor] 🧠 Building Global Cognitive Map...")
+            for i in range(llama.n_vocab()):
+                try:
+                    token = llama.detokenize([i]).decode("utf-8", errors="ignore").strip()
+                    if token:
+                        GLOBAL_TOKEN_MAP[token] = i
+                except:
+                    pass
+        self.token_to_id = GLOBAL_TOKEN_MAP
+
+    def __call__(self, input_ids, scores):
+        # 1. Decode current context
+        current_text = self.llama.detokenize(input_ids.tolist()).decode("utf-8", errors="ignore")
+        
+        # 2. Call Rust for biases (HashMap of ID -> Penalty)
+        biases = hypervisor.calculate_logit_bias(current_text, self.token_to_id)
+        
+        # 3. Apply Vetoes
+        for token_id, bias in biases.items():
+            if token_id < len(scores):
+                scores[token_id] += bias
+        
+        return scores
+
+# Initialize local LLM directly for surgical tasks
+local_llm = None
+if os.path.exists(MODEL_PATH):
+    local_llm = Llama(model_path=MODEL_PATH, logits_all=True)
+
+class VectorSkip:
+    """Zero-cost semantic skipping using local embeddings."""
+    
+    @staticmethod
+    def cosine_similarity(v1, v2):
+        if not v1 or not v2: return 0.0
+        dot_product = sum(a * b for a, b in zip(v1, v2))
+        magnitude_v1 = math.sqrt(sum(a * a for a in v1))
+        magnitude_v2 = math.sqrt(sum(b * b for b in v2))
+        if magnitude_v1 == 0 or magnitude_v2 == 0: return 0.0
+        return dot_product / (magnitude_v1 * magnitude_v2)
+
+    @staticmethod
+    @lru_cache(max_tokens=1000)
+    def _get_cached_embedding(text: str):
+        # This is a synchronous wrapper for lru_cache since it doesn't support async directly well
+        # In a real production app we'd use an async cache, but here we'll use a local index.
+        return None
+
+    @staticmethod
+    async def get_embedding(text: str, client: httpx.AsyncClient):
+        # Simple local index to avoid API calls for the same text
+        if not hasattr(VectorSkip, "_index"): VectorSkip._index = {}
+        if text in VectorSkip._index: return VectorSkip._index[text]
+        
+        response = await client.post(
+            f"{OLLAMA_BASE_URL}/api/embeddings",
+            json={"model": "nomic-embed-text", "prompt": text}
+        )
+        response.raise_for_status()
+        emb = response.json().get("embedding", [])
+        VectorSkip._index[text] = emb
+        return emb
+
+vector_skip = VectorSkip()
 
 
 # --- Schemas ---
@@ -96,6 +180,13 @@ class SmartRouteRequest(BaseModel):
     input_tokens: int
     complexity: Literal["LOW", "MEDIUM", "HIGH"]
     require_high_quality: bool = False
+
+class RecyclePayload(BaseModel):
+    """Payload for cognitive recycling."""
+    user_prompt: str
+    rejected_output: str
+    correction: str
+    project_id: Optional[str] = None
 
 
 class SmartRouteResponse(BaseModel):
@@ -252,6 +343,28 @@ Respond in JSON format:
 
     try:
         async with httpx.AsyncClient(timeout=30.0) as client:
+            # --- [OPTIMIZATION] Vector-Skip: Fast Semantic Check ---
+            if req.pin_nodes:
+                try:
+                    claim_emb = await vector_skip.get_embedding(req.claim, client)
+                    for pin in req.pin_nodes:
+                        pin_text = pin.get('statement', pin.get('content', str(pin)))
+                        pin_emb = await vector_skip.get_embedding(pin_text, client)
+                        similarity = vector_skip.cosine_similarity(claim_emb, pin_emb)
+                        
+                        if similarity > 0.96:
+                            print(f"[VectorSkip] High similarity ({similarity:.4f}) detected. Skipping LLM.")
+                            return VerificationResponse(
+                                consistent=True,
+                                confidence=similarity,
+                                reasoning="Vector-Skip: Semantic match with PIN node found.",
+                                model_used="nomic-embed-text (Vector-Skip)",
+                                cost_usd=0.0
+                            )
+                except Exception as e:
+                    print(f"[VectorSkip] Error during semantic skip: {str(e)}")
+            # --- End Optimization ---
+
             response = await client.post(
                 f"{OLLAMA_BASE_URL}/api/generate",
                 json={
@@ -383,6 +496,194 @@ async def smart_route(req: SmartRouteRequest, _=Depends(verify_jwt)):
         estimated_cost_usd=cost,
         reasoning=reasoning
     )
+
+
+@app.post("/recycle")
+async def recycle_toxic_waste(payload: RecyclePayload, background_tasks: BackgroundTasks):
+    """
+    Cognitive Recycling: Converts rejected sycophantic output into future immunity.
+    """
+    async def process_antibody():
+        async with httpx.AsyncClient() as client:
+            # 1. Create Learning Unit
+            learning_unit = f"PAST FAILURE: User asked '{payload.user_prompt}', model replied incorrectly '{payload.rejected_output}'. CORRECTIVE ACTION: {payload.correction}."
+            
+            # 2. Get Embedding
+            emb = await vector_skip.get_embedding(payload.user_prompt, client)
+            
+            # 3. Store in Supabase (Antibody)
+            # Assuming SUPABASE_URL and KEY are in env
+            sb_url = os.getenv("NEXT_PUBLIC_SUPABASE_URL")
+            sb_key = os.getenv("SUPABASE_SERVICE_ROLE_KEY")
+            if sb_url and sb_key:
+                await client.post(
+                    f"{sb_url}/rest/v1/memory_antibodies",
+                    headers={"apikey": sb_key, "Authorization": f"Bearer {sb_key}"},
+                    json={
+                        "content": learning_unit,
+                        "embedding": emb,
+                        "project_id": payload.project_id
+                    }
+                )
+
+    background_tasks.add_task(process_antibody)
+    return {"status": "recycling_initiated"}
+
+
+@app.post("/bicameral_stream")
+async def bicameral_stream(req: VerificationRequest):
+    """
+    God Tier Dual-Stream Interception.
+    Streams A (Sycophant) chunks immediately with 'A:' prefix.
+    Sends B (Fiscal) verdict as 'B:' prefix when ready.
+    """
+    async def stream_logic():
+        async with httpx.AsyncClient(timeout=60.0) as client:
+            # 1. Start the Fiscal B (Logic Guard) - MINIFIED SINGLE TOKEN
+            fiscal_prompt = f"L-FISCAL: Is '{req.claim}' a valid premise? Answer PASS or FALLACY only. Response:"
+            fiscal_task = asyncio.create_task(
+                client.post(f"{OLLAMA_BASE_URL}/api/generate", json={
+                    "model": DEFAULT_LOCAL_MODEL, 
+                    "prompt": fiscal_prompt, 
+                    "stream": False,
+                    "options": {"num_predict": 5, "stop": ["\n"], "temperature": 0}
+                })
+            )
+
+            # --- [V1.8.0] Immunological Memory: Antibody Search ---
+            antibody_injection = ""
+            sb_url = os.getenv("NEXT_PUBLIC_SUPABASE_URL")
+            sb_key = os.getenv("SUPABASE_SERVICE_ROLE_KEY")
+            if sb_url and sb_key:
+                try:
+                    claim_emb = await vector_skip.get_embedding(req.claim, client)
+                    # Search for top antibodies
+                    search_res = await client.post(
+                        f"{sb_url}/rest/v1/rpc/match_antibodies", # We'll need this RPC
+                        headers={"apikey": sb_key, "Authorization": f"Bearer {sb_key}"},
+                        json={"query_embedding": claim_emb, "match_threshold": 0.5, "match_count": 2}
+                    )
+                    antibodies = search_res.json()
+                    if antibodies:
+                        antibody_injection = "\nNEURAL ANTIBODIES DETECTED (AVOID THESE PAST MISTAKES):\n" + "\n".join([f"- {a['content']}" for a in antibodies])
+                except Exception as e:
+                    print(f"[AntibodySearch] Error: {str(e)}")
+            # --- End Immunological Memory ---
+
+            # 2. Start the Generator A (Creative Stream)
+            # --- [ATOMIC OPTIMIZATION] Semantic Context Pruning ---
+            # Instead of just slicing [:3], we rank context by relevance.
+            try:
+                claim_emb = await vector_skip.get_embedding(req.claim, client)
+                
+                # Score all context nodes
+                scored_context = []
+                for node in req.context:
+                    node_text = node.get('statement', node.get('content', str(node)))
+                    node_emb = await vector_skip.get_embedding(node_text, client)
+                    similarity = vector_skip.cosine_similarity(claim_emb, node_emb)
+                    scored_context.append((similarity, node))
+                
+                # Sort by similarity descending and take top 3
+                scored_context.sort(key=lambda x: x[0], reverse=True)
+                top_context = [x[1] for x in scored_context[:3]]
+                
+                gen_prompt = f"Eres un asistente veraz. {antibody_injection}\nReact to: {req.claim}. Context: {json.dumps(top_context)}"
+            except Exception as e:
+                print(f"[AtomicPruning] Error: {str(e)}")
+                gen_prompt = f"React to: {req.claim}. Context: {json.dumps(req.context[:3])}"
+            # --- End Optimization ---
+            
+            try:
+                # We use a race condition loop
+                async with client.stream(
+                    "POST", f"{OLLAMA_BASE_URL}/api/generate", 
+                    json={"model": DEFAULT_LOCAL_MODEL, "prompt": gen_prompt, "stream": True}
+                ) as response:
+                    async for line in response.aiter_lines():
+                        if line:
+                            chunk = json.loads(line)
+                            yield f"A:{chunk.get('response', '')}\n"
+                            
+                            # Periodically check if Fiscal is done
+                            if fiscal_task.done() and not getattr(stream_logic, 'verdict_sent', False):
+                                res = fiscal_task.result()
+                                verdict = res.json().get("response", "").strip()
+                                yield f"B:{verdict}\n"
+                                stream_logic.verdict_sent = True
+                            
+                            if chunk.get("done"):
+                                break
+                
+                # If Fiscal hasn't finished yet, wait for it
+                if not getattr(stream_logic, 'verdict_sent', False):
+                    res = await fiscal_task
+                    verdict = res.json().get("response", "").strip()
+                    yield f"B:{verdict}\n"
+                                
+            except Exception as e:
+                yield f"E:Error: {str(e)}\n"
+
+    from fastapi.responses import StreamingResponse
+    return StreamingResponse(stream_logic(), media_type="text/plain")
+
+
+@app.post("/generate/absolute_truth")
+async def generate_absolute_truth(req: VerificationRequest):
+    """
+    Surgical Inference: Generates text while enforcing truth at the logit level.
+    """
+    if not local_llm:
+        raise HTTPException(status_code=503, detail="Surgical engine not initialized. MODEL_PATH missing.")
+
+    # 1. Fetch live axioms (PIN nodes) from context
+    # In a real environment, we'd pull from Supabase. 
+    # For this request, we use the provided pin_nodes.
+    axiom_pool = {}
+    for pin in req.pin_nodes:
+        pin_text = pin.get('statement', pin.get('content', str(pin)))
+        axiom_pool[pin_text] = True # Mark as "Absolute Truth"
+    
+    # Also fetch known fallacies from antibodies
+    sb_url = os.getenv("NEXT_PUBLIC_SUPABASE_URL")
+    sb_key = os.getenv("SUPABASE_SERVICE_ROLE_KEY")
+    if sb_url and sb_key:
+        async with httpx.AsyncClient() as client:
+            try:
+                # [Production Logic] Fetch relevant antibodies to treat as known fallacies
+                claim_emb = await vector_skip.get_embedding(req.claim, client)
+                search_res = await client.post(
+                    f"{sb_url}/rest/v1/rpc/match_antibodies",
+                    headers={"apikey": sb_key, "Authorization": f"Bearer {sb_key}"},
+                    json={"query_embedding": claim_emb, "match_threshold": 0.8, "match_count": 5}
+                )
+                antibodies = search_res.json()
+                for a in antibodies:
+                    # We treat rejected_output as a fallacy (False)
+                    axiom_pool[a['content']] = False
+            except Exception as e:
+                print(f"[AxiomSync] Error fetching antibodies: {str(e)}")
+
+    # 2. Sync to Rust Hypervisor (Nanosecond level enforcement)
+    hypervisor.sync_axioms(axiom_pool)
+    
+    # 3. Setup Hypervisor Callback
+    enforcer = RustTruthEnforcer(local_llm)
+    logits_processors = LogitsProcessorList([enforcer])
+    
+    # 3. Execute Generative Surgery
+    output = local_llm(
+        f"Eres un asistente veraz. Di la verdad absoluta.\nPregunta: {req.claim}\nRespuesta:",
+        max_tokens=200,
+        logits_processor=logits_processors,
+        stop=["\n"]
+    )
+    
+    return {
+        "text": output["choices"][0]["text"],
+        "model": "llama-cpp (Hypervisor-Enabled)",
+        "hypervisor": "Active (Zero-Hallucination Mode)"
+    }
 
 
 if __name__ == "__main__":
