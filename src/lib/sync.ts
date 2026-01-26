@@ -303,7 +303,7 @@ export const syncService = {
                 name,
                 description,
                 owner_id: ownerId,
-                status: 'active',
+                // status: 'active', // Removed: Column does not exist in DB (implied by deleted_at is null)
                 created_at: new Date().toISOString(),
                 updated_at: new Date().toISOString()
             })
