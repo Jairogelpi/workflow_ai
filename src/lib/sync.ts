@@ -88,7 +88,8 @@ export const syncService = {
             source: metadata.source,
             source_title: metadata.source_title,
             accessed_at: metadata.accessed_at,
-            snippet_context: metadata.snippet_context
+            snippet_context: metadata.snippet_context,
+            spatial: metadata.spatial
         };
 
         const { error } = await supabase
@@ -160,6 +161,19 @@ export const syncService = {
     },
 
     /**
+     * Soft Delete Multiple Edges (Batch)
+     */
+    async archiveEdges(edgeIds: string[]) {
+        if (edgeIds.length === 0) return;
+        const { error } = await supabase
+            .from('work_edges')
+            .update({ deleted_at: new Date().toISOString() })
+            .in('id', edgeIds);
+
+        if (error) throw error;
+    },
+
+    /**
      * Batch upsert (FIXED: Single Request)
      */
     async syncAll(projectId: string, nodes: WorkNode[], edges: WorkEdge[]) {
@@ -182,7 +196,8 @@ export const syncService = {
                     source: metadata.source,
                     source_title: metadata.source_title,
                     accessed_at: metadata.accessed_at,
-                    snippet_context: metadata.snippet_context
+                    snippet_context: metadata.snippet_context,
+                    spatial: metadata.spatial
                 },
                 updated_at: new Date().toISOString(),
                 deleted_at: null

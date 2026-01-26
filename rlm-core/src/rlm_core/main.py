@@ -13,12 +13,34 @@ from pydantic import BaseModel, Field
 from typing import Literal, Optional
 import httpx
 import json
+from jose import jwt, JWTError
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from fastapi import Depends
 
 app = FastAPI(
     title="RLM Core",
     description="Local Reasoning Engine for WorkGraph OS",
     version="1.0.0"
 )
+
+security = HTTPBearer()
+
+# Configuration
+OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
+DEFAULT_LOCAL_MODEL = os.getenv("DEFAULT_LOCAL_MODEL", "phi3:mini")
+SUPABASE_JWT_SECRET = os.getenv("SUPABASE_JWT_SECRET")
+
+def verify_jwt(credentials: HTTPAuthorizationCredentials = Depends(security)):
+    """Validates the Supabase JWT. Zero Trust enforcement."""
+    if not SUPABASE_JWT_SECRET:
+        raise HTTPException(status_code=500, detail="Server configuration error: JWT secret not set.")
+    
+    try:
+        token = credentials.credentials
+        payload = jwt.decode(token, SUPABASE_JWT_SECRET, algorithms=["HS256"], audience="authenticated")
+        return payload
+    except JWTError as e:
+        raise HTTPException(status_code=401, detail=f"Unauthorized: {str(e)}")
 
 app.add_middleware(
     CORSMiddleware,
@@ -90,7 +112,7 @@ async def health_check():
 
 
 @app.post("/verify", response_model=VerificationResponse)
-async def verify_claim(req: VerificationRequest):
+async def verify_claim(req: VerificationRequest, _=Depends(verify_jwt)):
     """
     Verify if a claim is consistent with PIN nodes using a local SLM.
     This handles 80% of verification tasks without cloud API costs.
@@ -159,7 +181,7 @@ Respond in JSON format:
 
 
 @app.post("/embed", response_model=EmbeddingResponse)
-async def generate_embeddings(req: EmbeddingRequest):
+async def generate_embeddings(req: EmbeddingRequest, _=Depends(verify_jwt)):
     """
     Generate embeddings locally using Ollama's embedding models.
     Much faster and cheaper than cloud APIs for search.
@@ -192,7 +214,7 @@ async def generate_embeddings(req: EmbeddingRequest):
 
 
 @app.post("/route", response_model=SmartRouteResponse)
-async def smart_route(req: SmartRouteRequest):
+async def smart_route(req: SmartRouteRequest, _=Depends(verify_jwt)):
     """
     Determine whether to use local or cloud model based on task characteristics.
     This is the 'Smart Router' that saves money by using local models when possible.

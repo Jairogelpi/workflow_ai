@@ -14,7 +14,7 @@ const IngestSchema = z.object({
     html: z.string().optional(), // Sanitized HTML for rendering
     images: z.array(z.string()).optional(),
     timestamp: z.string().optional(), // Added for traceability
-    projectId: z.string().uuid().default('00000000-0000-0000-0000-000000000000')
+    projectId: z.string().uuid()
 });
 
 export async function POST(req: NextRequest) {

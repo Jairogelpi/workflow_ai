@@ -3,6 +3,7 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { Upload, FileText, Check, AlertCircle, Loader2 } from 'lucide-react';
 import { uploadFile, digestFile } from '../../lib/ingest';
+import { useGraphStore } from '../../store/useGraphStore';
 
 interface GlobalDropzoneProps {
     children: React.ReactNode;
@@ -52,6 +53,12 @@ export default function GlobalDropzone({ children }: GlobalDropzoneProps) {
         e.stopPropagation();
         setIsDragging(false);
 
+        const projectId = useGraphStore.getState().projectManifest?.id;
+        if (!projectId) {
+            console.error('No project context found for ingestion.');
+            return;
+        }
+
         const files = Array.from(e.dataTransfer.files);
         if (files.length === 0) return;
 
@@ -65,12 +72,12 @@ export default function GlobalDropzone({ children }: GlobalDropzoneProps) {
 
                 // Stage 1: Upload
                 setStatus('uploading');
-                const uploadResult = await uploadFile(file, file.name);
+                const uploadResult = await uploadFile(file, file.name, projectId);
 
                 // Stage 2: Digest (if not deduplicated)
                 if (!uploadResult.deduplicated) {
                     setStatus('digesting');
-                    await digestFile(uploadResult.nodeId, file);
+                    await digestFile(uploadResult.nodeId, file, projectId);
                 }
 
                 successCount++;
@@ -129,9 +136,9 @@ export default function GlobalDropzone({ children }: GlobalDropzoneProps) {
 
                         <div className="flex-1 min-w-0">
                             <p className="text-sm font-semibold text-on-surface dark:text-white">
-                                {status === 'success' ? 'Knowledge Digested!' : 
-                                 status === 'error' ? 'Import Failed' :
-                                 status === 'digesting' ? 'Digesting...' : 'Ingesting...'}
+                                {status === 'success' ? 'Knowledge Digested!' :
+                                    status === 'error' ? 'Import Failed' :
+                                        status === 'digesting' ? 'Digesting...' : 'Ingesting...'}
                             </p>
                             <p className="text-xs text-outline dark:text-outline-variant truncate mt-0.5">
                                 {lastFile}

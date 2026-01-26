@@ -8,8 +8,16 @@ use axum::{
 };
 use serde::{Deserialize, Serialize};
 use std::net::SocketAddr;
-use tower_http::cors::CorsLayer;
-
+use tower_http::cors::{CorsLayer, Any};
+use axum::{
+    middleware::{self, Next},
+    response::Response,
+    http::{StatusCode, Request},
+};
+use jsonwebtoken::{decode, DecodingKey, Validation, Algorithm};
+use serde::{Deserialize, Serialize};
+use dotenv::dotenv;
+use std::env;
 #[derive(Serialize)]
 struct IngestResponse {
     chunks: Vec<String>,
@@ -26,10 +34,18 @@ async fn main() {
     // Initialize tracing for observability
     tracing_subscriber::fmt::init();
     
+    dotenv().ok();
+    
     // Define the application router
     let app = Router::new()
         .route("/process", post(process_file))
-        .layer(CorsLayer::permissive());
+        .layer(middleware::from_fn(auth_middleware))
+        .layer(
+            CorsLayer::new()
+                .allow_origin(Any)
+                .allow_methods(Any)
+                .allow_headers(Any)
+        );
 
     let addr = SocketAddr::from(([127, 0, 0, 1], 8080));
     tracing::info!("WorkGraph Ingestor (Rust) listening on {}", addr);
@@ -69,4 +85,39 @@ async fn process_file(
         chunks,
         engine: "rust-worker-v1".to_string(),
     })
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+struct Claims {
+    aud: String,
+    exp: usize,
+}
+
+async fn auth_middleware<B>(
+    req: Request<B>,
+    next: Next<B>,
+) -> Result<Response, StatusCode> {
+    let auth_header = req.headers()
+        .get(axum::http::header::AUTHORIZATION)
+        .and_then(|header| header.to_str().ok());
+
+    match auth_header {
+        Some(auth_header) if auth_header.starts_with("Bearer ") => {
+            let token = &auth_header[7..];
+            let secret = env::var("SUPABASE_JWT_SECRET").map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+            
+            let mut validation = Validation::new(Algorithm::HS256);
+            validation.set_audience(&["authenticated"]);
+
+            match decode::<Claims>(
+                token,
+                &DecodingKey::from_secret(secret.as_bytes()),
+                &validation,
+            ) {
+                Ok(_) => Ok(next.run(req).await),
+                Err(_) => Err(StatusCode::UNAUTHORIZED),
+            }
+        }
+        _ => Err(StatusCode::UNAUTHORIZED),
+    }
 }

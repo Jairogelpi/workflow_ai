@@ -2,6 +2,7 @@ import { traceSpan, measureCost, estimateCallCost, getModelTier, auditStore } fr
 import { useSettingsStore } from '../../store/useSettingsStore';
 import { Vault } from '../../lib/security/vault';
 import { sanitizeLogs } from '../guards';
+import { getServerJWT } from '../../lib/auth-util';
 
 interface LLMResponse {
     content: string;
@@ -22,11 +23,14 @@ export async function verifyWithLocalModel(
     pinNodes: any[]
 ): Promise<{ consistent: boolean; confidence: number; reasoning: string }> {
     try {
+        const jwt = typeof window === 'undefined' ? await getServerJWT() : null;
+
         const response = await fetch(`${RLM_CORE_URL}/verify`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'x-trace-id': `trace-${Date.now()}`
+                'x-trace-id': `trace-${Date.now()}`,
+                ...(jwt ? { 'Authorization': `Bearer ${jwt}` } : {})
             },
             body: JSON.stringify({
                 claim,
@@ -54,9 +58,14 @@ export async function shouldUseLocalModel(
     requireHighQuality: boolean = false
 ): Promise<{ useLocal: boolean; recommendedModel: string; estimatedCost: number }> {
     try {
+        const jwt = typeof window === 'undefined' ? await getServerJWT() : null;
+
         const response = await fetch(`${RLM_CORE_URL}/route`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: {
+                'Content-Type': 'application/json',
+                ...(jwt ? { 'Authorization': `Bearer ${jwt}` } : {})
+            },
             body: JSON.stringify({
                 task_type: taskType,
                 input_tokens: inputTokens,

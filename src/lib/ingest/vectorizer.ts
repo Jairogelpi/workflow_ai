@@ -6,14 +6,16 @@
 import { supabase } from '../supabase';
 
 /**
- * Generates a vector embedding for the given text using OpenAI.
+ * Generates vector embeddings for one or many strings using OpenAI.
+ * Optimized to prevent N+1 API calls.
  */
-export async function generateEmbedding(text: string): Promise<number[]> {
+export async function generateEmbedding(input: string | string[]): Promise<number[][]> {
     const apiKey = process.env.OPENAI_API_KEY;
+    const inputs = Array.isArray(input) ? input : [input];
 
     if (!apiKey) {
-        console.warn('[Vectorizer] OPENAI_API_KEY not found. Falling back to random vector (STRUCTURAL MOCK).');
-        return Array.from({ length: 1536 }, () => Math.random() - 0.5);
+        console.warn('[Vectorizer] OPENAI_API_KEY not found. Falling back to structural mocks.');
+        return inputs.map(() => Array.from({ length: 1536 }, () => Math.random() - 0.5));
     }
 
     try {
@@ -25,7 +27,7 @@ export async function generateEmbedding(text: string): Promise<number[]> {
             },
             body: JSON.stringify({
                 model: 'text-embedding-3-small',
-                input: text
+                input: inputs
             })
         });
 
@@ -35,31 +37,32 @@ export async function generateEmbedding(text: string): Promise<number[]> {
         }
 
         const data = await response.json();
-        return data.data[0].embedding;
+        return data.data.map((item: any) => item.embedding);
 
     } catch (err) {
         console.error('[Vectorizer] Failed to generate embedding:', err);
-        throw err; // Fail fast in production
+        throw err;
     }
 }
 
 /**
- * Saves a node's embedding to the vector store.
+ * Saves one or many node embeddings to the vector store in bulk.
  */
-export async function saveNodeEmbedding(nodeId: string, embedding: number[]) {
-    // We expect a table named 'node_embeddings' with 'node_id' and 'embedding' (vector) columns
+export async function saveNodeEmbedding(nodeIds: string | string[], embeddings: number[] | number[][]) {
+    const ids = Array.isArray(nodeIds) ? nodeIds : [nodeIds];
+    const embs = Array.isArray(embeddings[0]) ? embeddings as number[][] : [embeddings as number[]];
 
-    // We expect a table named 'node_embeddings' with 'node_id' and 'embedding' (vector) columns
+    const payload = ids.map((id, i) => ({
+        node_id: id,
+        embedding: embs[i]
+    }));
+
     const { error } = await supabase
         .from('node_embeddings')
-        .upsert({
-            node_id: nodeId,
-            embedding: embedding
-        });
+        .upsert(payload);
 
     if (error) {
-        console.error('Vector Store Error:', error);
-        // We don't throw here to avoid failing the entire ingest if indexing is slow
+        console.error('[Vectorizer] Bulk Save Error:', error);
         return false;
     }
 

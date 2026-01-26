@@ -25,7 +25,7 @@ const NODE_TYPE_COLORS: Record<string, string> = {
 export function NodeListItem({ node, selected, onClick }: NodeListItemProps) {
     const { metadata } = node;
     const typeColor = NODE_TYPE_COLORS[node.type] || 'bg-slate-400';
-    const isInbox = (node as any).project_id === '00000000-0000-0000-0000-000000000000' || !((node as any).project_id);
+    const isInbox = !((node as any).project_id);
 
     // Rich source display
     const sourceTitle = (metadata as any).source_title;

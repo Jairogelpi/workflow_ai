@@ -7,6 +7,8 @@ import ReactFlow, {
     Panel,
     useReactFlow,
     ReactFlowProvider,
+    useNodesState,
+    useEdgesState,
     Edge
 } from 'reactflow';
 import 'reactflow/dist/style.css';
@@ -21,6 +23,7 @@ import { WorkNodeComponent } from './WorkNode';
 import { AlignmentOverlay } from './AlignmentOverlay';
 import { AlignmentTunnels } from './AlignmentTunnels';
 import { WindowManager } from '../ui/WindowManager';
+import { IngestionHUD } from '../ui/IngestionHUD';
 import { SensoryRipple } from './SensoryRipple';
 import { BootSequence } from './BootSequence';
 import { ForensicAuditView } from './ForensicAuditView';
@@ -39,17 +42,52 @@ const nodeTypes = {
 };
 
 function GraphContent() {
-    const nodes = useGraphStore(state => state.nodes);
-    const edges = useGraphStore(state => state.edges);
-    const onNodesChange = useGraphStore(state => state.onNodesChange);
-    const onEdgesChange = useGraphStore(state => state.onEdgesChange);
+    const zustandNodes = useGraphStore(state => state.nodes);
+    const isBooting = useGraphStore(state => state.isBooting);
+    const subscribeToGraph = useGraphStore(state => state.subscribeToGraph);
+    const unsubscribeFromGraph = useGraphStore(state => state.unsubscribeFromGraph);
+    const projectManifest = useGraphStore(state => state.projectManifest);
+    const projectId = projectManifest?.id;
+
+    // Real-Time (100% Dynamic) Synchronization
+    useEffect(() => {
+        if (projectId && projectId !== 'pending') {
+            subscribeToGraph(projectId);
+        }
+        return () => unsubscribeFromGraph();
+    }, [projectId, subscribeToGraph, unsubscribeFromGraph]);
+
+    const zustandEdges = useGraphStore(state => state.edges);
+    const globalOnNodesChange = useGraphStore(state => state.onNodesChange);
+    const globalOnEdgesChange = useGraphStore(state => state.onEdgesChange);
+
+    // [Optimization] Use local state for visual changes (positions, selections)
+    // to avoid triggering expensive global state re-renders on every mouse move.
+    const [nodes, setNodes, onNodesChange] = useNodesState(zustandNodes);
+    const [edges, setEdges, onEdgesChange] = useEdgesState(zustandEdges);
+
+    // Sync from Zustand when nodes/edges are added/removed externally (e.g., by Swarm)
+    useEffect(() => {
+        setNodes(zustandNodes);
+    }, [zustandNodes, setNodes]);
+
+    useEffect(() => {
+        setEdges(zustandEdges);
+    }, [zustandEdges, setEdges]);
+
     const onConnect = useGraphStore(state => state.onConnect);
     const openManifest = useGraphStore(state => state.openManifest);
 
     useEffect(() => {
         openManifest();
     }, [openManifest]);
-    const setNodes = useGraphStore(state => state.setNodes);
+
+    // Update global store on drag stop to persist final position
+    const onNodeDragStop = useCallback((_: any, node: any) => {
+        const { syncPositions } = useGraphStore.getState();
+        syncPositions([node]); // Sync single node position
+    }, []);
+
     const setSelectedNode = useGraphStore(state => state.setSelectedNode);
     const addNode = useGraphStore(state => state.addNode);
     const toggleWindow = useGraphStore(state => state.toggleWindow);
@@ -57,7 +95,7 @@ function GraphContent() {
     const toggleAntigravity = useGraphStore(state => state.toggleAntigravity);
     const draftNodes = useGraphStore(state => state.draftNodes);
     const ghostNodes = useGraphStore(state => state.ghostNodes);
-    const isXRayActive = useXRayMode((state) => state.isXRayActive); // Selector for re-renders
+    const isXRayActive = useXRayMode((state) => state.isXRayActive);
     const setXRayActive = useGraphStore(state => state.setXRayActive);
     const clearGhosts = useGraphStore(state => state.clearGhosts);
 
@@ -135,7 +173,7 @@ function GraphContent() {
         // Find context nodes for cinematic flight (Decisions show supporters/contradictors)
         const contextNodeIds = new Set([node.id]);
         if (node.data?.type === 'decision' || node.data?.type === 'claim') {
-            edges.forEach(edge => {
+            zustandEdges.forEach(edge => {
                 if (edge.source === node.id || edge.target === node.id) {
                     contextNodeIds.add(edge.source);
                     contextNodeIds.add(edge.target);
@@ -145,7 +183,7 @@ function GraphContent() {
 
         // Cinematic Flight Mode: Voyage to context group
         fitView({
-            nodes: nodes.filter(n => contextNodeIds.has(n.id)),
+            nodes: nodes.filter((n: any) => contextNodeIds.has(n.id)),
             duration: 800,
             padding: 0.5
         });
@@ -201,6 +239,7 @@ function GraphContent() {
             onEdgesChange={onEdgesChange}
             onConnect={onConnect}
             onNodeClick={handleNodeClick}
+            onNodeDragStop={onNodeDragStop}
             onPaneClick={onPaneClick}
             onPaneMouseMove={onPaneMouseMove}
             onPaneMouseLeave={onPaneMouseLeave}
@@ -256,6 +295,7 @@ function GraphContent() {
             <BootSequence />
             <SensoryRipple />
             <ForensicAuditView />
+            <IngestionHUD />
             <WindowManager />
         </ReactFlow>
     );

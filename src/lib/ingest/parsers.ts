@@ -67,16 +67,20 @@ export async function extractTextFromGeneric(buffer: Buffer): Promise<string> {
  * Delegates heavy parsing and semantic chunking to the Rust worker.
  */
 import { traceSpan } from '../../kernel/observability';
+import { getServerJWT } from '../auth-util';
 
 export async function processHeavyFile(file: Buffer, type: 'pdf' | 'html') {
     return await traceSpan('ingest.rust_worker', { type }, async () => {
+        const jwt = await getServerJWT();
+
         // Interaction with the Rust Worker via HTTP
         try {
             const response = await fetch('http://localhost:8080/process', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/octet-stream',
-                    'X-File-Type': type
+                    'X-File-Type': type,
+                    ...(jwt ? { 'Authorization': `Bearer ${jwt}` } : {})
                 },
                 body: new Uint8Array(file)
             });

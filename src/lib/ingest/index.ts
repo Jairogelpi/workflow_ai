@@ -13,6 +13,7 @@ import { generateEmbedding, saveNodeEmbedding } from './vectorizer';
 import crypto from 'crypto';
 import zlib from 'zlib';
 import { promisify } from 'util';
+import { processHeavyFile } from './parsers';
 
 const gzip = promisify(zlib.gzip);
 
@@ -27,7 +28,7 @@ const gzip = promisify(zlib.gzip);
 export async function uploadFile(
     file: File | Blob,
     fileName: string,
-    projectId: string = '00000000-0000-0000-0000-000000000000'
+    projectId: string
 ) {
     const supabase = await createClient();
     const nodeId = uuidv4();
@@ -98,44 +99,62 @@ export async function uploadFile(
 export async function digestFile(
     nodeId: string,
     file: File | Blob,
-    projectId: string = '00000000-0000-0000-0000-000000000000'
+    projectId: string,
+    jobId?: string
 ) {
     const supabase = await createClient();
+
+    const fileName = (file as any).name || 'artifact';
+    let effectiveJobId = jobId;
+
+    // 1. Military Grade Logic: Ensure Job Existence
+    if (!effectiveJobId) {
+        const { data: job } = await supabase.from('ingestion_jobs').insert({
+            project_id: projectId,
+            node_id: nodeId,
+            status: 'processing',
+            metadata: { source_title: fileName },
+            progress: 0.0
+        }).select().single();
+        if (job) effectiveJobId = job.id;
+    } else {
+        await supabase.from('ingestion_jobs').update({ status: 'processing', updated_at: new Date().toISOString() }).eq('id', effectiveJobId);
+    }
     const arrayBuffer = await file.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
     const now = new Date().toISOString();
-    const fileName = (file as any).name || 'artifact';
 
-    // 1. Extract
-    let extractedContent = '';
+    // 1. Determine local vs heavy (Rust)
+    let extractedChunks: string[] = [];
     const mimeType = file.type || 'application/octet-stream';
+    const isHeavy = (file.size > 1024 * 1024) || mimeType === 'application/pdf'; // >1MB or PDF
 
     try {
-        if (mimeType === 'application/pdf') {
-            extractedContent = await extractTextFromPDF(buffer);
-        } else if (mimeType.includes('word')) {
-            extractedContent = await extractTextFromDocx(buffer);
-        } else if (mimeType.includes('sheet')) {
-            extractedContent = await extractTextFromXlsx(buffer);
+        if (isHeavy) {
+            const heavyResult = await processHeavyFile(buffer, mimeType === 'application/pdf' ? 'pdf' : 'html' as any);
+            extractedChunks = heavyResult.map(r => r.data.content);
         } else {
-            extractedContent = await extractTextFromGeneric(buffer);
+            let text = '';
+            if (mimeType.includes('word')) text = await extractTextFromDocx(buffer);
+            else if (mimeType.includes('sheet')) text = await extractTextFromXlsx(buffer);
+            else text = await extractTextFromGeneric(buffer);
+
+            extractedChunks = chunkText(text) || [];
         }
     } catch (e) {
-        extractedContent = `[Extraction Failed for ${fileName}]`;
+        console.error('[Digestion] Extraction failed:', e);
+        if (effectiveJobId) await supabase.from('ingestion_jobs').update({ status: 'failed', error_message: 'Extraction failed' }).eq('id', effectiveJobId);
+        return { success: false, error: 'Extraction failed' };
     }
 
-    // 2. Chunk & Vectorize
-    if (extractedContent && extractedContent.length > 500) {
-        const chunks = chunkText(extractedContent);
-        if (!chunks) return { success: true, processed: false };
+    // 2. Bulk Persistence (Solve N+1)
+    if (extractedChunks.length > 0) {
+        const nodesToUpsert: any[] = [];
+        const edgesToUpsert: any[] = [];
 
-        for (let i = 0; i < chunks.length; i++) {
-            const chunk = chunks[i];
-            if (typeof chunk !== 'string') continue;
-
+        extractedChunks.forEach((chunk, i) => {
             const excerptId = uuidv4();
-
-            await supabase.from('work_nodes').upsert({
+            nodesToUpsert.push({
                 id: excerptId,
                 project_id: projectId,
                 type: 'excerpt',
@@ -144,17 +163,49 @@ export async function digestFile(
                 updated_at: now
             });
 
-            await supabase.from('work_edges').upsert({
+            edgesToUpsert.push({
                 source_node_id: excerptId,
                 target_node_id: nodeId,
                 relation: 'part_of',
                 project_id: projectId
             });
+        });
 
-            const embedding = await generateEmbedding(chunk);
-            await saveNodeEmbedding(excerptId, embedding);
+        // Parallel Bulk Upsert
+        await Promise.all([
+            supabase.from('work_nodes').upsert(nodesToUpsert),
+            supabase.from('work_edges').upsert(edgesToUpsert)
+        ]);
+
+        // 3. Batched Vectorization (Prevent Timeouts & Track Progress)
+        const BATCH_SIZE = 20;
+        for (let i = 0; i < nodesToUpsert.length; i += BATCH_SIZE) {
+            const batchNodes = nodesToUpsert.slice(i, i + BATCH_SIZE);
+            const batchChunks = extractedChunks.slice(i, i + BATCH_SIZE);
+
+            try {
+                const embeddings = await generateEmbedding(batchChunks);
+                await saveNodeEmbedding(batchNodes.map(n => n.id), embeddings);
+
+                // Update progress in job (Military Grade: Using dedicated column)
+                if (effectiveJobId) {
+                    const progress = (i + batchNodes.length) / nodesToUpsert.length;
+                    await supabase.from('ingestion_jobs').update({
+                        progress,
+                        updated_at: new Date().toISOString()
+                    }).eq('id', effectiveJobId);
+                }
+            } catch (err) {
+                console.error(`[Digestion] Vectorization failed at batch ${i}:`, err);
+                // We don't fail the whole job if some chunks are missing embeddings,
+                // but we log it. In a stricter system, we might want to retry.
+            }
         }
     }
 
-    return { success: true, chunks: (extractedContent.length > 500) ? 1 : 0 };
+    if (effectiveJobId) {
+        await supabase.from('ingestion_jobs').update({ status: 'completed', updated_at: new Date().toISOString() }).eq('id', effectiveJobId);
+    }
+
+    return { success: true, chunks: extractedChunks.length };
 }

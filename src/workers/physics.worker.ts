@@ -63,19 +63,30 @@ class D3Engine implements PhysicsEngine {
     }
 
     update(nodes: NodeData[], edges: EdgeData[]) {
+        // [Performance] Merging nodes instead of replacing them prevents 'Ghost Physics' jump
         const nodeMap = new Map(this.nodes.map(n => [n.id, n]));
         this.nodes = nodes.map(newN => {
-            const existing = nodeMap.get(newN.id);
+            const existing = nodeMap.get(newN.id) as any;
             return {
                 ...newN,
-                x: existing?.x || newN.x || this.width / 2 + (Math.random() - 0.5) * 50,
-                y: existing?.y || newN.y || this.height / 2 + (Math.random() - 0.5) * 50,
+                x: existing?.x ?? newN.x ?? this.width / 2,
+                y: existing?.y ?? newN.y ?? this.height / 2,
+                vx: existing?.vx ?? 0,
+                vy: existing?.vy ?? 0,
                 fx: newN.isPinned ? (existing?.x ?? newN.x ?? null) : null,
                 fy: newN.isPinned ? (existing?.y ?? newN.y ?? null) : null
             };
         });
+
         this.edges = edges.map(e => ({ ...e }));
-        this.startSim();
+
+        if (this.simulation) {
+            this.simulation.nodes(this.nodes);
+            this.simulation.force('link').links(this.edges);
+            this.simulation.alpha(0.3).restart(); // Lower alpha for gentle sync
+        } else {
+            this.startSim();
+        }
     }
 
     resize(w: number, h: number) {
@@ -160,14 +171,21 @@ class WasmEngine implements PhysicsEngine {
     }
 
     private loop() {
-        // This is a placeholder. Real WASM integration requires memory management.
-        // We assume the user compiles the provided lib.rs which creates a JS-friendly 'apply_forces'
+        if (!this.wasmModule) return;
+
         try {
-            // const result = this.wasmModule.apply_forces(this.nodes, this.edges);
-            // postMessage({ type: 'TICK_RESULT', nodes: result });
-            // requestAnimationFrame(() => this.loop());
+            // [Note] The Antigravity WASM expects the graph in its optimized format
+            // If the module provides apply_forces, we use it.
+            if (this.wasmModule.apply_forces) {
+                const result = this.wasmModule.apply_forces(this.nodes, this.edges);
+                if (result) {
+                    postMessage({ type: 'TICK_RESULT', nodes: result });
+                }
+            }
+            // Request next frame
+            requestAnimationFrame(() => this.loop());
         } catch (e) {
-            console.error('WASM Loop Error', e);
+            console.error('[PhysicsWorker] WASM Loop Error (falling back to standby):', e);
         }
     }
 }
@@ -183,16 +201,16 @@ let useWasm = false;
 async function bootstrap() {
     try {
         // [Ambitious] Try to load the Antigravity Engine WASM
-        const wasm = await import('../../antigravity-engine/pkg/antigravity_engine_bg.wasm' as any);
-        const { apply_forces } = await import('../../antigravity-engine/pkg/antigravity_engine.js' as any);
+        // We assume the build:wasm script has been run
+        const wasm = await import('../../antigravity-engine/pkg/antigravity_engine.js' as any);
+        await wasm.default(); // Initialize WASM
 
-        console.log('[PhysicsWorker] 🦀 WASM Engine Loaded!');
-        // Initialize WASM engine here
+        console.log('[PhysicsWorker] 🦀 WASM Engine Loaded and Initialized!');
+
         useWasm = true;
-        // engine = new WasmEngine({ apply_forces });
-        engine = new D3Engine(); // Fallback until fully implemented interface
+        engine = new WasmEngine(wasm);
     } catch (e) {
-        console.log('[PhysicsWorker] 🐢 WASM not found. Falling back to D3 (TypeScript).');
+        console.log('[PhysicsWorker] 🐢 WASM not available yet. Using D3 Engine (TypeScript) as high-perf fallback.');
         engine = new D3Engine();
     }
 }

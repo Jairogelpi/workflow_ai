@@ -262,7 +262,7 @@ export default function NodeEditor() {
             </div>
 
             {/* Inbox Triage Alert */}
-            {selectedNode && (selectedNode as any).project_id === '00000000-0000-0000-0000-000000000000' && (
+            {selectedNode && !((selectedNode as any).project_id) && (
                 <div className="p-3 bg-blue-900/20 border-t border-blue-900/40 text-center">
                     <p className="text-[10px] text-blue-400 font-bold uppercase tracking-widest">
                         Inbox: Triage required

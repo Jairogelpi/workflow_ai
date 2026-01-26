@@ -1,17 +1,21 @@
 import { useEffect, useRef } from 'react';
-import { useGraphStore } from '../store/useGraphStore';
+import { useGraphStore, AppNode } from '../store/useGraphStore';
 import { traceSpan } from '../kernel/observability';
+import { useReactFlow } from 'reactflow';
 
 /**
- * Antigravity Physics Engine Hook (Refactored v2)
+ * Antigravity Physics Engine Hook (Refactored v3)
  * Offloads physics calculation to a Web Worker for 60FPS UI performance.
+ * Optimized: Uses React Flow's internal store for ticks to avoid Zustand re-render storms.
  */
 export function useAntigravityEngine() {
     const nodes = useGraphStore(state => state.nodes);
     const edges = useGraphStore(state => state.edges);
-    const setNodes = useGraphStore(state => state.setNodes);
+    const setNodesZustand = useGraphStore(state => state.setNodes);
     const isAntigravityActive = useGraphStore(state => state.isAntigravityActive);
+    const syncPositions = useGraphStore(state => state.syncPositions);
 
+    const { setNodes: setNodesFlow } = useReactFlow();
     const workerRef = useRef<Worker | null>(null);
 
     // 1. Initialize Worker
@@ -20,25 +24,29 @@ export function useAntigravityEngine() {
             workerRef.current = new Worker(new URL('../workers/physics.worker.ts', import.meta.url));
 
             // Listen for ticks
-            workerRef.current.onmessage = (e) => {
+            workerRef.current.onmessage = (e: MessageEvent) => {
                 const { type, nodes: updatedPositions } = e.data;
                 if (type === 'TICK_RESULT') {
-                    // Update store with new positions
-                    // We must read the latest state directly since setNodes doesn't accept a callback
-                    const currentNodes = useGraphStore.getState().nodes;
-
-                    const updatedNodes = currentNodes.map(n => {
-                        const update = updatedPositions.find((u: any) => u.id === n.id);
-                        if (update) {
-                            return {
-                                ...n,
-                                position: { x: update.x, y: update.y }
-                            };
-                        }
-                        return n;
+                    // [Performance] Update React Flow's internal state directly
+                    // This bypasses the Zustand re-render cycle for high-frequency position updates
+                    let latestNodes: AppNode[] = [];
+                    setNodesFlow((currentFlowNodes) => {
+                        latestNodes = currentFlowNodes.map(n => {
+                            const update = updatedPositions.find((u: any) => u.id === n.id);
+                            if (update) {
+                                return {
+                                    ...n,
+                                    position: { x: update.x, y: update.y }
+                                };
+                            }
+                            return n;
+                        });
+                        return latestNodes as any;
                     });
 
-                    setNodes(updatedNodes);
+                    // [Sync] Trigger a debounced sync to the global store and backend
+                    // We pass the latestNodes directly to avoid reading from potentially stale state
+                    syncPositions(latestNodes);
                 }
             };
         }
@@ -49,7 +57,7 @@ export function useAntigravityEngine() {
                 workerRef.current = null;
             }
         };
-    }, [setNodes]);
+    }, []);
 
     // [Performance] Compute a lightweight hash for pin state to avoid re-syncing on text changes
     const pinSignature = nodes.map(n => n.data.metadata.pin ? '1' : '0').join('');
@@ -83,7 +91,7 @@ export function useAntigravityEngine() {
             });
         });
 
-    }, [nodes.length, edges.length, isAntigravityActive, pinSignature]); // React to Pin changes!
+    }, [nodes.length, edges.length, isAntigravityActive, pinSignature]);
 
     // 3. Handle Resize
     useEffect(() => {

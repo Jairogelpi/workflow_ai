@@ -16,9 +16,19 @@ import { ChangeProposal } from '../kernel/collaboration/Negotiator';
 import { AlignmentReport } from '../kernel/alignment_types';
 import { createVersion, computeNodeHash } from '../kernel/versioning';
 import { canModifyNode, canDeleteNode } from '../kernel/guards';
+import { traceSpan } from '../kernel/observability';
 import { backendToFlow } from '../lib/adapters';
 import { syncService } from '../lib/sync';
 import * as d3 from 'd3-force';
+
+// Simple debounce helper to avoid external dependencies for now
+const debounce = (fn: Function, ms: number) => {
+    let timeoutId: any;
+    return function (this: any, ...args: any[]) {
+        clearTimeout(timeoutId);
+        timeoutId = setTimeout(() => fn.apply(this, args), ms);
+    };
+};
 
 // AppNode uses the Kernel WorkNode as its internal data
 export type AppNode = Node<WorkNode, string>;
@@ -131,6 +141,7 @@ interface GraphState {
     // Hito 4.1: Project Initialization
     isBooting: boolean;
     projectManifest: {
+        id: string;
         name: string;
         description: string;
         roles: Record<string, UserRole>;
@@ -208,6 +219,19 @@ interface GraphState {
     // Phase 12: Structural X-Ray
     isXRayActive: boolean;
     setXRayActive: (active: boolean) => void;
+
+    // Persistance (Debounced)
+    syncPositions: (providedNodes?: AppNode[]) => void;
+    debouncedSyncNode: (projectId: string, node: WorkNode) => void;
+    debouncedSyncEdge: (projectId: string, edge: WorkEdge) => void;
+
+    // Optimistic UI Helpers
+    optimisticUpdate: <T>(action: () => T, rollback: (snapshot: any) => void) => Promise<T>;
+
+    // Real-Time (100% Dynamic)
+    subscribeToGraph: (projectId: string) => void;
+    unsubscribeFromGraph: () => void;
+    currentChannel: any | null;
 }
 
 export const useGraphStore = create<GraphState>((set, get) => ({
@@ -443,10 +467,60 @@ export const useGraphStore = create<GraphState>((set, get) => ({
         }
     },
 
-    setNodes: (nodes) => set({ nodes }),
+    setNodes: (nodes) => {
+        set({ nodes });
+        get().syncPositions();
+    },
     setEdges: (edges) => set({ edges }),
     setSearchQuery: (searchQuery) => set({ searchQuery }),
     setCurrentUser: (currentUser) => set({ currentUser }),
+
+    // Debounced position sync (Hito 7.9)
+    // Prevents network saturation during Antigravity physics ticks (16ms)
+    syncPositions: debounce(async (providedNodes?: AppNode[]) => {
+        const { nodes, projectManifest } = get();
+        const nodesToSync = providedNodes || nodes;
+        if (nodesToSync.length === 0) return;
+
+        const projectId = projectManifest ? (projectManifest as any).id : null;
+        if (!projectId) return;
+
+        // Update WorkNode metadata with current positions
+        const workNodes = nodesToSync.map(n => {
+            const data = { ...n.data };
+            data.metadata = {
+                ...data.metadata,
+                spatial: { x: n.position.x, y: n.position.y }
+            };
+            return data;
+        });
+
+        try {
+            await syncService.syncAll(projectId, workNodes, []);
+        } catch (error) {
+            console.error('[Store] Debounced position sync failed:', error);
+        }
+    }, 2000),
+
+
+    // Debounced Node Sync (Hito 7.9)
+    debouncedSyncNode: debounce(async (projectId: string, node: WorkNode) => {
+        try {
+            await syncService.upsertNode(projectId, node);
+        } catch (error) {
+            console.error('[Store] Debounced node sync failed:', error);
+        }
+    }, 1000),
+
+    // Debounced Edge Sync (Hito 7.9)
+    debouncedSyncEdge: debounce(async (projectId: string, edge: WorkEdge) => {
+        try {
+            await syncService.upsertEdge(projectId, edge);
+        } catch (error) {
+            console.error('[Store] Debounced edge sync failed:', error);
+        }
+    }, 1000),
+
 
     voteOnNode: (nodeId, agentId, vote) => set((state) => {
         const updatedGhostNodes = state.ghostNodes.map(node => {
@@ -473,58 +547,76 @@ export const useGraphStore = create<GraphState>((set, get) => ({
     }),
 
     loadProject: async (projectId) => {
-        set({ isLoading: true });
-        try {
-            const { nodes: rawNodes, edges: rawEdges } = await syncService.fetchGraph(projectId);
-            const flowNodes = rawNodes.map(node => backendToFlow(node));
-            const flowEdges = rawEdges.map(edge => ({
-                id: edge.id,
-                source: edge.source,
-                target: edge.target,
-                data: edge
-            }));
-            set({ nodes: flowNodes, edges: flowEdges, isLoading: false });
-        } catch (error) {
-            console.error('Failed to hydrate graph:', error);
-            set({ isLoading: false });
-        }
+        return traceSpan('store.load_project', { projectId }, async () => {
+            set({ isLoading: true });
+            try {
+                // [Hito 4.1] Setup context before hydration
+                set({ projectManifest: { id: projectId, name: 'Loading...', description: '', roles: {} } as any });
+
+                const { nodes: rawNodes, edges: rawEdges } = await syncService.fetchGraph(projectId);
+                const flowNodes = rawNodes.map(node => backendToFlow(node));
+                const flowEdges = rawEdges.map(edge => ({
+                    id: edge.id,
+                    source: edge.source,
+                    target: edge.target,
+                    data: edge
+                }));
+                set({ nodes: flowNodes, edges: flowEdges, isLoading: false });
+            } catch (error) {
+                console.error('Failed to hydrate graph:', error);
+                set({ isLoading: false });
+            }
+        });
     },
 
     initProjectSwarm: async (name, description, roles) => {
-        set({ isBooting: true, projectManifest: { name, description, roles } });
-        const { addRLMThought, currentUser } = get();
+        return traceSpan('store.init_project_swarm', { name }, async () => {
+            set({ isBooting: true, projectManifest: { id: 'pending', name, description, roles } });
+            const { addRLMThought, currentUser } = get();
 
-        addRLMThought({ message: `BOOT_SEQUENCE: Iniciando enjambre para '${name}'...`, type: 'info' });
+            addRLMThought({ message: `BOOT_SEQUENCE: Iniciando enjambre para '${name}'...`, type: 'info' });
 
-        try {
-            // [Phase 11] Trigger RLM Scaffolding
-            addRLMThought({ message: "RLM_COMPILER: Analizando intención semántica...", type: 'reasoning' });
+            try {
+                // [Phase 11] Trigger RLM Scaffolding
+                addRLMThought({ message: "RLM_COMPILER: Analizando intención semántica...", type: 'reasoning' });
 
-            // [Hito 7.9] Orchestrating RLM Dispatcher and SAT consistency
-            // const { RLMDispatcher } = await import('../kernel/RLMDispatcher'); // Future
+                // [Hito 7.9] Orchestrating RLM Dispatcher and SAT consistency
+                // const { RLMDispatcher } = await import('../kernel/RLMDispatcher'); // Future
 
-            // PERSISTENCE LAYER: Save to Supabase
-            // Use current user or fallback (though auth should be active)
-            const ownerId = currentUser.id || '00000000-0000-0000-0000-000000000000';
-            const project = await syncService.createProject(name, description, ownerId);
+                // PERSISTENCE LAYER: Save to Supabase
+                // Use current user (auth required)
+                const ownerId = currentUser.id;
+                if (!ownerId) throw new Error('AUTHORIZATION_REQUIRED: Debes iniciar sesión.');
 
-            addRLMThought({ message: `BOOT_COMPLETE: Proyecto '${name}' nacido en el Canon (ID: ${project.id}).`, type: 'success' });
-            set({ isBooting: false });
+                const project = await syncService.createProject(name, description, ownerId);
 
-            return project.id; // Return for navigation
-        } catch (error) {
-            console.error('[GraphStore] Swarm Boot Error:', error);
-            set({ isBooting: false });
-            throw error;
-        }
+                addRLMThought({ message: `BOOT_COMPLETE: Proyecto '${name}' nacido en el Canon (ID: ${project.id}).`, type: 'success' });
+                set({ isBooting: false, projectManifest: { id: project.id, name, description, roles } });
+
+                return project.id; // Return for navigation
+            } catch (error) {
+                console.error('[GraphStore] Swarm Boot Error:', error);
+                set({ isBooting: false });
+                throw error;
+            }
+        });
     },
 
     centerNode: (id) => set({ selectedNodeId: id }),
 
     onNodesChange: (changes) => {
-        set({
-            nodes: applyNodeChanges(changes, get().nodes) as AppNode[],
-        });
+        const { nodes } = get();
+        // [Optimization] Filter out position changes from global state update to prevent re-render storms
+        // React Flow handles the visual movement internally; we only need to sync back occasionally.
+        const filteredChanges = changes.filter(c => c.type !== 'position');
+
+        if (filteredChanges.length > 0) {
+            const updatedNodes = applyNodeChanges(filteredChanges, nodes) as AppNode[];
+            set({ nodes: updatedNodes });
+        }
+
+        // If something other than position changed (e.g., selection), we sync immediately.
+        // Position sync is handled by debouncedSyncPositions or dragStop.
     },
 
     onEdgesChange: (changes) => {
@@ -571,8 +663,10 @@ export const useGraphStore = create<GraphState>((set, get) => ({
                 edges: addEdge(newEdge, edges) as AppEdge[],
             });
 
-            const projectId = get().projectManifest ? (get().projectManifest as any).id : 'temp-session';
-            await syncService.upsertEdge(projectId, newWorkEdge);
+            const projectId = get().projectManifest ? (get().projectManifest as any).id : null;
+            if (projectId) {
+                await syncService.upsertEdge(projectId, newWorkEdge);
+            }
 
         } catch (err) {
             console.error('[SyncGuardian] Edge creation rejected:', err);
@@ -620,7 +714,10 @@ export const useGraphStore = create<GraphState>((set, get) => ({
 
             set({ nodes: updatedNodes });
             if (updatedNodeRecord) {
-                await syncService.upsertNode(get().projectManifest ? (get().projectManifest as any).id : 'temp-session', updatedNodeRecord);
+                const projectId = get().projectManifest ? (get().projectManifest as any).id : null;
+                if (projectId) {
+                    get().debouncedSyncNode(projectId, updatedNodeRecord);
+                }
             }
         } catch (err) {
             console.error('[SyncGuardian] Mutation rejected:', err);
@@ -668,12 +765,15 @@ export const useGraphStore = create<GraphState>((set, get) => ({
         const flowNode = backendToFlow(finalNode, position || { x: Math.random() * 400, y: Math.random() * 400 });
 
         set({ nodes: [...get().nodes, flowNode] });
-        const projectId = get().projectManifest ? (get().projectManifest as any).id : 'temp-session'; // Fallback only if no project loaded
-        await syncService.upsertNode(projectId, finalNode);
+        const projectId = get().projectManifest ? (get().projectManifest as any).id : null;
+        if (projectId) {
+            await syncService.upsertNode(projectId, finalNode);
+        }
     },
 
     mutateNodeType: async (id, newType) => {
-        const { nodes } = get();
+        const { nodes, projectManifest, triggerRipple } = get();
+        const originalNodes = [...nodes];
         let updatedNodeRecord: WorkNode | null = null;
 
         const updatedNodes = nodes.map((node) => {
@@ -682,7 +782,7 @@ export const useGraphStore = create<GraphState>((set, get) => ({
                 const newData: any = {
                     id: oldData.id,
                     type: newType,
-                    metadata: oldData.metadata
+                    metadata: { ...oldData.metadata }
                 };
 
                 const oldContent = (oldData as any).content || (oldData as any).statement || (oldData as any).rationale || (oldData as any).summary || (oldData as any).description || (oldData as any).details || (oldData as any).name || (oldData as any).premise || (oldData as any).rule || '';
@@ -698,6 +798,7 @@ export const useGraphStore = create<GraphState>((set, get) => ({
                 else if (newType === 'constraint') { newData.rule = oldContent; newData.enforcement_level = 'strict'; }
                 else if (newType === 'source') { newData.citation = oldContent; }
 
+                // Optimistic Versioning (Calculated locally)
                 const updatedMetadata = createVersion(newData as WorkNode, oldData.metadata.version_hash);
                 updatedNodeRecord = { ...newData, metadata: updatedMetadata } as WorkNode;
                 return { ...node, data: updatedNodeRecord };
@@ -705,42 +806,64 @@ export const useGraphStore = create<GraphState>((set, get) => ({
             return node;
         });
 
-        // [Hito 7.9] SyncGuardian Audit for Type Mutation
+        // 1. Optimistic Update
+        set({ nodes: updatedNodes });
+
+        // 2. Background Verification & Persistence
         try {
             const { SyncGuardian } = await import('../kernel/SyncGuardian');
             await SyncGuardian.handleMutation(id, { type: newType });
 
-            set({ nodes: updatedNodes });
             if (updatedNodeRecord) {
-                await syncService.upsertNode(get().projectManifest ? (get().projectManifest as any).id : 'temp-session', updatedNodeRecord);
+                const projectId = projectManifest?.id;
+                if (projectId) {
+                    get().debouncedSyncNode(projectId, updatedNodeRecord);
+                }
             }
+        } catch (err: any) {
+            console.warn('[Optimistic UI] Rollback:', err.message);
+            set({ nodes: originalNodes });
+            triggerRipple({ type: 'error', message: `Rechazado: ${err.message}`, intensity: 'medium' });
+        }
+    },
+
+    optimisticUpdate: async (action, rollback) => {
+        const snapshot = { nodes: [...get().nodes], edges: [...get().edges] };
+        try {
+            return await action();
         } catch (err) {
-            console.error('[SyncGuardian] Mutation rejected:', err);
+            rollback(snapshot);
+            throw err;
         }
     },
 
     deleteNode: async (id: string) => {
-        const { nodes, edges, currentUser } = get();
-        const targetNode = nodes.find(n => n.id === id);
+        return traceSpan('store.delete_node', { nodeId: id }, async () => {
+            const { nodes, edges, currentUser } = get();
+            const targetNode = nodes.find(n => n.id === id);
 
-        if (targetNode && !canDeleteNode(targetNode.data, { nodes: {}, edges: Object.fromEntries(edges.map(e => [e.id, e.data])) } as any, currentUser.role, currentUser.id)) {
-            return;
-        }
-
-        set({
-            nodes: nodes.filter(n => n.id !== id),
-            edges: edges.filter(e => e.source !== id && e.target !== id)
-        });
-
-        try {
-            await syncService.archiveNode(id);
-            const edgesToArchive = edges.filter(e => e.source === id || e.target === id);
-            for (const edge of edgesToArchive) {
-                await syncService.archiveEdge(edge.id);
+            if (targetNode && !canDeleteNode(targetNode.data, { nodes: {}, edges: Object.fromEntries(edges.map(e => [e.id, e.data])) } as any, currentUser.role, currentUser.id)) {
+                return;
             }
-        } catch (error) {
-            console.error('Failed to archive node:', error);
-        }
+
+            set({
+                nodes: nodes.filter(n => n.id !== id),
+                edges: edges.filter(e => e.source !== id && e.target !== id)
+            });
+
+            try {
+                await syncService.archiveNode(id);
+                const edgesToArchive = edges
+                    .filter(e => e.source === id || e.target === id)
+                    .map(e => e.id);
+
+                if (edgesToArchive.length > 0) {
+                    await syncService.archiveEdges(edgesToArchive);
+                }
+            } catch (error) {
+                console.error('Failed to archive node/edges:', error);
+            }
+        });
     },
 
     signNode: async (id, signerId) => {
@@ -809,7 +932,10 @@ export const useGraphStore = create<GraphState>((set, get) => ({
 
         set({ nodes: updatedNodes });
         if (updatedNodeRecord) {
-            await syncService.upsertNode(get().projectManifest ? (get().projectManifest as any).id : 'temp-session', updatedNodeRecord);
+            const projectId = get().projectManifest?.id;
+            if (projectId) {
+                get().debouncedSyncNode(projectId, updatedNodeRecord);
+            }
         }
     },
 
@@ -829,7 +955,10 @@ export const useGraphStore = create<GraphState>((set, get) => ({
 
         set({ nodes: updatedNodes });
         if (updatedNodeRecord) {
-            await syncService.upsertNode(get().projectManifest ? (get().projectManifest as any).id : 'temp-session', updatedNodeRecord);
+            const projectId = get().projectManifest?.id;
+            if (projectId) {
+                get().debouncedSyncNode(projectId, updatedNodeRecord);
+            }
         }
     },
 
@@ -854,7 +983,10 @@ export const useGraphStore = create<GraphState>((set, get) => ({
             draftNodes: draftNodes.filter(n => n.id !== id)
         });
 
-        await syncService.upsertNode(get().projectManifest ? (get().projectManifest as any).id : 'temp-session', finalizedNode);
+        const projectId = get().projectManifest?.id;
+        if (projectId) {
+            await syncService.upsertNode(projectId, finalizedNode);
+        }
     },
 
     discardDraft: (id) => {
@@ -944,7 +1076,10 @@ export const useGraphStore = create<GraphState>((set, get) => ({
 
         set({ nodes: updatedNodes });
         if (updatedNodeRecord) {
-            await syncService.upsertNode(get().projectManifest ? (get().projectManifest as any).id : 'temp-session', updatedNodeRecord);
+            const projectId = get().projectManifest?.id;
+            if (projectId) {
+                get().debouncedSyncNode(projectId, updatedNodeRecord);
+            }
         }
     },
 
@@ -967,7 +1102,10 @@ export const useGraphStore = create<GraphState>((set, get) => ({
 
         set({ nodes: updatedNodes });
         if (updatedNodeRecord) {
-            await syncService.upsertNode(get().projectManifest ? (get().projectManifest as any).id : 'temp-session', updatedNodeRecord);
+            const projectId = get().projectManifest?.id;
+            if (projectId) {
+                get().debouncedSyncNode(projectId, updatedNodeRecord);
+            }
         }
     },
 
@@ -988,7 +1126,10 @@ export const useGraphStore = create<GraphState>((set, get) => ({
 
         set({ edges: updatedEdges });
         if (updatedEdgeRecord) {
-            await syncService.upsertEdge(get().projectManifest ? (get().projectManifest as any).id : 'temp-session', updatedEdgeRecord);
+            const projectId = get().projectManifest?.id;
+            if (projectId) {
+                get().debouncedSyncEdge(projectId, updatedEdgeRecord);
+            }
         }
     },
 
@@ -1006,8 +1147,117 @@ export const useGraphStore = create<GraphState>((set, get) => ({
     setAntigravity: (active) => set({ isAntigravityActive: active }),
     toggleAntigravity: () => set({ isAntigravityActive: !get().isAntigravityActive }),
 
+    currentChannel: null,
+
+    subscribeToGraph: (projectId) => {
+        const { unsubscribeFromGraph } = get();
+        unsubscribeFromGraph(); // Clean up existing
+
+        console.log(`[RealTime] Suscribiendo al proyecto: ${projectId}`);
+        const { supabase } = require('../lib/supabase');
+
+        const channel = supabase
+            .channel(`project_graph_${projectId}`)
+            .on('postgres_changes', {
+                event: '*',
+                schema: 'public',
+                table: 'work_nodes',
+                filter: `project_id=eq.${projectId}`
+            }, (payload: any) => {
+                const { nodes, setNodes } = get();
+
+                if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
+                    const row = payload.new;
+                    if (row.deleted_at) {
+                        set({ nodes: nodes.filter(n => n.id !== row.id) });
+                        return;
+                    }
+
+                    // Reconstruct WorkNode (Flatenning content)
+                    const node: WorkNode = {
+                        id: row.id,
+                        type: row.type,
+                        metadata: {
+                            created_at: row.created_at,
+                            updated_at: row.updated_at,
+                            version_hash: row.current_version_hash,
+                            origin: row.origin,
+                            confidence: row.confidence,
+                            pin: row.is_pinned,
+                            validated: row.is_validated,
+                            ...row.metadata
+                        },
+                        ...row.content
+                    } as WorkNode;
+
+                    const flowNode = backendToFlow(node);
+
+                    if (payload.eventType === 'INSERT') {
+                        // Check if already exists (optimistic update might have added it)
+                        if (!nodes.find(n => n.id === flowNode.id)) {
+                            set({ nodes: [...nodes, flowNode] });
+                        }
+                    } else {
+                        set({ nodes: nodes.map(n => n.id === flowNode.id ? { ...flowNode, position: n.position } : n) });
+                    }
+                } else if (payload.eventType === 'DELETE') {
+                    set({ nodes: nodes.filter(n => n.id !== payload.old.id) });
+                }
+            })
+            .on('postgres_changes', {
+                event: '*',
+                schema: 'public',
+                table: 'work_edges',
+                filter: `project_id=eq.${projectId}`
+            }, (payload: any) => {
+                const { edges } = get();
+
+                if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
+                    const row = payload.new;
+                    if (row.deleted_at) {
+                        set({ edges: edges.filter(e => e.id !== row.id) });
+                        return;
+                    }
+
+                    const edge: AppEdge = {
+                        id: row.id,
+                        source: row.source_node_id,
+                        target: row.target_node_id,
+                        data: {
+                            id: row.id,
+                            source: row.source_node_id,
+                            target: row.target_node_id,
+                            relation: row.relation,
+                            metadata: row.metadata
+                        } as any
+                    };
+
+                    if (payload.eventType === 'INSERT') {
+                        if (!edges.find(e => e.id === edge.id)) {
+                            set({ edges: [...edges, edge] });
+                        }
+                    } else {
+                        set({ edges: edges.map(e => e.id === edge.id ? edge : e) });
+                    }
+                } else if (payload.eventType === 'DELETE') {
+                    set({ edges: edges.filter(e => e.id !== payload.old.id) });
+                }
+            })
+            .subscribe();
+
+        set({ currentChannel: channel });
+    },
+
+    unsubscribeFromGraph: () => {
+        const { currentChannel } = get();
+        if (currentChannel) {
+            const { supabase } = require('../lib/supabase');
+            supabase.removeChannel(currentChannel);
+            set({ currentChannel: null });
+        }
+    },
+
     applyForces: () => {
         // [DEPRECATED] Physics moved to Web Worker (physics.worker.ts)
-        // This function is kept as a no-op placeholder for legacy calls
     },
 }));

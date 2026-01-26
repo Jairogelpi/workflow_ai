@@ -12,48 +12,73 @@ export class SyncGuardian {
      */
     static async handleMutation(nodeId: string, delta: any) {
         return await traceSpan('sync_guardian_audit', { nodeId }, async () => {
-            const { triggerRipple, addRLMThought } = useGraphStore.getState();
+            const { triggerRipple, addRLMThought, nodes } = useGraphStore.getState();
+            const supabase = (await import('../lib/supabase')).supabase;
 
-            // 1. Sincronización de estado CRDT
-            // En un entorno real, llamaríamos a la librería crdt-sync
-            console.log(`[SyncGuardian] Aplicando delta CRDT para ${nodeId}`);
+            // 1. Zero Trust: Get current JWT session
+            const { data: { session } } = await supabase.auth.getSession();
+            const token = session?.access_token;
 
-            // 2. Validación SAT en Rust (Consistencia de PINs e Invariantes)
-            try {
-                // Simulamos una validación SAT rápida
-                // En el kernel de Rust esto buscaría contradicciones estructurales
-                const isConflict = delta.statement?.toLowerCase().includes('error') || delta.relation === 'contradicts';
-
-                if (isConflict) {
-                    (useGraphStore.getState() as any).triggerRipple({
-                        type: 'error',
-                        message: 'Logic Breach: El cambio contradice un Invariante PIN.',
-                        intensity: 'high'
-                    });
-                    addRLMThought({
-                        message: `SAT_ALERT: Violación estructural detectada en nodo ${nodeId.slice(0, 8)}.`,
-                        type: 'error'
-                    });
-                    throw new Error("Violación de Invariante detectada por Rust logic-engine.");
-                }
-            } catch (err: any) {
-                if (err.message && err.message.includes('SAT_ALERT')) throw err;
-                console.warn('[SyncGuardian] SAT solver fallback:', err);
+            // 2. Structural Validation (SAT Fallback/Preliminary)
+            const isStructuralConflict = delta.relation === 'contradicts';
+            if (isStructuralConflict) {
+                this.triggerSecurityAlert(nodeId, "Violación de Invariante detectada por reglas estructurales.");
+                throw new Error("Contradicción estructural inmediata.");
             }
 
-            // 3. Auditoría Semántica (RLM Shadow Audit)
-            if (this.isSignificantChange(delta)) {
-                addRLMThought({
-                    message: `SHADOW_AUDIT: Analizando deriva semántica para cambio en ${nodeId.slice(0, 8)}...`,
-                    type: 'reasoning'
-                });
+            // 3. AI Semantic Validation (RLM Core)
+            // Only validate textual claims/decisions to save latency
+            if (delta.statement || delta.content || delta.rationale) {
+                const claimText = delta.statement || delta.content || delta.rationale;
 
-                // Dispara el motor de alineación en segundo plano (No bloqueante)
-                // Esto genera los Ghost Nodes o parches necesarios
-                this.runShadowAudit(nodeId, delta);
+                try {
+                    const response = await fetch('http://localhost:8082/verify', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${token}`
+                        },
+                        body: JSON.stringify({
+                            claim: claimText,
+                            context: nodes.slice(0, 10).map(n => n.data), // Provide some context
+                            task_complexity: 'LOW'
+                        })
+                    });
+
+                    if (response.ok) {
+                        const result = await response.json();
+                        if (!result.consistent) {
+                            this.triggerSecurityAlert(nodeId, `RLM_REJECT: ${result.reasoning}`);
+                            throw new Error(result.reasoning);
+                        }
+
+                        addRLMThought({
+                            message: `RLM_VERIFIED: Cambio en ${nodeId.slice(0, 8)} validado por SLM (${result.confidence * 100}% confianza).`,
+                            type: 'success'
+                        });
+                    }
+                } catch (err: any) {
+                    // If backend is down, we allow in dev but log warning
+                    // In strict military mode, we would block.
+                    console.warn('[SyncGuardian] RLM Core unreachable or rejected:', err.message);
+                    if (err.message && !err.message.includes('fetch')) throw err;
+                }
             }
 
             return true;
+        });
+    }
+
+    private static triggerSecurityAlert(nodeId: string, message: string) {
+        const { triggerRipple, addRLMThought } = useGraphStore.getState();
+        triggerRipple({
+            type: 'error',
+            message: `Brecha Lógica: ${message}`,
+            intensity: 'high'
+        });
+        addRLMThought({
+            message: `SAT_ALERT: ${message} [Node: ${nodeId.slice(0, 8)}]`,
+            type: 'error'
         });
     }
 

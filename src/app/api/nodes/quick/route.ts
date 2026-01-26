@@ -24,7 +24,10 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
-        const projectId = '00000000-0000-0000-0000-000000000000'; // Default project
+        const projectId = body.projectId;
+        if (!projectId) {
+            return NextResponse.json({ success: false, error: 'Project ID is required' }, { status: 400 });
+        }
         const nodeId = uuidv4();
         const now = new Date().toISOString();
 

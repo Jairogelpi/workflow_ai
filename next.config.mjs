@@ -2,6 +2,9 @@
 const nextConfig = {
     reactStrictMode: true,
     output: 'standalone', // Optimized for Docker/Render
+    experimental: {
+        instrumentationHook: true,
+    },
     typescript: {
         // !! WARN !!
         // Ignoring build errors as tsc passes locally but next build stalls on literal unions
