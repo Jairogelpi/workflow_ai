@@ -6,14 +6,14 @@ create table if not exists node_embeddings (
   id uuid primary key references work_nodes(id) on delete cascade,
   project_id uuid not null, -- references projects(id)
   content text, -- Optional: cache of what was embedded
-  embedding vector(3072), -- OpenAI text-embedding-3-large dimension
+  embedding vector(768), -- Local nomic-embed-text dimension (Unified Standard)
   checksum text, -- To avoid re-embedding if content hasn't changed
   updated_at timestamp with time zone default timezone('utc'::text, now()) not null
 );
 
 -- Create a search function directly in Postgres for speed
 create or replace function match_nodes (
-  query_embedding vector(3072),
+  query_embedding vector(768),
   match_threshold float,
   match_count int,
   filter_project_id uuid
