@@ -151,34 +151,100 @@ fn assemble_pdf(ctx: &AssemblerContext) -> AssemblerResult {
     }
 }
 
+#[derive(Debug, Serialize, Deserialize, PartialEq)]
+pub enum Verdict {
+    Consistent,
+    Contradiction(String),
+    Undecided(String),
+    Ambiguous(Vec<String>),
+}
+
+pub struct NeuroAssembler {
+    buffer: Vec<String>,
+    axioms: Vec<String>,
+    safety_window: usize,
+}
+
+impl NeuroAssembler {
+    pub fn new(axioms: Vec<String>) -> Self {
+        Self {
+            buffer: Vec::new(),
+            axioms,
+            safety_window: 5,
+        }
+    }
+
+    /// Validates a chunk against the internal axiom pool. (Zero-Mock logic)
+    pub fn validate_chunk(&self, chunk: &str) -> Verdict {
+        let chunk_lower = chunk.to_lowercase();
+        
+        // 1. Ambiguity Detection
+        let triggers = vec!["ejecutar", "eliminar", "matar", "kill"];
+        if triggers.iter().any(|&t| chunk_lower.contains(t)) {
+            return Verdict::Ambiguous(vec!["Computing Context".to_string(), "Biological context".to_string()]);
+        }
+
+        // 2. Contradiction Detection
+        for axiom in &self.axioms {
+            let axiom_lower = axiom.to_lowercase();
+            // Simple contradiction logic: "A" vs "no A"
+            if axiom_lower.contains("no") {
+                let negated = axiom_lower.replace("no ", "").trim().to_string();
+                if chunk_lower.contains(&negated) {
+                    return Verdict::Contradiction(format!("PIN violation: {}", axiom));
+                }
+            } else {
+                let negated = format!("no {}", axiom_lower);
+                if chunk_lower.contains(&negated) {
+                     return Verdict::Contradiction(format!("PIN violation: {}", axiom));
+                }
+            }
+        }
+
+        Verdict::Consistent
+    }
+}
+
 #[derive(Deserialize)]
 pub struct CollisionRequest {
-    pub claim: str,
+    pub claim: String,
     pub context: Vec<serde_json::Value>,
     pub pin_nodes: Vec<serde_json::Value>,
+    pub project_id: Option<String>,
 }
 
 /// The Neuro-Collider: Intercepts and corrects sycophancy in real-time.
-async fn neuro_collision(Json(req): Json<serde_json::Value>) -> impl IntoResponse {
+async fn neuro_collision(Json(req): Json<CollisionRequest>) -> impl IntoResponse {
     let client = reqwest::Client::new();
     
-    let res = client.post("http://localhost:8082/bicameral_stream")
+    // Extract PIN nodes for the internal NeuroAssembler
+    let pins: Vec<String> = req.pin_nodes.iter()
+        .map(|n| n.get("content").or(n.get("statement")).unwrap_or(&serde_json::Value::Null).as_str().unwrap_or("").to_string())
+        .filter(|s| !s.is_empty())
+        .collect();
+
+    let res = match client.post("http://localhost:8082/bicameral_stream")
         .json(&req)
         .send()
-        .await
-        .unwrap();
+        .await {
+            Ok(r) => r,
+            Err(e) => return Body::from(format!("[Error: Failed to connect to RLM-Core: {}]", e)).into_response(),
+        };
 
     let mut stream = res.bytes_stream();
-    let current_req = req.clone(); // Clone for capture
+    let current_req_clone = req.project_id.clone();
+    let claim_clone = req.claim.clone();
 
     let output_stream = stream! {
-        let mut buffer: Vec<String> = Vec::with_capacity(20);
-        let mut verdict: Option<String> = None;
-        let mut is_intercepted = false;
+        let mut assembler = NeuroAssembler::new(pins);
         let mut line_buffer = BytesMut::with_capacity(4096);
+        let mut finalized_verdict = false;
 
         while let Some(item) = stream.next().await {
-            let chunk = item.unwrap();
+            let chunk = match item {
+                Ok(c) => c,
+                Err(_) => break,
+            };
             line_buffer.extend_from_slice(&chunk);
             
             while let Some(pos) = line_buffer.iter().position(|&b| b == b'\n') {
@@ -188,57 +254,66 @@ async fn neuro_collision(Json(req): Json<serde_json::Value>) -> impl IntoRespons
 
                 if line_trimmed.starts_with("A:") {
                     let content = &line_trimmed[2..];
-                    if verdict.is_some() {
-                        if !is_intercepted {
-                            yield Ok::<_, std::io::Error>(content.to_string());
-                        }
-                    } else {
-                        buffer.push(content.to_string());
-                        if buffer.len() > 15 {
-                            for b in buffer.drain(..) {
-                                yield Ok::<_, std::io::Error>(b);
+                    assembler.buffer.push(content.to_string());
+
+                    // Speculative Truth Protocol: Validate sliding window
+                    if assembler.buffer.len() >= assembler.safety_window {
+                        let current_chunk = assembler.buffer.join("");
+                        let result = assembler.validate_chunk(&current_chunk);
+
+                        match result {
+                            Verdict::Consistent => {
+                                // Release first token of buffer to reduce latency
+                                if let Some(t) = Some(assembler.buffer.remove(0)) {
+                                    yield Ok::<_, std::io::Error>(t);
+                                }
+                            },
+                            Verdict::Contradiction(reason) => {
+                                // PHYSICAL VETO: Clear buffer and inject correction
+                                let rejected = assembler.buffer.concat();
+                                assembler.buffer.clear();
+                                
+                                // Recycle toxic waste
+                                let client_recycle = reqwest::Client::new();
+                                let recycle_payload = serde_json::json!({
+                                    "user_prompt": claim_clone,
+                                    "rejected_output": rejected,
+                                    "correction": reason,
+                                    "project_id": current_req_clone
+                                });
+                                tokio::spawn(async move {
+                                    let _ = client_recycle.post("http://localhost:8082/recycle").json(&recycle_payload).send().await;
+                                });
+
+                                yield Ok::<_, std::io::Error>(format!("\n🛡️ [AUTO-CORRECCIÓN: {}]\n", reason));
+                            },
+                            Verdict::Ambiguous(_) | Verdict::Undecided(_) => {
+                                // Signal uncertainty and release
+                                yield Ok::<_, std::io::Error>("⚠️".to_string());
+                                if let Some(t) = Some(assembler.buffer.remove(0)) {
+                                    yield Ok::<_, std::io::Error>(t);
+                                }
                             }
-                            verdict = Some("PASS_BY_TIMEOUT".to_string());
                         }
                     }
                 } else if line_trimmed.starts_with("B:") {
                     let v = &line_trimmed[2..];
-                    verdict = Some(v.to_string());
-                    
-                    if v.contains("FALLACY") || v.contains("INTERCEPT") {
-                        is_intercepted = true;
-                        let rejected = buffer.concat();
-                        buffer.clear();
-                        
-                        // --- [V1.8.0] Toxic Waste Capture ---
-                        let client_clone = reqwest::Client::new();
-                        let recycle_payload = serde_json::json!({
-                            "user_prompt": current_req.get("claim").unwrap_or(&serde_json::Value::String("unknown".to_string())),
-                            "rejected_output": rejected,
-                            "correction": v,
-                            "project_id": current_req.get("project_id")
-                        });
-                        
-                        tokio::spawn(async move {
-                            let _ = client_clone.post("http://localhost:8082/recycle")
-                                .json(&recycle_payload)
-                                .send()
-                                .await;
-                        });
-                        // --- End Capture ---
-
-                        yield Ok::<_, std::io::Error>(format!("⚠️ INTERVENCIÓN LÓGICA: {} DETECTADA\n\n---\n\n", v));
-                    } else {
-                        for b in buffer.drain(..) {
-                            yield Ok::<_, std::io::Error>(b);
-                        }
+                    if v.contains("FALLACY") && !finalized_verdict {
+                        yield Ok::<_, std::io::Error>(format!("\n⚠️ [B-STREAM VETO: {}]\n", v));
+                        assembler.buffer.clear();
+                        finalized_verdict = true;
                     }
                 } else if line_trimmed.starts_with("E:") {
-                    yield Ok::<_, std::io::Error>(format!("\n[Error: {}]\n", &line_trimmed[2..]));
+                    yield Ok::<_, std::io::Error>(format!("\n[RLM-Core Error: {}]\n", &line_trimmed[2..]));
                 }
             }
         }
+        
+        // Final Flush
+        for t in assembler.buffer.drain(..) {
+            yield Ok::<_, std::io::Error>(t);
+        }
     };
 
-    Body::wrap_stream(output_stream)
+    Body::wrap_stream(output_stream).into_response()
 }
