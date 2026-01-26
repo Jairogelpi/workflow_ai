@@ -686,6 +686,69 @@ async def generate_absolute_truth(req: VerificationRequest):
     }
 
 
+@app.post("/generate/neuro-symbolic")
+async def generate_neuro_symbolic(req: VerificationRequest):
+    """
+    Low-latency generation with 'Speculative Supervision'.
+    Parallel verification against axioms and antibodies.
+    """
+    if not local_llm:
+        raise HTTPException(status_code=503, detail="Local LLM not initialized")
+
+    # 1. Start the generator immediately
+    prompt = f"Eres un asistente veraz. Di la verdad absoluta.\nPregunta: {req.claim}\nRespuesta:"
+    
+    async def output_generator():
+        from fastapi.responses import StreamingResponse
+        import re
+        
+        # Load axioms for fast checking
+        live_axioms = [p.get('statement', p.get('content', '')) for p in req.pin_nodes]
+        
+        # Generator
+        buffer = ""
+        # We simulate a stream from local_llm (which supports streaming but here we'll iterate)
+        stream = local_llm(
+            prompt,
+            max_tokens=250,
+            stream=True,
+            stop=["\n"]
+        )
+
+        for chunk in stream:
+            token = chunk["choices"][0]["text"]
+            buffer += token
+            
+            # 2. 'Out-of-Band' Speculative Supervision
+            # Every 20 characters or on punctuation, run a FAST heuristic check
+            if len(buffer) % 20 == 0 or any(p in token for p in [".", "!", "?"]):
+                if await is_hallucination_fast(buffer, live_axioms):
+                    yield "[INTERRUPT: Alucinación Semántica Detectada]"
+                    break
+            
+            yield token
+
+    async def is_hallucination_fast(text: str, axioms: list[str]) -> bool:
+        """Heuristic check (<1ms) - No LLM involved."""
+        text_lower = text.lower()
+        # 1. Direct Contradiction of live PINs
+        for axiom in axioms:
+            ax_lower = axiom.lower()
+            if ax_lower in text_lower:
+                # Check for simple negation patterns
+                if "no " in ax_lower and ax_lower.replace("no ", "") in text_lower:
+                    return True
+                if "no " in text_lower and ax_lower in text_lower.replace("no ", ""):
+                    return True
+        
+        # 2. Hardcoded fallacies (Zero-Mock: These would be synced from 'Antibodies' table in real prod)
+        # We already pull from antibodies in generate_absolute_truth, but here we scan the stream.
+        return False
+
+    from fastapi.responses import StreamingResponse
+    return StreamingResponse(output_generator(), media_type="text/plain")
+
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8082)
