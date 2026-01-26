@@ -67,7 +67,7 @@ pub fn apply_local_update(_state_vector_b64: &str, content: &str, position: u32)
 /// Merges a remote update into the local document.
 /// Returns the merged content.
 #[wasm_bindgen]
-pub fn merge_remote_update(local_state_b64: &str, remote_update_b64: &str) -> String {
+pub fn merge_remote_update(_local_state_b64: &str, remote_update_b64: &str) -> String {
     let doc = Doc::new();
     let text = doc.get_or_insert_text("content");
     

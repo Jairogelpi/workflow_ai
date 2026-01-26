@@ -2,7 +2,7 @@ import { traceSpan, measureCost, estimateCallCost, getModelTier, auditStore } fr
 import { useSettingsStore } from '../../store/useSettingsStore';
 import { Vault } from '../../lib/security/vault';
 import { sanitizeLogs } from '../guards';
-import { getServerJWT } from '../../lib/auth-util';
+// import { getServerJWT } from '../../lib/auth-util'; // Removed static import to avoid Client Bundle poisoning
 
 interface LLMResponse {
     content: string;
@@ -23,7 +23,12 @@ export async function verifyWithLocalModel(
     pinNodes: any[]
 ): Promise<{ consistent: boolean; confidence: number; reasoning: string }> {
     try {
-        const jwt = typeof window === 'undefined' ? await getServerJWT() : null;
+        // Dynamic import to support Client-side execution without bundling server modules
+        let jwt = null;
+        if (typeof window === 'undefined') {
+            const { getServerJWT } = await import('../../lib/auth-util');
+            jwt = await getServerJWT();
+        }
 
         const response = await fetch(`${RLM_CORE_URL}/verify`, {
             method: 'POST',
@@ -58,7 +63,11 @@ export async function shouldUseLocalModel(
     requireHighQuality: boolean = false
 ): Promise<{ useLocal: boolean; recommendedModel: string; estimatedCost: number }> {
     try {
-        const jwt = typeof window === 'undefined' ? await getServerJWT() : null;
+        let jwt = null;
+        if (typeof window === 'undefined') {
+            const { getServerJWT } = await import('../../lib/auth-util');
+            jwt = await getServerJWT();
+        }
 
         const response = await fetch(`${RLM_CORE_URL}/route`, {
             method: 'POST',

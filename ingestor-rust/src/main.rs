@@ -1,23 +1,18 @@
+mod auth;
 mod parsers;
 mod chunking;
 
 use axum::{
     extract::{HeaderMap},
-    routing::post,
+    routing::{get, post},
     Router, Json,
+    middleware,
 };
 use serde::{Deserialize, Serialize};
 use std::net::SocketAddr;
 use tower_http::cors::{CorsLayer, Any};
-use axum::{
-    middleware::{self, Next},
-    response::Response,
-    http::{StatusCode, Request},
-};
-use jsonwebtoken::{decode, DecodingKey, Validation, Algorithm};
-use serde::{Deserialize, Serialize};
-use dotenv::dotenv;
-use std::env;
+use dotenvy::dotenv;
+
 #[derive(Serialize)]
 struct IngestResponse {
     chunks: Vec<String>,
@@ -36,10 +31,17 @@ async fn main() {
     
     dotenv().ok();
     
+    // Check JWT Secret
+    if std::env::var("SUPABASE_JWT_SECRET").is_err() {
+        tracing::error!("🔥 CRITICAL: SUPABASE_JWT_SECRET is not set.");
+        panic!("SUPABASE_JWT_SECRET required");
+    }
+
     // Define the application router
     let app = Router::new()
+        .route("/health", get(|| async { "OK" }))
         .route("/process", post(process_file))
-        .layer(middleware::from_fn(auth_middleware))
+        .layer(middleware::from_fn(auth::auth_middleware))
         .layer(
             CorsLayer::new()
                 .allow_origin(Any)
@@ -50,10 +52,8 @@ async fn main() {
     let addr = SocketAddr::from(([127, 0, 0, 1], 8080));
     tracing::info!("WorkGraph Ingestor (Rust) listening on {}", addr);
     
-    axum::Server::bind(&addr)
-        .serve(app.into_make_service())
-        .await
-        .unwrap();
+    let listener = tokio::net::TcpListener::bind(addr).await.unwrap();
+    axum::serve(listener, app).await.unwrap();
 }
 
 /**
@@ -85,39 +85,4 @@ async fn process_file(
         chunks,
         engine: "rust-worker-v1".to_string(),
     })
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-struct Claims {
-    aud: String,
-    exp: usize,
-}
-
-async fn auth_middleware<B>(
-    req: Request<B>,
-    next: Next<B>,
-) -> Result<Response, StatusCode> {
-    let auth_header = req.headers()
-        .get(axum::http::header::AUTHORIZATION)
-        .and_then(|header| header.to_str().ok());
-
-    match auth_header {
-        Some(auth_header) if auth_header.starts_with("Bearer ") => {
-            let token = &auth_header[7..];
-            let secret = env::var("SUPABASE_JWT_SECRET").map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
-            
-            let mut validation = Validation::new(Algorithm::HS256);
-            validation.set_audience(&["authenticated"]);
-
-            match decode::<Claims>(
-                token,
-                &DecodingKey::from_secret(secret.as_bytes()),
-                &validation,
-            ) {
-                Ok(_) => Ok(next.run(req).await),
-                Err(_) => Err(StatusCode::UNAUTHORIZED),
-            }
-        }
-        _ => Err(StatusCode::UNAUTHORIZED),
-    }
 }
