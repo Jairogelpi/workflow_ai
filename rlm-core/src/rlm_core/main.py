@@ -21,9 +21,9 @@ import numpy as np
 import math
 from functools import lru_cache
 try:
-    from rlm_core import logic_engine
+    from rlm_core import neuro_hypervisor as logic_engine
 except ImportError:
-    import logic_engine # For local dev
+    import neuro_hypervisor as logic_engine # For local dev
 from llama_cpp import Llama, LogitsProcessorList
 
 app = FastAPI(
