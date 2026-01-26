@@ -14,8 +14,7 @@ export async function generateEmbedding(input: string | string[]): Promise<numbe
     const inputs = Array.isArray(input) ? input : [input];
 
     if (!apiKey) {
-        console.warn('[Vectorizer] OPENAI_API_KEY not found. Falling back to structural mocks.');
-        return inputs.map(() => Array.from({ length: 1536 }, () => Math.random() - 0.5));
+        throw new Error('[Vectorizer] OPENAI_API_KEY is missing. Cannot generate real embeddings.');
     }
 
     try {

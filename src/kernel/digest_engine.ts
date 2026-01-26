@@ -81,20 +81,31 @@ export async function retrieveContext(
     return traceSpan('retrieve_context', { query_length: query.length, branchId }, async () => {
         const supabase = await createClient();
 
-        // 1. Try to fetch a valid Standard Digest
+        // 1. Try to fetch a valid Standard Digest (Even if stale - Phase 3 Self-Healing)
         const { data: digest } = await supabase
             .from('digests')
             .select('*')
             .eq('entity_id', branchId)
             .eq('entity_type', 'branch')
             .eq('digest_flavor', 'standard')
-            .eq('is_stale', false)
+            // .eq('is_stale', false) // REMOVED: We accept stale reads for availability
             .maybeSingle();
 
         // LOGIC: Use Digest if available AND not forced AND query is general
         const isGeneralQuery = query.length < 60 || /resumen|estado|summary|status/i.test(query);
 
         if (digest && (isGeneralQuery && !forceHighPrecision)) {
+
+            // [PHASE 3] SELF-HEALING MECHANISM
+            // If the memory is stale, we use it (Degraded Mode) triggers a refresh in background.
+            if (digest.is_stale) {
+                console.log(`[DigestEngine] 🩹 Self-Healing: Triggering background regeneration for ${branchId}`);
+                // Fire & Forget: Do not await this, let it run in background
+                regenerateBranchDigest(branchId).catch(e =>
+                    console.error('[DigestEngine] Background regeneration failed:', e)
+                );
+            }
+
             let finalText = digest.summary_text;
 
             // [SELECTIVE RETRIEVAL]
@@ -111,7 +122,7 @@ export async function retrieveContext(
                 text: finalText,
                 strategy: 'SELECTIVE',
                 sourceCount: 1,
-                warnings: digest.warnings
+                warnings: digest.warnings || (digest.is_stale ? [{ code: 'stale_memory', message: 'Digest is being regenerated' }] : [])
             };
         }
 
@@ -188,7 +199,8 @@ export async function regenerateBranchDigest(branchId: string): Promise<void> {
         // STRICT: We dynamically import the gateway. If it fails, we throw.
         const { generateText } = await import('./llm/gateway');
 
-        const resultRaw = await generateText(DIGEST_SYSTEM_PROMPT, payload);
+        // Pass branchId (Project ID) for Cost Attribution
+        const resultRaw = await generateText(DIGEST_SYSTEM_PROMPT, payload, 'REASONING', undefined, undefined, branchId);
         const cleanJson = resultRaw.content.replace(/```json/g, '').replace(/```/g, '').trim();
         const result: DigestResult = JSON.parse(cleanJson);
 
@@ -219,7 +231,7 @@ export async function regenerateBranchDigest(branchId: string): Promise<void> {
  * HIERARCHICAL ABSTRACTION (Gate 9)
  * Compiles a specific cluster of nodes into a parent Artifact node.
  */
-export async function createHierarchicalDigest(nodes: WorkNode[]): Promise<{ summary: string; artifactId: string }> {
+export async function createHierarchicalDigest(nodes: WorkNode[], projectId: string = 'global-system'): Promise<{ summary: string; artifactId: string }> {
     return traceSpan('hierarchical_digest', { node_count: nodes.length }, async () => {
         // 1. Serialize cluster
         const payload = serializeBranchForLLM(nodes, []); // No structure simplified for now
@@ -235,7 +247,7 @@ export async function createHierarchicalDigest(nodes: WorkNode[]): Promise<{ sum
             OUTPUT: Standard Markdown text. One paragraph.
         `;
 
-        const res = await generateText(ABSTRACT_SYSTEM, `Context:\n${payload}`);
+        const res = await generateText(ABSTRACT_SYSTEM, `Context:\n${payload}`, 'REASONING', undefined, undefined, projectId);
         const summary = res.content;
 
         return {

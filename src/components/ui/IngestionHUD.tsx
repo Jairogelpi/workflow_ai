@@ -141,8 +141,21 @@ export function IngestionHUD() {
                 </div>
             ))}
 
-            {/* Manual Swarm Trigger (Dev/Demo Mode) */}
-            <div className="pointer-events-auto flex justify-end">
+            {/* Manual Swarm Trigger & Memory Consolidation */}
+            <div className="pointer-events-auto flex justify-end gap-2">
+                <button
+                    onClick={async () => {
+                        console.log('[HUD] Resuming Memory...');
+                        if (projectId) {
+                            await triggerMemoryConsolidation(projectId);
+                        }
+                    }}
+                    className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold uppercase tracking-wider rounded-full shadow-lg transition-all active:scale-95"
+                >
+                    <Brain size={14} className="" />
+                    <span>Memoria Infinita</span>
+                </button>
+
                 <button
                     onClick={async () => {
                         const { SwarmOrchestrator } = await import('../../kernel/collaboration/SwarmOrchestrator');

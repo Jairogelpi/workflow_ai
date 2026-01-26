@@ -4,7 +4,13 @@
 let offscreenCreating: Promise<void> | null = null;
 
 // 1. Context Menu to Open Link in WorkGraph
-chrome.runtime.onInstalled.addListener(() => {
+// 1. Context Menu to Open Link in WorkGraph
+chrome.runtime.onInstalled.addListener((details) => {
+    // Open Welcome Page on Install
+    if (details.reason === 'install') {
+        chrome.tabs.create({ url: 'welcome.html' });
+    }
+
     chrome.contextMenus.create({
         id: "open-in-workgraph",
         title: "Open in WorkGraph OS",
@@ -52,6 +58,29 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (message.type === 'CLASSIFY_TEXT') {
         classifyText(message.text).then(sendResponse);
         return true;
+    }
+
+    // [PERFECTION] Forward X-Ray Captures to SidePanel (where Auth lives)
+    if (message.type === 'CAPTURE_BLOCK') {
+        // We forward the message to the SidePanel (Runtime)
+        // If SidePanel is closed, we might need to open it first, but for now assuming open (overlay visible)
+        chrome.runtime.sendMessage(message, (response) => {
+            sendResponse(response);
+        });
+        return true;
+    }
+
+    // [HYBRID] Open Floating Window (Native App Mode)
+    if (message.type === 'OPEN_FLOATING_WINDOW') {
+        chrome.windows.create({
+            url: chrome.runtime.getURL('sidepanel.html'),
+            type: 'popup',
+            width: 450,
+            height: 800,
+            focused: true
+        });
+        // We can close the side panel if we want, but keeping it might be safer for state.
+        // For now, just open the window.
     }
 });
 

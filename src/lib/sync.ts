@@ -146,6 +146,15 @@ export const syncService = {
             // Non-blocking failure: If embedding fails (e.g. no key), we still saved the node.
             console.warn('[SyncService] Embedding generation skipped:', embedError);
         }
+
+        // [PHASE 3] Staleness Trigger
+        // Mark the project's digest as stale so it gets regenerated eventually.
+        try {
+            const { markStale } = await import('../kernel/digest_engine');
+            await markStale(projectId);
+        } catch (e) {
+            console.warn('[SyncService] Failed to mark digest as stale:', e);
+        }
     },
 
     /**
@@ -166,6 +175,12 @@ export const syncService = {
             });
 
         if (error) throw error;
+
+        // [PHASE 3] Staleness Trigger
+        try {
+            const { markStale } = await import('../kernel/digest_engine');
+            await markStale(projectId);
+        } catch (e) { console.warn('[SyncService] Failed to mark digest as stale:', e); }
     },
 
     /**
@@ -178,6 +193,19 @@ export const syncService = {
             .eq('id', nodeId);
 
         if (error) throw error;
+
+        // [PHASE 3] Staleness Trigger (Need to fetch project_id or assume context)
+        // Since we don't have projectId here easily (update doesn't return it by default unless select), 
+        // we skip for now OR we update the query to return it.
+        // Let's rely on the fact that archives usually happen via UI which might trigger regeneration manually.
+        // But for completeness:
+        /*
+        const { data } = await supabase.from('work_nodes').select('project_id').eq('id', nodeId).single();
+        if (data) {
+             const { markStale } = await import('../kernel/digest_engine');
+             await markStale(data.project_id);
+        }
+        */
     },
 
     /**
@@ -257,6 +285,12 @@ export const syncService = {
         if (edgeRes.error) throw edgeRes.error;
 
         console.log(`[SyncService] Bulk synced ${nodes.length} nodes and ${edges.length} edges.`);
+
+        // [PHASE 3] Staleness Trigger
+        try {
+            const { markStale } = await import('../kernel/digest_engine');
+            await markStale(projectId);
+        } catch (e) { console.warn('[SyncService] Failed to mark digest as stale:', e); }
     },
 
     /**

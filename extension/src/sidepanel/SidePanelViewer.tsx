@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react';
-import { ArrowRight, ExternalLink, Save, Check, Loader2, Settings, Terminal, FileText } from 'lucide-react';
+import { ArrowRight, ExternalLink, Save, Check, Loader2, Settings, Terminal, FileText, Share2, MessageSquare, Brain } from 'lucide-react';
 import { ModelSelector } from '../components/ModelSelector';
 import { SidePanelAuditView } from '../components/SidePanelAuditView';
 import { useAuth } from '../hooks/useAuth';
 import { LoginView } from '../components/LoginView';
 import { ProjectSelector } from '../components/ProjectSelector';
 import { supabase } from '../lib/supabase';
+import { BootSequence } from '../components/BootSequence';
 
 interface ArticleData {
     title: string;
@@ -24,18 +25,30 @@ export const SidePanelViewer = () => {
     const [saving, setSaving] = useState(false);
     const [saved, setSaved] = useState(false);
     const [showSettings, setShowSettings] = useState(false);
-    const [activeTab, setActiveTab] = useState<'content' | 'audit'>('content');
+    const [activeTab, setActiveTab] = useState<'content' | 'audit' | 'graph' | 'chat'>('content');
     const [selectedProjectId, setSelectedProjectId] = useState<string>('');
 
     useEffect(() => {
-        // Listen for parsed content from Background
-        const listener = (msg: any) => {
+        // [PERFECTION] Auto-Trigger Parse on Open
+        // If the user opens the panel manually, we want to immediately analyze the page.
+        chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+            if (tabs[0]?.id) {
+                chrome.runtime.sendMessage({
+                    type: 'PROCESS_LINK_CLICK', // Reuse existing logic
+                    url: tabs[0].url
+                });
+            }
+        });
+
+        // Listen for parsed content AND Capture requests from X-Ray
+        const listener = (msg: any, sender: any, sendResponse: any) => {
             if (msg.type === 'SHOW_ARTICLE') {
                 setArticle(msg.data);
                 setLoading(false);
                 setSaved(false);
             }
             if (msg.type === 'SHOW_CAPTURE') {
+                // ... (Existing logic)
                 setArticle({
                     title: msg.data.title,
                     url: msg.data.url,
@@ -56,10 +69,42 @@ export const SidePanelViewer = () => {
                 setArticle(null);
                 setSaved(false);
             }
+
+            // [PERFECTION] Handle X-Ray Block Capture securely
+            if (msg.type === 'CAPTURE_BLOCK') {
+                handleQuickCapture(msg.data).then(res => sendResponse(res));
+                return true; // async response
+            }
         };
         chrome.runtime.onMessage.addListener(listener);
         return () => chrome.runtime.onMessage.removeListener(listener);
     }, []);
+
+    // Helper for Quick Capture (X-Ray)
+    const handleQuickCapture = async (data: any) => {
+        try {
+            const serverUrl = import.meta.env.VITE_SERVER_URL || 'http://localhost:3000';
+            const { data: { session } } = await supabase.auth.getSession();
+
+            if (!session) return { success: false, error: 'User not logged in extension' };
+
+            const response = await fetch(`${serverUrl}/api/ingest/block`, { // New endpoint or reuse link
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${session.access_token}`
+                },
+                body: JSON.stringify({
+                    ...data,
+                    timestamp: new Date().toISOString(),
+                    projectId: selectedProjectId // Use currently selected context
+                })
+            });
+            return await response.json();
+        } catch (e: any) {
+            return { success: false, error: e.message };
+        }
+    };
 
     const handleSaveToGraph = async () => {
         if (!article || saving || saved) return;
@@ -137,14 +182,14 @@ export const SidePanelViewer = () => {
     }
 
     if (loading) {
-        return (
-            <div className="flex h-screen items-center justify-center bg-white">
-                <div className="flex flex-col items-center gap-4">
-                    <Loader2 className="w-10 h-10 text-blue-500 animate-spin" />
-                    <p className="text-xs font-bold text-slate-400 uppercase tracking-widest animate-pulse">Analizando contenido...</p>
-                </div>
-            </div>
-        );
+        return <BootSequence onComplete={() => {/* Handled by parsing completion state automatically via useEffect logic or we can just show this on initial load? User wants it on "start". Actually, 'loading' state is triggered by parsing. Let's start with a dedicated 'booting' state. */ }} />;
+    }
+
+    // [PERFECTION] Boot Sequence State
+    const [booting, setBooting] = useState(true);
+
+    if (booting) {
+        return <BootSequence onComplete={() => setBooting(false)} />;
     }
 
     if (!article) {
@@ -194,18 +239,60 @@ export const SidePanelViewer = () => {
                 <button
                     onClick={() => setActiveTab('content')}
                     className={`flex-1 flex items-center justify-center py-3 text-[10px] font-bold uppercase tracking-[0.2em] transition-all rounded-xl ${activeTab === 'content' ? 'text-blue-600 bg-white shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
+                    title="Captura Web"
                 >
-                    <FileText className="w-3.5 h-3.5 mr-2" /> Conocimiento
+                    <FileText className="w-3.5 h-3.5" />
+                </button>
+                <button
+                    onClick={() => setActiveTab('graph')}
+                    className={`flex-1 flex items-center justify-center py-3 text-[10px] font-bold uppercase tracking-[0.2em] transition-all rounded-xl ${activeTab === 'graph' ? 'text-purple-600 bg-white shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
+                    title="Grafo 3D"
+                >
+                    <Share2 className="w-3.5 h-3.5" />
+                </button>
+                <button
+                    onClick={() => setActiveTab('chat')}
+                    className={`flex-1 flex items-center justify-center py-3 text-[10px] font-bold uppercase tracking-[0.2em] transition-all rounded-xl ${activeTab === 'chat' ? 'text-indigo-600 bg-white shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
+                    title="Chat Enjambre"
+                >
+                    <MessageSquare className="w-3.5 h-3.5" />
                 </button>
                 <button
                     onClick={() => setActiveTab('audit')}
                     className={`flex-1 flex items-center justify-center py-3 text-[10px] font-bold uppercase tracking-[0.2em] transition-all rounded-xl ${activeTab === 'audit' ? 'text-blue-600 bg-white shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
+                    title="Neural Recall"
                 >
-                    <Terminal className="w-3.5 h-3.5 mr-2" /> Auditoría
+                    <Brain className="w-3.5 h-3.5" />
                 </button>
             </div>
 
-            {activeTab === 'audit' ? (
+            {activeTab === 'graph' ? (
+                <iframe
+                    src="http://localhost:3000/embed/graph"
+                    className="flex-1 w-full border-0"
+                    allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture"
+                />
+            ) : activeTab === 'chat' ? (
+                <iframe
+                    ref={(el) => {
+                        // [CONTEXT BRIDGE] Inject Context into Chat Iframe
+                        if (el && article) {
+                            setTimeout(() => {
+                                el.contentWindow?.postMessage({
+                                    type: 'UPDATE_CONTEXT',
+                                    context: {
+                                        title: article.title,
+                                        url: article.url,
+                                        content: article.excerpt || article.content.substring(0, 500)
+                                    }
+                                }, '*');
+                            }, 500); // Give it a moment to load
+                        }
+                    }}
+                    src="http://localhost:3000/embed/chat"
+                    className="flex-1 w-full border-0"
+                />
+            ) : activeTab === 'audit' ? (
                 <SidePanelAuditView />
             ) : (
                 <>
@@ -221,8 +308,16 @@ export const SidePanelViewer = () => {
                             <button
                                 onClick={() => setShowSettings(!showSettings)}
                                 className={`ml-2 p-2 rounded-xl transition-colors ${showSettings ? 'bg-blue-50 text-blue-600' : 'text-slate-300 hover:bg-slate-50'}`}
+                                title="Configuración"
                             >
                                 <Settings className="w-4 h-4" />
+                            </button>
+                            <button
+                                onClick={() => chrome.runtime.sendMessage({ type: 'OPEN_FLOATING_WINDOW' })}
+                                className="ml-1 p-2 rounded-xl text-slate-300 hover:text-blue-500 hover:bg-slate-50 transition-colors"
+                                title="Modo Flotante (App Nativa)"
+                            >
+                                <ExternalLink className="w-4 h-4" />
                             </button>
                         </div>
 

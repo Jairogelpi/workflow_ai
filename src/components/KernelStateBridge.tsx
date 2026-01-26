@@ -3,6 +3,7 @@
 import { useEffect } from 'react';
 import { useGraphStore } from '../store/useGraphStore';
 import { KernelBridge } from '../kernel/KernelBridge';
+import { PriceRegistry } from '../kernel/economy/PriceRegistry';
 
 /**
  * Connects the pure KernelBridge to the React/Zustand Store.
@@ -26,6 +27,9 @@ export function KernelStateBridge() {
                 useGraphStore.getState().addNode(event.payload.node, event.payload.position);
             }
         });
+
+        // 3. Initialize Economy Engine (Sync Real-Time Prices)
+        PriceRegistry.refreshPricing();
 
         console.log('[KernelStateBridge] Connected.');
         return () => unsubscribe();

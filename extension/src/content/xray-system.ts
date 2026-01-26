@@ -143,35 +143,36 @@ export class XRaySystem {
     /**
      * Handle capture button click
      */
+    /**
+     * Handle capture button click
+     */
     private async handleCapture(block: TextBlock): Promise<void> {
-        console.log('[XRaySystem] Capturing block:', block);
+        console.log('[XRaySystem] Capturing block via Safe Channel:', block);
 
         try {
-            // Send to backend
-            const response = await fetch('http://localhost:3000/api/nodes/quick', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
+            // Send to Extension Runtime (SidePanel/Background)
+            // We use message passing instead of direct fetch to leverage Supabase Auth in the main app
+            const response = await chrome.runtime.sendMessage({
+                type: 'CAPTURE_BLOCK',
+                data: {
                     content: block.text,
                     source_url: window.location.href,
                     type: block.classification?.type || 'note',
                     metadata: {
                         selector: block.selector,
-                        confidence: block.classification?.confidence
+                        confidence: block.classification?.confidence,
+                        title: document.title // Enhance with page title
                     }
-                })
+                }
             });
 
-            const result = await response.json();
-
-            if (result.success) {
+            if (response && response.success) {
                 // Show success feedback
                 this.showNotification('✅ Captured to WorkGraph', 'success');
-
                 // Remove highlight
                 this.highlighter.removeOverlay(block.element);
             } else {
-                throw new Error(result.error);
+                throw new Error(response?.error || 'Capture request failed');
             }
 
         } catch (error: any) {

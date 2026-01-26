@@ -7,67 +7,105 @@
 import { useAuditStream } from '../hooks/useAuditStream';
 import { Activity, Cpu, DollarSign, Clock } from 'lucide-react';
 
-export function SidePanelAuditView() {
-    const logs = useAuditStream();
+import { useEffect, useState } from 'react';
+import { supabase } from '../lib/supabase';
+import { Activity, Brain, ExternalLink, Lightbulb } from 'lucide-react';
+import { useAuth } from '../hooks/useAuth';
 
-    if (logs.length === 0) {
+interface RecallNode {
+    id: string;
+    content: string;
+    similarity: number;
+    type: string;
+}
+
+export function SidePanelAuditView() {
+    const { user } = useAuth();
+    const [nodes, setNodes] = useState<RecallNode[]>([]);
+    const [loading, setLoading] = useState(false);
+
+    // Auto-Recall on Mount
+    useEffect(() => {
+        const fetchRecall = async () => {
+            setLoading(true);
+            try {
+                // Get current tab content again or use a prop (for now, just using Title as proxy query)
+                const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+                if (!tab?.title) return;
+
+                const serverUrl = import.meta.env.VITE_SERVER_URL || 'http://localhost:3000';
+                const { data: { session } } = await supabase.auth.getSession();
+
+                const response = await fetch(`${serverUrl}/api/recall`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${session?.access_token}`
+                    },
+                    body: JSON.stringify({
+                        query: tab.title, // Simple Recall by Title
+                        projectId: '550e8400-e29b-41d4-a716-446655440000' // Default or grab from store
+                    })
+                });
+
+                const res = await response.json();
+                if (res.success) setNodes(res.nodes);
+
+            } catch (e) {
+                console.error('Recall failed', e);
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchRecall();
+    }, []);
+
+    if (loading) {
         return (
             <div className="flex flex-col items-center justify-center p-8 text-cyan-800/50 h-full bg-slate-900 font-mono">
-                <Activity className="w-8 h-8 mb-4 animate-pulse" />
+                <Brain className="w-8 h-8 mb-4 animate-pulse text-purple-500" />
                 <p className="text-xs uppercase tracking-widest text-center">
-                    Waiting for system pulse...<br />
-                    [Forensic Mode Active]
+                    Connecting Neurons...<br />
+                    [Active Recall]
                 </p>
             </div>
         );
     }
 
+    if (nodes.length === 0) {
+        return (
+            <div className="flex flex-col items-center justify-center p-8 text-slate-500 h-full bg-slate-900">
+                <Lightbulb className="w-8 h-8 mb-4 opacity-50" />
+                <p className="text-xs text-center">No connections found yet.</p>
+            </div>
+        );
+    }
+
     return (
-        <div className="flex flex-col h-full bg-slate-900 border-t border-cyan-900/50">
-            {/* Header / Metrics Dashboard */}
-            <div className="p-3 bg-slate-950/50 border-b border-cyan-900/30 flex items-center justify-between">
-                <h3 className="text-[10px] font-bold text-cyan-400 uppercase tracking-widest flex items-center">
-                    <Activity className="w-3 h-3 mr-2" /> Live Audit Trail
+        <div className="flex flex-col h-full bg-slate-900 border-t border-purple-900/30">
+            {/* Header */}
+            <div className="p-3 bg-slate-950/50 border-b border-purple-900/30 flex items-center justify-between">
+                <h3 className="text-[10px] font-bold text-purple-400 uppercase tracking-widest flex items-center">
+                    <Brain className="w-3 h-3 mr-2" /> Neural Context
                 </h3>
-                <div className="flex gap-3">
-                    <span className="text-[9px] text-emerald-400 flex items-center">
-                        <CheckIcon className="w-2.5 h-2.5 mr-1" /> Integrity: OK
-                    </span>
-                </div>
+                <span className="text-[9px] text-slate-500">{nodes.length} Matches</span>
             </div>
 
-            {/* Scrollable Log Stream */}
-            <div className="flex-1 overflow-y-auto p-3 font-mono text-[10px]">
-                {logs.map((log, i) => (
-                    <div
-                        key={i}
-                        className="mb-3 p-2 bg-slate-800/40 rounded border-l-2 border-cyan-500/50 hover:bg-slate-800/60 transition-colors group animate-in fade-in slide-in-from-left-2"
-                    >
+            {/* List */}
+            <div className="flex-1 overflow-y-auto p-3 space-y-3">
+                {nodes.map((node) => (
+                    <div key={node.id} className="p-3 bg-slate-800/50 rounded-lg border border-slate-700 hover:border-purple-500/50 transition-colors">
                         <div className="flex justify-between items-start mb-1">
-                            <span className="text-cyan-300 font-bold uppercase">{log.operation}</span>
-                            <span className="text-slate-500 text-[8px]">{new Date(log.timestamp).toLocaleTimeString()}</span>
+                            <span className="text-[9px] font-bold uppercase text-purple-300 bg-purple-900/20 px-1.5 py-0.5 rounded">
+                                {node.type}
+                            </span>
+                            <span className="text-[9px] text-green-400 font-mono">
+                                {(node.similarity * 100).toFixed(0)}% Match
+                            </span>
                         </div>
-
-                        <div className="grid grid-cols-2 gap-y-1 mt-2 text-slate-400">
-                            <div className="flex items-center">
-                                <Clock className="w-2.5 h-2.5 mr-1.5 text-yellow-500/70" />
-                                <span>{log.duration_ms}ms</span>
-                            </div>
-                            <div className="flex items-center">
-                                <DollarSign className="w-2.5 h-2.5 mr-1.5 text-emerald-500/70" />
-                                <span>${log.cost_usd.toFixed(4)}</span>
-                            </div>
-                            <div className="flex items-center col-span-2">
-                                <Cpu className="w-2.5 h-2.5 mr-1.5 text-blue-500/70" />
-                                <span className="truncate">{log.engine}</span>
-                            </div>
-                        </div>
-
-                        {log.metadata && (
-                            <div className="mt-2 pt-2 border-t border-slate-700/50 text-[9px] text-slate-500 italic truncate" title={JSON.stringify(log.metadata)}>
-                                {typeof log.metadata === 'string' ? log.metadata : JSON.stringify(log.metadata)}
-                            </div>
-                        )}
+                        <p className="text-[11px] text-slate-300 line-clamp-3 leading-relaxed">
+                            {typeof node.content === 'string' ? node.content : JSON.stringify(node.content)}
+                        </p>
                     </div>
                 ))}
             </div>
