@@ -32,7 +32,8 @@ export class SyncGuardian {
                 const claimText = delta.statement || delta.content || delta.rationale;
 
                 try {
-                    const response = await fetch('http://localhost:8082/verify', {
+                    const baseUrl = process.env.NEXT_PUBLIC_RLM_URL || 'http://localhost:8082';
+                    const response = await fetch(`${baseUrl}/verify`, {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',

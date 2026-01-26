@@ -10,11 +10,11 @@ export default function Home() {
     const [splashFinished, setSplashFinished] = React.useState(false);
     const [session, setSession] = React.useState<any>(null);
 
-    // Forces Splash Screen for 4s (Brand presence) then yields to App
+    // Forces Splash Screen for 10s (Brand presence) then yields to App
     useEffect(() => {
         const timer = setTimeout(() => {
             setSplashFinished(true);
-        }, 4000); // Optimized duration (4s is enough for loop)
+        }, 10000); // Extended duration
         return () => clearTimeout(timer);
     }, []);
 
