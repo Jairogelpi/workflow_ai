@@ -48,6 +48,7 @@
         "react-dom": "^19.0.0",
         "react-force-graph-3d": "^1.29.0",
         "reactflow": "^11.11.4",
+        "resend": "^6.8.0",
         "signer-core": "file:./signer-core/pkg",
         "tailwind-merge": "^3.4.0",
         "tailwindcss": "^4.1.18",
