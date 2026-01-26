@@ -140,6 +140,27 @@ export function IngestionHUD() {
                     </div>
                 </div>
             ))}
+
+            {/* Manual Swarm Trigger (Dev/Demo Mode) */}
+            <div className="pointer-events-auto flex justify-end">
+                <button
+                    onClick={async () => {
+                        const { SwarmOrchestrator } = await import('../../kernel/collaboration/SwarmOrchestrator');
+                        const { useGraphStore } = await import('../../store/useGraphStore');
+
+                        // Pulse the visible nodes for context
+                        const visibleNodes = useGraphStore.getState().nodes.map(n => n.id);
+                        if (visibleNodes.length > 0) {
+                            console.log('[HUD] Manually triggering Swarm Pulse...');
+                            SwarmOrchestrator.dispatchSwarmPulse(visibleNodes.slice(0, 10)); // Top 10 context
+                        }
+                    }}
+                    className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold uppercase tracking-wider rounded-full shadow-lg transition-all active:scale-95"
+                >
+                    <Wind size={14} className="animate-pulse" />
+                    <span>Activar Enjambre</span>
+                </button>
+            </div>
         </div>
     );
 }

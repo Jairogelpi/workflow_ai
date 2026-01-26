@@ -99,6 +99,7 @@ export function createVersion(
         validated: node.metadata?.validated ?? false,
         pin: node.metadata?.pin ?? false,
         version_hash: '' as VersionHash, // Placeholder
+        access_control: node.metadata?.access_control || { role_required: 'editor' },
         ...(previous_hash ? { previous_version_hash: previous_hash } : {})
     };
 
@@ -116,5 +117,5 @@ export function createVersion(
     return {
         ...meta,
         version_hash: hash
-    };
+    } as NodeMetadata;
 }

@@ -56,10 +56,21 @@
 | **ingestor-rust** | Parsing PDF/HTML | lopdf, scraper |
 | **stream-assembler** | Exportación streaming | axum, tokio |
 
+## 📚 Documentación de Arquitectura (Nueva Fase 2)
+- [🧠 Arquitectura Graph-RAG (Vector Memory)](documentacion/GRAPH_RAG_ARCHITECTURE.md)
+- [🐝 Inteligencia de Enjambre (Swarm)](documentacion/SWARM_INTELLIGENCE.md)
+- [⚡ UX Performance (Transient Updates)](documentacion/UX_PERFORMANCE.md)
+
 ---
 
-## 🚀 Quick Start
+## 🚀 Quick Start (Critical: Read This)
 
+### Paso 0: Activar el Cerebro Físico (Vectores)
+Para que el sistema funcione (Memoria Real), **debes** ejecutar la migración de vectores:
+1. Copia el contenido de `supabase_schema_vectors.sql` (en la raíz o escritorio).
+2. Ejecútalo en el **SQL Editor** de tu Dashboard de Supabase.
+
+### Paso 1: Instalación
 ```bash
 # 1. Instalar dependencias
 npm install

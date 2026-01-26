@@ -1,6 +1,6 @@
-import { WorkNode, IdeaNodeSchema, DecisionNodeSchema } from '../canon/schema/ir';
+import type { WorkNode } from '../../canon/schema/ir';
 import { v4 as uuidv4 } from 'uuid';
-import { createVersion } from '../kernel/versioning';
+import { createVersion } from '../../kernel/versioning';
 
 /**
  * Node Promoter Service
@@ -31,7 +31,7 @@ export async function promoteNode(node: WorkNode, targetType: 'decision' | 'task
     if (node.type === 'decision' && targetType === 'task') {
         const taskNode: any = {
             id: uuidv4(), // Tasks usually represent a new instance of action
-            project_id: node.project_id,
+            project_id: (node as any).project_id,
             type: 'task',
             title: `Execute: ${(node as any).chosen_option}`,
             status: 'todo',

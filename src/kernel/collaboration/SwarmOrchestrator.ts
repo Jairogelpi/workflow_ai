@@ -1,5 +1,6 @@
 // import { useGraphStore } from '../../store/useGraphStore'; // Decoupled via KernelBridge
 import { KernelBridge } from '../KernelBridge';
+import { AGENT_PERSONAS } from '../agency/Personas';
 import { MediatorAgent } from './MediatorAgent';
 import { TaskComplexity } from '../llm/gateway';
 import { retrieveContext } from '../../compiler/retriever';
@@ -81,11 +82,23 @@ export class SwarmOrchestrator {
         })));
 
         try {
+            import { AGENT_PERSONAS } from '../agency/Personas';
+
+            // ... (in runAgentCycle)
+
             // Stage 2: Neural Inference with Agency (Phase 18)
-            const prompt = `Persona: ${agent.name} (${agent.personality})
+            // [Real Intelligence] Use specialized Persona System Prompt
+            const persona = AGENT_PERSONAS[agent.personality];
+            const systemPrompt = persona ? persona.systemPrompt : `You are ${agent.name}. Analyze the graph.`;
+
+            const prompt = `
 Context Nodes: ${contextString}
-Objective: Perform a specialized analysis or proposal. You have tools available.
-Rules: Be concise, technical, and use tools if needed to expand the graph or fetch data.`;
+Objective: Perform a specialized analysis as ${agent.name}.
+Rules: 
+1. Use your tools ('web_search', 'create_work_node') to fulfill your Prime Directive.
+2. Be concise and technical.
+3. ${persona?.preferredTools.includes('web_search') ? 'Use web_search if you lack information.' : ''}
+`;
 
             // Initialize Tools for this cycle
             ToolRegistry.initialize();

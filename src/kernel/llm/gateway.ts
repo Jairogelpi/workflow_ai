@@ -126,8 +126,8 @@ export class SmartRouter {
                 // Prioridad: Ventana de contexto amplia (Gemini Flash)
                 return 'google/gemini-3-flash';
             case TaskComplexity.HIGH:
-                // Prioridad: Inteligencia máxima (GPT-5 o Claude Opus)
-                return modelConfig.reasoningModel.modelId || 'openai/gpt-5.2';
+                // Prioridad: Inteligencia máxima (GPT-4o o Claude Opus)
+                return modelConfig.reasoningModel.modelId || 'openai/gpt-4o';
             default:
                 return 'google/gemini-3-flash';
         }

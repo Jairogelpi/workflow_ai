@@ -66,17 +66,46 @@ function GraphContent() {
     const [nodes, setNodes, onNodesChange] = useNodesState(zustandNodes);
     const [edges, setEdges, onEdgesChange] = useEdgesState(zustandEdges);
 
-    // Sync from Zustand when nodes/edges are added/removed externally (e.g., by Swarm)
+    const onConnect = useGraphStore(state => state.onConnect);
+    const openManifest = useGraphStore(state => state.openManifest);
+
+    // [Performance] Smart Merge:
+    // We use a Ref to track if we are currently dragging to avoid re-renders impacting interaction.
+    // Ideally, we only update nodes that CHANGED in the store, and we DON'T touch nodes that are
+    // currently being dragged by the user (local override).
+
+    // ReactFlow nodes have internal 'dragging' state but it's hard to access inside useEffect 
+    // without the latest local state.
+
     useEffect(() => {
-        setNodes(zustandNodes);
+        setNodes((localNodes) => {
+            // optimized: if lengths differ, or deep content changed. 
+            // Simple approach: Map by ID.
+            const localMap = new Map(localNodes.map(n => [n.id, n]));
+
+            return zustandNodes.map(zNode => {
+                const localNode = localMap.get(zNode.id);
+
+                // If local node exists and is being dragged (or selected), 
+                // we might want to preserve its 'position' from local state 
+                // to prevent "snap back" during async updates.
+                if (localNode && (localNode.dragging || localNode.selected)) {
+                    return {
+                        ...zNode,
+                        position: localNode.position, // Keep local position
+                        positionAbsolute: localNode.positionAbsolute,
+                        selected: localNode.selected ?? false,
+                        dragging: localNode.dragging ?? false
+                    };
+                }
+                return zNode;
+            });
+        });
     }, [zustandNodes, setNodes]);
 
     useEffect(() => {
-        setEdges(zustandEdges);
+        setEdges(zustandEdges); // Edges are less interactive, safe to sync
     }, [zustandEdges, setEdges]);
-
-    const onConnect = useGraphStore(state => state.onConnect);
-    const openManifest = useGraphStore(state => state.openManifest);
 
     useEffect(() => {
         openManifest();

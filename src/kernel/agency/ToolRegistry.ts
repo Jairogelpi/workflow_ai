@@ -3,7 +3,7 @@
  * Central hub for agent-driven actions and tool-use.
  */
 
-import { useGraphStore } from '../../store/useGraphStore';
+import { KernelBridge } from '../KernelBridge';
 import { canModifyNode } from '../guards';
 import { NodeId, VersionHash } from '../../canon/schema/primitives';
 
@@ -51,7 +51,6 @@ export class ToolRegistry {
                 required: ['type', 'content']
             },
             execute: async ({ type, content, title }) => {
-                const { addNode, currentUser } = useGraphStore.getState();
                 const id = `node-${Date.now()}` as NodeId;
 
                 const newNode: any = {
@@ -71,15 +70,36 @@ export class ToolRegistry {
                     }
                 };
 
-                // Guard check: Although the agent is 'ai_proposal', we ensure it doesn't violate 
-                // project-level constraints if injected directly.
-                addNode(newNode, { x: Math.random() * 500, y: Math.random() * 500 });
+                // Decoupled Action: Emit command to KernelBridge
+                KernelBridge.emit({
+                    type: 'CMD_ADD_NODE',
+                    payload: {
+                        node: newNode,
+                        position: { x: Math.random() * 500, y: Math.random() * 500 }
+                    }
+                });
 
                 return { success: true, nodeId: id };
             }
         });
 
-        // fetch_web_content removed to ensure 100% Real operation.
-        // Future: Implement via server-side proxy to handle CORS.
+        // [Real Tool] Web Search via Server Action
+        this.register({
+            name: 'web_search',
+            description: 'Searches the real web for information (Wikipedia/External Sources).',
+            parameters: {
+                type: 'object',
+                properties: {
+                    query: { type: 'string' }
+                },
+                required: ['query']
+            },
+            execute: async ({ query }: { query: string }) => {
+                // Dynamic import to use Server Action 
+                const { performWebSearch } = await import('../../app/actions/tools');
+                const result = await performWebSearch(query);
+                return result;
+            }
+        });
     }
 }

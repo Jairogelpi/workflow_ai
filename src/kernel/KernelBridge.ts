@@ -5,7 +5,8 @@
 
 export type KernelEvent =
     | { type: 'RLM_THOUGHT'; payload: { message: string; type: 'info' | 'warn' | 'error' | 'success' | 'reasoning'; agentId?: string; agentName?: string } }
-    | { type: 'AGENT_STATUS'; payload: { agentId: string; status: 'IDLE' | 'THINKING' | 'WORKING' } };
+    | { type: 'AGENT_STATUS'; payload: { agentId: string; status: 'IDLE' | 'THINKING' | 'WORKING' } }
+    | { type: 'CMD_ADD_NODE'; payload: { node: any; position: { x: number; y: number } } };
 
 export interface GraphStateProvider {
     getNodes: () => any[];

@@ -22,6 +22,8 @@ export function KernelStateBridge() {
                 useGraphStore.getState().addRLMThought(event.payload);
             } else if (event.type === 'AGENT_STATUS') {
                 useGraphStore.getState().setAgentStatus(event.payload.agentId, event.payload.status);
+            } else if (event.type === 'CMD_ADD_NODE') {
+                useGraphStore.getState().addNode(event.payload.node, event.payload.position);
             }
         });
 

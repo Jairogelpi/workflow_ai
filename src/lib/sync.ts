@@ -114,6 +114,38 @@ export const syncService = {
             });
 
         if (error) throw error;
+
+        // [Graph-RAG] Auto-Embedding Generation (Expert Mode)
+        // We do this asynchronously to not block the UI (Fire & Forget logic or Background Task)
+        // For 2026 robustness, we should ideally use a queue, but here we await it for consistency 
+        // to ensure immediate retrieval availability (Real-Time Memory).
+        try {
+            // Dynamic import to avoid circular dependencies if any
+            const { EmbeddingService } = await import('@/kernel/memory/embeddings');
+
+            // Construct text representation: Title + Content + Type
+            // This 'Rich Context' improves semantic search (Hybrid approach)
+            const textToEmbed = `[${type.toUpperCase()}] ${contentSpecifics.title || 'Untitled'} - ${(contentSpecifics.statement || contentSpecifics.content || "").substring(0, 8000)}`;
+
+            const embedding = await EmbeddingService.embed(textToEmbed);
+
+            // Upsert into node_embeddings
+            const { error: vectorError } = await supabase
+                .from('node_embeddings' as any)
+                .upsert({
+                    id: id,
+                    project_id: projectId,
+                    content: textToEmbed,
+                    embedding: embedding, // pgvector handles the array
+                    updated_at: new Date().toISOString()
+                });
+
+            if (vectorError) console.error('[SyncService] Vector upsert failed:', vectorError);
+
+        } catch (embedError) {
+            // Non-blocking failure: If embedding fails (e.g. no key), we still saved the node.
+            console.warn('[SyncService] Embedding generation skipped:', embedError);
+        }
     },
 
     /**
