@@ -132,7 +132,7 @@ class VectorSkip:
         return dot_product / (magnitude_v1 * magnitude_v2)
 
     @staticmethod
-    @lru_cache(max_tokens=1000)
+    @lru_cache(maxsize=1000)
     def _get_cached_embedding(text: str):
         # This is a synchronous wrapper for lru_cache since it doesn't support async directly well
         # In a real production app we'd use an async cache, but here we'll use a local index.
