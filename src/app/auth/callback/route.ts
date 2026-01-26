@@ -109,7 +109,7 @@ export async function GET(request: Request) {
                         if (chunks.length === 1) {
                             cookiesToInject.push({
                                 name: baseName, // Un-chunked alias
-                                value: chunks[0],
+                                value: chunks[0]!,
                                 options: { path: '/', secure: true, sameSite: 'none', maxAge: 60 * 60 * 24 * 7 }
                             });
                         }

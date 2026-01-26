@@ -48,7 +48,7 @@ export function SwarmDashboard() {
                                 <div className="flex-1 min-w-0">
                                     <div className="flex items-center justify-between gap-1">
                                         <span className={`text-[11px] font-bold truncate ${isActive ? 'text-slate-800' : 'text-slate-400'}`}>
-                                            {agent.type || agent.name}
+                                            {agent.name}
                                         </span>
                                         <div className={`w-2 h-2 rounded-full ${agent.status === 'WORKING' ? 'bg-green-500' : agent.status === 'THINKING' ? 'bg-blue-400 animate-pulse' : 'bg-slate-200'}`} />
                                     </div>

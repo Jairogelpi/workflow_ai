@@ -16,7 +16,7 @@ async function testRouting() {
     console.log("--- Intentando llamada a http://localhost:9999/v1 ---");
     try {
         await generateText("System", "User", "REASONING");
-    } catch (e) {
+    } catch (e: any) {
         // Esperamos un error de conexión al puerto 9999
         if (e.message.includes("fetch failed") || e.message.includes("ECONNREFUSED") || e.message.includes("No se pudo contactar")) {
             console.log("✅ ÉXITO: El Gateway intentó contactar con el puerto 9999.");

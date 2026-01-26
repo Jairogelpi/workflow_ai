@@ -19,7 +19,7 @@ import { canModifyNode, canDeleteNode } from '../kernel/guards';
 import { traceSpan } from '../kernel/observability';
 import { backendToFlow } from '../lib/adapters';
 import { syncService } from '../lib/sync';
-import * as d3 from 'd3-force';
+
 
 // Simple debounce helper to avoid external dependencies for now
 const debounce = (fn: Function, ms: number) => {
