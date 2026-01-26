@@ -9,25 +9,86 @@
 
 import { createClient } from '@supabase/supabase-js';
 import { digestFile } from '../lib/ingest/digest'; // Heavy lifting module
-import dotenv from 'dotenv';
 
-dotenv.config({ path: '.env.local' });
-
-// Worker needs SERVICE_ROLE key to bypass RLS for processing all jobs
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-
-if (!supabaseServiceKey) {
-    console.error("❌ CRITICAL: SUPABASE_SERVICE_ROLE_KEY is required for the worker.");
-    process.exit(1);
+// [Type Definitions]
+interface IngestionJob {
+    id: string;
+    project_id: string;
+    node_id: string;
+    status: 'pending' | 'processing' | 'completed' | 'failed';
+    attempts: number;
+    created_at: string;
+    started_at?: string;
+    metadata?: any;
 }
 
-const supabase = createClient(supabaseUrl, supabaseServiceKey);
+interface WorkNode {
+    id: string;
+    metadata: {
+        storage_path?: string;
+        mimeType?: string;
+        source_title?: string;
+        [key: string]: any;
+    };
+}
+
+// Environment State
+let config: {
+    NEXT_PUBLIC_SUPABASE_URL: string;
+    SUPABASE_SERVICE_ROLE_KEY: string;
+} | null = null;
+
+let supabase: ReturnType<typeof createClient> | null = null;
+
+// [Universal] Init Logic
+const init = async (cfg: typeof config) => {
+    if (!cfg?.NEXT_PUBLIC_SUPABASE_URL || !cfg?.SUPABASE_SERVICE_ROLE_KEY) {
+        console.error("❌ Worker Missing Config:", cfg);
+        return;
+    }
+    config = cfg;
+    supabase = createClient(config.NEXT_PUBLIC_SUPABASE_URL, config.SUPABASE_SERVICE_ROLE_KEY);
+    console.log("[Worker] 🚀 Initialized with config.");
+    workLoop().catch(e => console.error("Worker died:", e));
+};
+
+// [Node.js Support] Auto-load .env if running standalone
+if (typeof process !== 'undefined' && !self.name) {
+    // Check if we are in a Node environment (not browser worker)
+    if (typeof window === 'undefined') {
+        // Dynamic import to avoid bundling dotenv in browser
+        // @ts-ignore
+        import('dotenv').then(dotenv => {
+            dotenv.config({ path: '.env.local' });
+
+            if (process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY) {
+                init({
+                    NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,
+                    SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY
+                });
+            }
+        }).catch(err => console.warn("[Worker] Could not load dotenv (expected in browser)", err));
+    }
+}
+
+// [Browser/Worker Support] Listen for Config Injection
+self.onmessage = (e: MessageEvent) => {
+    if (e.data.type === 'INIT_WORKER') {
+        init(e.data.config);
+    }
+};
+
 
 async function workLoop() {
     console.log("[Worker] 🚜 Omni-Ingestor Online. Polling queue...");
 
     while (true) {
+        if (!supabase) {
+            // Wait for init
+            await new Promise(r => setTimeout(r, 1000));
+            continue;
+        }
+
         try {
             // 1. Fetch next job (FIFO)
             const { data: jobs, error } = await supabase
@@ -35,34 +96,36 @@ async function workLoop() {
                 .select('*')
                 .eq('status', 'pending')
                 .order('created_at', { ascending: true })
-                .limit(1);
+                .limit(1)
+                .returns<IngestionJob[]>();
 
             if (error) throw error;
 
             if (jobs && jobs.length > 0) {
                 const job = jobs[0];
+                if (!job) continue; // Safety check
+
                 console.log(`[Worker] 📥 Processing Job ${job.id} (Project: ${job.project_id})`);
 
                 // 2. Lock Job
-                await supabase.from('ingestion_jobs').update({
+                await (supabase.from('ingestion_jobs') as any).update({
                     status: 'processing',
                     started_at: new Date().toISOString(),
-                    attempts: job.attempts + 1
+                    attempts: (job.attempts || 0) + 1
                 }).eq('id', job.id);
 
                 // 3. Process
-                // We need to fetch the file from Storage to process it.
-                // The `digestFile` function expects a File/Blob object usually.
-                // We might need to modify digestFile to accept a 'nodeId' and fetch content itself,
-                // OR we download it here.
-
-                // For this implementation, we assume `digestFile` can handle the heavy lifting
-                // But wait, `digestFile` in previous turns accepts (nodeId, file, projectId, jobId).
-                // We need to DOWNLOAD the file content from Supabase Storage first.
 
                 // Fetch Source Node to get storage path
-                const { data: node } = await supabase.from('work_nodes').select('metadata').eq('id', job.node_id).single();
-                const storagePath = node?.metadata?.storage_path;
+                const { data: node } = await supabase
+                    .from('work_nodes')
+                    .select('metadata')
+                    .eq('id', job.node_id)
+                    .single() as { data: WorkNode | null, error: any };
+
+                if (!node) throw new Error("Source node not found");
+
+                const storagePath = node.metadata?.storage_path;
 
                 if (!storagePath) throw new Error("Source node missing storage path");
 
@@ -71,11 +134,16 @@ async function workLoop() {
                 if (downloadError) throw downloadError;
 
                 // Mock a File object (Node.js doesn't have File native in all versions, using Blob)
-                const fileBlob = new Blob([fileData], { type: node.metadata.mimeType || 'application/octet-stream' });
+                const fileBlob = new Blob([fileData], { type: node.metadata?.mimeType || 'application/octet-stream' });
                 // We fake the 'name' property
-                (fileBlob as any).name = node.metadata.source_title;
+                (fileBlob as any).name = node.metadata?.source_title || 'unknown_file';
 
-                await digestFile(job.node_id, fileBlob as any, job.project_id, job.id);
+                if ((job as any).type === 'digest_branch') {
+                    const { processHierarchicalDigest } = await import('../kernel/digest_engine');
+                    await processHierarchicalDigest(job.id, job.node_id, job.project_id);
+                } else {
+                    await digestFile(job.node_id, fileBlob as any, job.project_id, job.id);
+                }
 
                 console.log(`[Worker] ✅ Job ${job.id} Completed.`);
             } else {
@@ -89,6 +157,3 @@ async function workLoop() {
         }
     }
 }
-
-// Start
-workLoop().catch(e => console.error("Worker died:", e));

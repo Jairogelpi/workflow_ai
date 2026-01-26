@@ -12,7 +12,7 @@ import { Negotiator, ChangeProposal } from './Negotiator';
 import { createHierarchicalDigest } from '../digest_engine';
 import { useGraphStore } from '../../store/useGraphStore';
 import { traceSpan } from '../observability';
-import { TaskComplexity, SmartRouter, predictCost, generateText } from '../llm/gateway';
+import { TaskTier, SmartRouter, predictCost, generateText } from '../llm/gateway';
 import { useSettingsStore } from '../../store/useSettingsStore';
 import { WorkNode } from '../../canon/schema/ir';
 import { v4 as uuidv4 } from 'uuid';
@@ -136,18 +136,28 @@ export class MediatorAgent {
     /**
      * Executes an inference task with support for tools (Swarm Agency).
      */
-    public async performInferenceWithTools(prompt: string, complexity: TaskComplexity, tools: any[]): Promise<{ content: string; toolCalls?: any[] }> {
-        const modelId = SmartRouter.getOptimalModel(complexity);
+    public async performInferenceWithTools(
+        prompt: string,
+        tier: TaskTier,
+        tools: any[],
+        images?: string[]
+    ): Promise<{ content: string; toolCalls?: any[] }> {
+        const modelId = SmartRouter.getOptimalModel(tier);
         const estimatedCost = predictCost("", prompt, modelId);
 
-        return await traceSpan('mediator.agency', { modelId, complexity, estimatedCost }, async () => {
-            const tier = complexity === TaskComplexity.HIGH ? 'REASONING' : 'EFFICIENCY';
-            return await generateText("You are the Mediator Agent for WorkGraph OS. You have tools available to interact with the system.", prompt, tier, tools);
+        return await traceSpan('mediator.agency', { modelId, tier, estimatedCost }, async () => {
+            return await generateText(
+                "You are the Mediator Agent for WorkGraph OS. You have tools available to interact with the system.",
+                prompt,
+                tier,
+                tools,
+                images
+            );
         });
     }
 
-    private async performInferenceTask(prompt: string, complexity: TaskComplexity): Promise<string> {
-        const result = await this.performInferenceWithTools(prompt, complexity, []);
+    private async performInferenceTask(prompt: string, tier: TaskTier): Promise<string> {
+        const result = await this.performInferenceWithTools(prompt, tier, [], []);
         return result.content;
     }
 }

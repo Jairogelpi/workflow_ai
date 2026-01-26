@@ -288,18 +288,21 @@ phases:
     phase_gate: "RLM Compiler identifies contradictions with the Canon automatically."
     hitos:
       - id: "3.1"
-        title: "Hierarchical Digests"
-        description: "Branch/Project summarization logic."
+        title: "Hierarchical Digests (Fractal Map-Reduce)"
+        description: "Recursive branch/project summarization with conflict detection."
         status: "done"
-        gate: "Automatic summary generation for nested nodes."
+        gate: "Automatic summary and crystallized intelligence in node_digests table."
         tasks: 
-          - "Implement Digest Schema (digests table)"
-          - "Implement Digest Engine (Raw-on-Demand retrieval)"
-          - "Implement Context Selector (RAW vs DIGEST)"
+          - "Implement node_digests table (Postgres)"
+          - "Implement Recursive BFS/DFS Branch Discovery"
+          - "Implement Fractal Map-Reduce Engine (DigestEngine.ts)"
+          - "Implement Architect-level LLM prompt with Conflict Detection"
+          - "Implement UI context menu trigger (Deep Digest)"
         evidence_nodes: 
           - "src/kernel/digest_engine.ts"
-          - "src/canon/migrations/001_gate7_schema.sql"
-          - "documentacion/HITO_3.1_HIERARCHICAL_DIGESTS.md"
+          - "supabase/migrations/gate16_hierarchical_digests.sql"
+          - "src/components/ui/NodeContextMenu.tsx"
+          - "docs/DIGEST_ENGINE.md"
 
       - id: "3.2"
         title: "Staleness Detection"
@@ -950,3 +953,26 @@ operational_rules:
         status: "done"
         tasks: ["Create CommandHUD.tsx"]
         evidence_nodes: ["src/components/ui/CommandHUD.tsx"]
+  - id: 22
+    title: "Phase 22: Absolute Reality & Performance"
+    description: "Zero-copy physics and unified inference routing."
+    phase_gate: "Physics engine runs at 60fps with zero-copy; Inference tiers are standardized."
+    hitos:
+      - id: "22.1"
+        title: "Zero-Copy Physics Engine"
+        description: "Float32Array and Transferable Objects for high-speed node layouts."
+        status: "done"
+        tasks: ["Optimize physics.worker.ts with Float32Array", "Implement Transferable Objects sharing"]
+        evidence_nodes: ["src/workers/physics.worker.ts"]
+      - id: "22.2"
+        title: "Unified Inference Tiers"
+        description: "Standardized REFLEX, REASONING, and CREATIVE routing."
+        status: "done"
+        tasks: ["Implement TaskTier enum", "Refactor SmartRouter for tiered logic"]
+        evidence_nodes: ["src/kernel/llm/gateway.ts", "docs/TOKEN_ECONOMY.md"]
+      - id: "22.3"
+        title: "Forensic Observability (v2)"
+        description: "Detailed per-node token and cost ledger."
+        status: "done"
+        tasks: ["Implement token_ledger RLS protection", "Add Audit view to NodeEditor"]
+        evidence_nodes: ["supabase/migrations/gate12_token_economy.sql"]

@@ -2,7 +2,7 @@
 import { KernelBridge } from '../KernelBridge';
 import { AGENT_PERSONAS } from '../agency/Personas';
 import { MediatorAgent } from './MediatorAgent';
-import { TaskComplexity } from '../llm/gateway';
+import { generateText, TaskTier } from '../llm/gateway';
 import { retrieveContext } from '../../compiler/retriever';
 import { Plan } from '../../compiler/types';
 import { ToolRegistry } from '../agency/ToolRegistry';
@@ -74,17 +74,15 @@ export class SwarmOrchestrator {
             }]
         };
 
-        const semanticContext = await retrieveContext(virtualPlan, { nodes: nodes as any, edges: edges as any });
+        const semanticContext = await retrieveContext(virtualPlan, { nodes: nodes as any, edges: edges as any }, 'global-swarm');
         const contextString = JSON.stringify(semanticContext.map((n: any) => ({
             type: n.type,
-            content: n.raw || n.digest,
+            content: (n as any).statement || n.digest || '',
             mode: n.selection_mode
         })));
 
         try {
-            import { AGENT_PERSONAS } from '../agency/Personas';
-
-            // ... (in runAgentCycle)
+            const { AGENT_PERSONAS } = await import('../agency/Personas');
 
             // Stage 2: Neural Inference with Agency (Phase 18)
             // [Real Intelligence] Use specialized Persona System Prompt
@@ -106,10 +104,10 @@ Rules:
 
             // Phase 19: Multimodal detection
             const images = agent.id === 'vision-01'
-                ? semanticContext.map((n: any) => n.metadata?.image_url).filter(url => !!url)
+                ? semanticContext.map((n: any) => (n as any).metadata?.image_url).filter(url => !!url)
                 : [];
 
-            const { content, toolCalls } = await (this.mediator as any).performInferenceWithTools(prompt, TaskComplexity.MEDIUM, tools, images);
+            const { content, toolCalls } = await (SwarmOrchestrator.mediator).performInferenceWithTools(prompt, 'REASONING', tools, images);
 
 
             KernelBridge.emit({ type: 'AGENT_STATUS', payload: { agentId: agent.id, status: 'WORKING' } });

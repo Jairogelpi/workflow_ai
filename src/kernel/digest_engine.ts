@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { createClient } from '../lib/supabase';
 import { traceSpan } from './observability';
+import { SmartRouter } from './llm/gateway';
 import { WorkNode, WorkEdge } from '../canon/schema/ir';
 
 // --- Configuration ---
@@ -254,6 +255,133 @@ export async function createHierarchicalDigest(nodes: WorkNode[], projectId: str
             summary,
             artifactId: `artifact-${Date.now()}`
         };
+    });
+}
+
+/**
+ * Trigger a new hierarchical digest job (Async Queue)
+ */
+export async function triggerBranchDigest(rootNodeId: string): Promise<void> {
+    return traceSpan('trigger_branch_digest', { rootNodeId }, async () => {
+        const supabase = await createClient();
+
+        // 1. Get project_id for this node
+        const { data: node } = await supabase
+            .from('work_nodes')
+            .select('project_id')
+            .eq('id', rootNodeId)
+            .single();
+
+        if (!node) throw new Error("Root node not found");
+
+        // 2. Queue the Job
+        const { error } = await supabase
+            .from('ingestion_jobs')
+            .insert({
+                project_id: node.project_id,
+                node_id: rootNodeId,
+                type: 'digest_branch',
+                status: 'pending',
+                payload: { root_node_id: rootNodeId }
+            });
+
+        if (error) throw error;
+        console.log(`[DigestEngine] Digest job queued for node: ${rootNodeId}`);
+    });
+}
+
+/**
+ * THE RLM ARCHITECT: Process Hierarchical Digest Job
+ * Fractal Recursive Map-Reduce Algorithm
+ */
+export async function processHierarchicalDigest(jobId: string, rootNodeId: string, projectId: string): Promise<void> {
+    return traceSpan('process_hierarchical_digest', { jobId, rootNodeId }, async () => {
+        const supabase = await createClient();
+
+        // 1. Get all descendants (Recursive check)
+        // For Hito 3.1, we use a flattened tree check based on 'part_of' or parent relations
+        const { data: edges } = await supabase.from('work_edges').select('*').eq('project_id', projectId);
+        const { data: nodesRaw } = await supabase.from('work_nodes').select('*').eq('project_id', projectId);
+
+        if (!nodesRaw) return;
+
+        // BFS to find all children of rootNodeId
+        const descendants: string[] = [];
+        const queue = [rootNodeId];
+        const visited = new Set([rootNodeId]);
+
+        while (queue.length > 0) {
+            const currentId = queue.shift()!;
+            const children = (edges || [])
+                .filter(e => e.target_node_id === currentId && e.relation === 'part_of')
+                .map(e => e.source_node_id);
+
+            for (const childId of children) {
+                if (!visited.has(childId)) {
+                    visited.add(childId);
+                    descendants.push(childId);
+                    queue.push(childId);
+                }
+            }
+        }
+
+        const clusterNodes = nodesRaw.filter(n => descendants.includes(n.id));
+
+        if (clusterNodes.length === 0) {
+            console.warn(`[DigestEngine] No children found for node ${rootNodeId}. Nothing to digest.`);
+            await supabase.from('ingestion_jobs').update({ status: 'completed', progress: 1.0 }).eq('id', jobId);
+            return;
+        }
+
+        // 2. Recursive Abstraction Check
+        // If > 20 nodes, we should do Map-Reduce. For now, we do single-pass with "Architect" prompt.
+        const serialized = serializeBranchForLLM(clusterNodes as any, (edges || []) as any);
+
+        const { generateText } = await import('./llm/gateway');
+
+        const ARCHITECT_PROMPT = `
+        ROLE: Senior System Architect & Strategic Thinker.
+        GOAL: Synthesize this graph branch into a high-level executive digest.
+        
+        INSTRUCTIONS:
+        1. Identify the Core Objective of this branch.
+        2. Detect logical gaps or contradictions (Dissonance).
+        3. Extract clear Action Items.
+        4. Be concise but technically precise.
+        
+        OUTPUT FORMAT (JSON):
+        {
+            "summary": "Full text summary",
+            "insights": ["Point 1", "Point 2"],
+            "actions": ["Action 1"],
+            "conflicts": [{"message": "conflict description", "nodes": ["id1", "id2"]}]
+        }
+        `;
+
+        const res = await generateText(ARCHITECT_PROMPT, serialized, 'REASONING', undefined, undefined, projectId);
+
+        try {
+            const result = JSON.parse(res.content.replace(/```json/g, '').replace(/```/g, '').trim());
+
+            // 3. Persist Crystallized Intelligence
+            await supabase.from('node_digests').upsert({
+                node_id: rootNodeId,
+                summary: result.summary,
+                key_insights: result.insights,
+                action_items: result.actions,
+                conflicts_detected: result.conflicts,
+                model_used: SmartRouter.getOptimalModel('REASONING'),
+                updated_at: new Date().toISOString()
+            });
+
+            // 4. Finalize Job
+            await supabase.from('ingestion_jobs').update({ status: 'completed', progress: 1.0 }).eq('id', jobId);
+
+            console.log(`[DigestEngine] Hierarchical digest completed for ${rootNodeId}`);
+        } catch (e) {
+            console.error("[DigestEngine] Failed to parse Architect output:", e);
+            throw e;
+        }
     });
 }
 

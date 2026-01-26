@@ -8,51 +8,33 @@ Instead of feeding 50 raw nodes to the LLM (expensive & noisy), we feed 1 Digest
 
 ## Architecture
 
-### 1. Hierarchical Compression
-The Knowledge Graph is a tree of thoughts.
-- **Level 1 (Leaves)**: Raw Notes, Claims, Evidence.
-- **Level 2 (Branch)**: A `Digest` summarizes a specific branch (e.g., "Authentication System Design").
-- **Level 3 (Root)**: A "Master Digest" (optional) summarizes the Level 2 digests.
+### 1. Fractal Recursive Map-Reduce (Milestone 3.1)
+The engine now supports deep hierarchical synthesis:
+- **Discovery**: Uses a BFS/DFS traversal of the graph (based on `part_of` relations) to cluster related thought branches.
+- **Architect Role**: A high-level LLM persona ("The Architect") analyzes the cluster to detect:
+    - **Core Objectives**: The main goal of the branch.
+    - **Dissonance**: Logical contradictions or gaps between child nodes.
+    - **Action Items**: Implicit tasks derived from the synthesis.
+- **Scale Optimization**: If a branch exceeds the token window, it uses a recursive Map-Reduce approach, summarizing sub-clusters before final synthesis.
 
-### 2. The `digests` Table
-Stored in Supabase:
-- `entity_id`: The ID of the branch (Node ID) or Project.
-- `summary_text`: The AI-generated markdown summary.
-- `is_stale`: A boolean flag. If `true`, the digest is outdated because a node in that branch has changed.
+### 2. Crystallized Intelligence (`node_digests` table)
+Unlike flat summaries, `node_digests` stores highly structured insights:
+- `summary`: Markdown executive summary.
+- `key_insights`: Highly compressed bullet points.
+- `conflicts_detected`: JSON array of logical inconsistencies found by the AI.
 
-### 3. The "Staleness" Protocol
-When a user edits a node:
-1.  **Mutation**: `useGraphStore.updateNodeContent()` creates a new version.
-2.  **Trigger**: `markStale(branchId)` hook is fired.
-3.  **Healing**: Next time `retrieveContext` is called:
-    - It sees `is_stale: true`.
-    - It *returns the stale digest* immediately (Speed > Freshness for general queries).
-    - It triggers `regenerateBranchDigest()` in the **background** (Self-Healing).
+### 3. The Staleness Protocol
+1. **Mutation**: Any change to a child node marks its parent digest as `is_stale`.
+2. **Trigger**: The UI context menu option "Sintetizar Rama" (Deep Digest) triggers an async job.
+3. **Queue**: Jobs are processed by the worker-tier (`ingestion_worker.ts`) to prevent UI blocking.
 
 ## Usage
 
-### Retrieval (The Result)
-```typescript
-import { retrieveContext } from '@/kernel/digest_engine';
+### UI Trigger (Node Context Menu)
+Users can manually trigger a "Deep Digest" for any node. This emits a `trigger_digest` event through the `KernelBridge`, which is then handled as an async job in the `ingestion_jobs` table.
 
-// Smart Retrieval
-const context = await retrieveContext(
-    "How does auth work?", 
-    currentProjectId, 
-    false // Force High Precision? (No = Use Digest)
-);
-
-console.log(context.text); 
-// Output: "[DIGEST] The Authentication system uses Supabase Auth..."
-```
-
-### Regeneration (The Worker)
-```typescript
-import { regenerateBranchDigest } from '@/kernel/digest_engine';
-
-// This is usually called by a Queue/Cron
-await regenerateBranchDigest(branchId);
-```
+### Background Healing
+The `DigestEngine` automatically triggers background refreshes if it detects a stale read during context retrieval, maintaining memory integrity without human intervention.
 
 ## Economic Impact
 - **Without Digest**: 50 Nodes x 200 tokens = 10,000 tokens ($0.15 on GPT-4).

@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
 import {
     Node,
     Edge,
@@ -19,6 +20,7 @@ import { canModifyNode, canDeleteNode } from '../kernel/guards';
 import { traceSpan } from '../kernel/observability';
 import { backendToFlow } from '../lib/adapters';
 import { syncService } from '../lib/sync';
+import { markStale } from '../kernel/digest_engine';
 
 
 // Simple debounce helper to avoid external dependencies for now
@@ -236,1053 +238,1071 @@ interface GraphState {
     currentChannel: any | null;
 }
 
-export const useGraphStore = create<GraphState>((set, get) => ({
-    nodes: [],
-    edges: [],
-    selectedNodeId: null,
-    searchQuery: '',
-    isLoading: false,
-    isSyncing: false,
-    currentUser: {
-        id: '', // Populated by Auth
-        role: 'viewer'
-    },
-    proposals: [],
-    draftNodes: [],
-    ghostNodes: [],
-    healProposals: [],
+export const useGraphStore = create<GraphState>()(
+    persist(
+        (set, get) => ({
+            nodes: [],
+            edges: [],
+            selectedNodeId: null,
+            searchQuery: '',
+            isLoading: false,
+            isSyncing: false,
+            currentUser: {
+                id: '', // Populated by Auth
+                role: 'viewer'
+            },
+            proposals: [],
+            draftNodes: [],
+            ghostNodes: [],
+            healProposals: [],
 
-    // Antigravity Initial State (Fricción Cero: On by default)
-    isAntigravityActive: true,
-    physicsStats: {
-        latency_ms: 0,
-        cost_usd: 0,
-        iterations: 0
-    },
+            // Antigravity Initial State (Fricción Cero: On by default)
+            isAntigravityActive: true,
+            physicsStats: {
+                latency_ms: 0,
+                cost_usd: 0,
+                iterations: 0
+            },
 
-    lastAuditRecord: null,
-    recordAudit: (record) => set({ lastAuditRecord: record }),
+            lastAuditRecord: null,
+            recordAudit: (record) => set({ lastAuditRecord: record }),
 
-    logicalTension: {},
-    setLogicalTension: (tension) => set({ logicalTension: tension }),
-    isXRayActive: false,
-    setXRayActive: (active) => set({ isXRayActive: active }),
+            logicalTension: {},
+            setLogicalTension: (tension) => set({ logicalTension: tension }),
+            isXRayActive: false,
+            setXRayActive: (active) => set({ isXRayActive: active }),
 
-    cursorPosition: null,
-    setCursorPosition: (pos) => set({ cursorPosition: pos }),
+            cursorPosition: null,
+            setCursorPosition: (pos) => set({ cursorPosition: pos }),
 
-    windows: {},
-    toggleWindow: (id, isOpen, data) => set((state) => {
-        const existing = state.windows[id];
-        const now = existing || data || {};
-        return {
-            windows: {
-                ...state.windows,
-                [id]: {
-                    id,
-                    title: now.title || 'System Window',
-                    isOpen,
-                    zIndex: isOpen ? Math.max(...Object.values(state.windows).map(w => w.zIndex), 0) + 1 : 0,
-                    contentType: now.contentType || 'text',
-                    contentUrl: now.contentUrl,
-                    nodeData: now.nodeData,
-                    mimeType: now.mimeType,
-                    textContent: now.textContent
+            windows: {},
+            toggleWindow: (id, isOpen, data) => set((state) => {
+                const existing = state.windows[id];
+                const now = existing || data || {};
+                return {
+                    windows: {
+                        ...state.windows,
+                        [id]: {
+                            id,
+                            title: now.title || 'System Window',
+                            isOpen,
+                            zIndex: isOpen ? Math.max(...Object.values(state.windows).map(w => w.zIndex), 0) + 1 : 0,
+                            contentType: now.contentType || 'text',
+                            contentUrl: now.contentUrl,
+                            nodeData: now.nodeData,
+                            mimeType: now.mimeType,
+                            textContent: now.textContent
+                        }
+                    }
+                };
+            }),
+            focusWindow: (id) => set((state) => {
+                const existing = state.windows[id];
+                if (!existing) return state;
+                return {
+                    windows: {
+                        ...state.windows,
+                        [id]: { ...existing, zIndex: Math.max(...Object.values(state.windows).map(w => w.zIndex), 0) + 1 }
+                    }
+                };
+            }),
+            closeWindow: (id) => set((state) => {
+                const { [id]: closed, ...remaining } = state.windows;
+                return { windows: remaining };
+            }),
+            openWindow: (idOrConfig, title, contentType) => {
+                const { toggleWindow } = get();
+                if (typeof idOrConfig === 'object') {
+                    const { id, ...data } = idOrConfig;
+                    toggleWindow(id, true, data);
+                } else {
+                    toggleWindow(idOrConfig, true, { title, contentType });
                 }
-            }
-        };
-    }),
-    focusWindow: (id) => set((state) => {
-        const existing = state.windows[id];
-        if (!existing) return state;
-        return {
-            windows: {
-                ...state.windows,
-                [id]: { ...existing, zIndex: Math.max(...Object.values(state.windows).map(w => w.zIndex), 0) + 1 }
-            }
-        };
-    }),
-    closeWindow: (id) => set((state) => {
-        const { [id]: closed, ...remaining } = state.windows;
-        return { windows: remaining };
-    }),
-    openWindow: (idOrConfig, title, contentType) => {
-        const { toggleWindow } = get();
-        if (typeof idOrConfig === 'object') {
-            const { id, ...data } = idOrConfig;
-            toggleWindow(id, true, data);
-        } else {
-            toggleWindow(idOrConfig, true, { title, contentType });
-        }
-    },
+            },
 
-    rlmThoughts: [],
-    addRLMThought: (thought) => set((state) => ({
-        rlmThoughts: [
-            ...state.rlmThoughts,
-            {
-                ...thought,
-                id: uuidv4(),
-                timestamp: new Date().toISOString()
-            }
-        ].slice(-50) // Keep only last 50 thoughts
-    })),
+            rlmThoughts: [],
+            addRLMThought: (thought) => set((state) => ({
+                rlmThoughts: [
+                    ...state.rlmThoughts,
+                    {
+                        ...thought,
+                        id: uuidv4(),
+                        timestamp: new Date().toISOString()
+                    }
+                ].slice(-50) // Keep only last 50 thoughts
+            })),
 
-    activeAgents: {
-        'harvester': { name: 'Axiom Harvester', status: 'IDLE', color: '#fbbf24' },
-        'builder': { name: 'Graph Architect', status: 'IDLE', color: '#22d3ee' },
-        'critic': { name: 'Logical Auditor', status: 'IDLE', color: '#f87171' },
-        'validator': { name: 'Evidence Sentry', status: 'IDLE', color: '#c084fc' },
-        'librarian': { name: 'Canon Librarian', status: 'IDLE', color: '#4ade80' }
-    },
-    setAgentStatus: (agentId, status) => set((state) => {
-        const agent = state.activeAgents[agentId];
-        if (!agent) return state;
-        return {
             activeAgents: {
-                ...state.activeAgents,
-                [agentId]: { ...agent, status }
-            }
-        };
-    }),
+                'harvester': { name: 'Axiom Harvester', status: 'IDLE', color: '#fbbf24' },
+                'builder': { name: 'Graph Architect', status: 'IDLE', color: '#22d3ee' },
+                'critic': { name: 'Logical Auditor', status: 'IDLE', color: '#f87171' },
+                'validator': { name: 'Evidence Sentry', status: 'IDLE', color: '#c084fc' },
+                'librarian': { name: 'Canon Librarian', status: 'IDLE', color: '#4ade80' }
+            },
+            setAgentStatus: (agentId, status) => set((state) => {
+                const agent = state.activeAgents[agentId];
+                if (!agent) return state;
+                return {
+                    activeAgents: {
+                        ...state.activeAgents,
+                        [agentId]: { ...agent, status }
+                    }
+                };
+            }),
 
-    alignmentReport: null,
-    isAlignmentComputing: false,
-    currentRipple: null,
-    isBooting: false,
-    projectManifest: null,
-    setAlignmentReport: (report) => set({ alignmentReport: report }),
+            alignmentReport: null,
+            isAlignmentComputing: false,
+            currentRipple: null,
+            isBooting: false,
+            projectManifest: null,
+            setAlignmentReport: (report) => set({ alignmentReport: report }),
 
-    projectPhase: 'JAM', // Default start
-    currentBlueprint: null,
-    setPhase: (phase) => set({ projectPhase: phase }),
-    signBlueprint: async (bp) => {
-        const { addRLMThought, currentUser } = get();
+            projectPhase: 'JAM', // Default start
+            currentBlueprint: null,
+            setPhase: (phase) => set({ projectPhase: phase }),
+            signBlueprint: async (bp) => {
+                const { addRLMThought, currentUser } = get();
 
-        // 1. Log the Authority Signature
-        addRLMThought({
-            message: `AUTHORITY_SIGNATURE: Blueprint aprobado por ${currentUser.id} (Rol: ${currentUser.role}). Desbloqueando modo BUILD.`,
-            type: 'success'
-        });
+                // 1. Log the Authority Signature
+                addRLMThought({
+                    message: `AUTHORITY_SIGNATURE: Blueprint aprobado por ${currentUser.id} (Rol: ${currentUser.role}). Desbloqueando modo BUILD.`,
+                    type: 'success'
+                });
 
-        // 2. Persist State
-        // await syncService.updateProjectPhase(projectId, 'BUILD');
+                // 2. Persist State
+                // await syncService.updateProjectPhase(projectId, 'BUILD');
 
-        set({
-            projectPhase: 'BUILD',
-            currentBlueprint: bp
-        });
-    },
+                set({
+                    projectPhase: 'BUILD',
+                    currentBlueprint: bp
+                });
+            },
 
-    logicError: null,
-    triggerCircuitBreaker: (error) => set({ logicError: error }),
-    resolveCircuitBreaker: () => set({ logicError: null }),
+            logicError: null,
+            triggerCircuitBreaker: (error) => set({ logicError: error }),
+            resolveCircuitBreaker: () => set({ logicError: null }),
 
-    compilePRD: async (projectId: string) => {
-        // Dynamic import to avoid circular dependencies if any
-        const { compilePRD } = await import('../kernel/product_engine');
-        const prd = await compilePRD(projectId);
+            compilePRD: async (projectId: string) => {
+                // Dynamic import to avoid circular dependencies if any
+                const { compilePRD } = await import('../kernel/product_engine');
+                const prd = await compilePRD(projectId);
 
-        // Log generation
-        get().addRLMThought({
-            message: `PRODUCT_ENGINE: Documento '${prd.title}' compilado con ${prd.metadata.node_count} nodos.`,
-            type: 'success'
-        });
+                // Log generation
+                get().addRLMThought({
+                    message: `PRODUCT_ENGINE: Documento '${prd.title}' compilado con ${prd.metadata.node_count} nodos.`,
+                    type: 'success'
+                });
 
-        // Open as window (Phase 22)
-        get().openWindow({
-            id: `prd-${Date.now()}`,
-            title: prd.title,
-            contentType: 'text',
-            textContent: prd.markdown,
-            mimeType: 'text/markdown'
-        });
+                // Open as window (Phase 22)
+                get().openWindow({
+                    id: `prd-${Date.now()}`,
+                    title: prd.title,
+                    contentType: 'text',
+                    textContent: prd.markdown,
+                    mimeType: 'text/markdown'
+                });
 
-        return prd;
-    },
+                return prd;
+            },
 
-    triggerRipple: (ripple) => {
-        set({ currentRipple: ripple });
-        // Auto-clear after duration based on intensity
-        const duration = ripple.intensity === 'high' ? 5000 : 3000;
-        setTimeout(() => {
-            if (get().currentRipple === ripple) set({ currentRipple: null });
-        }, duration);
-    },
+            triggerRipple: (ripple) => {
+                set({ currentRipple: ripple });
+                // Auto-clear after duration based on intensity
+                const duration = ripple.intensity === 'high' ? 5000 : 3000;
+                setTimeout(() => {
+                    if (get().currentRipple === ripple) set({ currentRipple: null });
+                }, duration);
+            },
 
-    // [Hito 4.1] Open Manifest if uninitialized
-    openManifest: () => {
-        const { openWindow, projectManifest } = get();
-        if (!projectManifest) {
-            openWindow('project-manifest', 'Gate 8: Project Manifest', 'manifest');
-        }
-    },
-    performAlignmentCheck: async (sourceBranchId, targetBranchId) => {
-        set({ isAlignmentComputing: true });
-        try {
-            // Dynamic import to avoid circular dependencies
-            const alignmentEngine = await import('../kernel/alignment_engine');
-            const report = await alignmentEngine.checkCrossBranchAlignment(sourceBranchId, targetBranchId);
-            set({ alignmentReport: report, isAlignmentComputing: false });
-
-            // [Phase 15 Swarm] Update agents to show they've finished audit
-            set((state) => ({
-                activeAgents: {
-                    ...state.activeAgents,
-                    'validator-01': { ...state.activeAgents['validator-01']!, status: 'IDLE' }
+            // [Hito 4.1] Open Manifest if uninitialized
+            openManifest: () => {
+                const { openWindow, projectManifest } = get();
+                if (!projectManifest) {
+                    openWindow('project-manifest', 'Gate 8: Project Manifest', 'manifest');
                 }
-            }));
-        } catch (error) {
-            console.error('[GraphStore] Alignment check failed:', error);
-            set({ isAlignmentComputing: false });
-        }
-    },
+            },
+            performAlignmentCheck: async (sourceBranchId, targetBranchId) => {
+                set({ isAlignmentComputing: true });
+                try {
+                    // Dynamic import to avoid circular dependencies
+                    const alignmentEngine = await import('../kernel/alignment_engine');
+                    const report = await alignmentEngine.checkCrossBranchAlignment(sourceBranchId, targetBranchId);
+                    set({ alignmentReport: report, isAlignmentComputing: false });
 
-    materializeGhost: async (gap) => {
-        const { addNode, setAlignmentReport, alignmentReport, addRLMThought } = get();
-
-        addRLMThought({ message: `GHOST_MATERIALIZATION: Firmando y validando nodo inferred: '${gap.missingConcept.slice(0, 30)}...'`, type: 'success' });
-
-        await addNode({
-            type: 'decision', // Default for healing
-            statement: gap.missingConcept,
-            metadata: {
-                origin: 'ai',
-                confidence: 1.0,
-                validated: true, // Auto-validated upon materialization
-                pin: false,
-                tags: ['alignment-v7.8', 'sovereign-materialization'],
-                forensic_id: `trace-${uuidv4().slice(0, 8)}`,
-                human_signature: {
-                    signer: 'Sovereign_OS_Auth',
-                    timestamp: new Date().toISOString(),
-                    public_key: 'PENDING_ON_CHAIN_GENERATION' // Placeholder for future crypto-bridge
+                    // [Phase 15 Swarm] Update agents to show they've finished audit
+                    set((state) => ({
+                        activeAgents: {
+                            ...state.activeAgents,
+                            'validator-01': { ...state.activeAgents['validator-01']!, status: 'IDLE' }
+                        }
+                    }));
+                } catch (error) {
+                    console.error('[GraphStore] Alignment check failed:', error);
+                    set({ isAlignmentComputing: false });
                 }
-            }
-        } as any);
+            },
 
-        if (alignmentReport) {
-            setAlignmentReport({
-                ...alignmentReport,
-                gaps: alignmentReport.gaps.filter((g: any) => g.sourceNodeId !== gap.sourceNodeId)
-            });
-        }
-    },
+            materializeGhost: async (gap) => {
+                const { addNode, setAlignmentReport, alignmentReport, addRLMThought } = get();
 
-    setNodes: (nodes) => {
-        set({ nodes });
-        get().syncPositions();
-    },
-    setEdges: (edges) => set({ edges }),
-    setSearchQuery: (searchQuery) => set({ searchQuery }),
-    setCurrentUser: (currentUser) => set({ currentUser }),
+                addRLMThought({ message: `GHOST_MATERIALIZATION: Firmando y validando nodo inferred: '${gap.missingConcept.slice(0, 30)}...'`, type: 'success' });
 
-    // Debounced position sync (Hito 7.9)
-    // Prevents network saturation during Antigravity physics ticks (16ms)
-    syncPositions: debounce(async (providedNodes?: AppNode[]) => {
-        const { nodes, projectManifest } = get();
-        const nodesToSync = providedNodes || nodes;
-        if (nodesToSync.length === 0) return;
+                await addNode({
+                    type: 'decision', // Default for healing
+                    statement: gap.missingConcept,
+                    metadata: {
+                        origin: 'ai',
+                        confidence: 1.0,
+                        validated: true, // Auto-validated upon materialization
+                        pin: false,
+                        tags: ['alignment-v7.8', 'sovereign-materialization'],
+                        forensic_id: `trace-${uuidv4().slice(0, 8)}`,
+                        human_signature: {
+                            signer: 'Sovereign_OS_Auth',
+                            timestamp: new Date().toISOString(),
+                            public_key: 'PENDING_ON_CHAIN_GENERATION' // Placeholder for future crypto-bridge
+                        }
+                    }
+                } as any);
 
-        const projectId = projectManifest ? (projectManifest as any).id : null;
-        if (!projectId) return;
+                if (alignmentReport) {
+                    setAlignmentReport({
+                        ...alignmentReport,
+                        gaps: alignmentReport.gaps.filter((g: any) => g.sourceNodeId !== gap.sourceNodeId)
+                    });
+                }
+            },
 
-        // Update WorkNode metadata with current positions
-        const workNodes = nodesToSync.map(n => {
-            const data = { ...n.data };
-            data.metadata = {
-                ...data.metadata,
-                spatial: { x: n.position.x, y: n.position.y }
-            };
-            return data;
-        });
+            setNodes: (nodes) => {
+                set({ nodes });
+                get().syncPositions();
+            },
+            setEdges: (edges) => set({ edges }),
+            setSearchQuery: (searchQuery) => set({ searchQuery }),
+            setCurrentUser: (currentUser) => set({ currentUser }),
 
-        try {
-            await syncService.syncAll(projectId, workNodes, []);
-        } catch (error) {
-            console.error('[Store] Debounced position sync failed:', error);
-        }
-    }, 2000),
+            // Debounced position sync (Hito 7.9)
+            // Prevents network saturation during Antigravity physics ticks (16ms)
+            syncPositions: debounce(async (providedNodes?: AppNode[]) => {
+                const { nodes, projectManifest } = get();
+                const nodesToSync = providedNodes || nodes;
+                if (nodesToSync.length === 0) return;
+
+                const projectId = projectManifest ? (projectManifest as any).id : null;
+                if (!projectId) return;
+
+                // Update WorkNode metadata with current positions
+                const workNodes = nodesToSync.map(n => {
+                    const data = { ...n.data };
+                    data.metadata = {
+                        ...data.metadata,
+                        spatial: { x: n.position.x, y: n.position.y }
+                    };
+                    return data;
+                });
+
+                try {
+                    await syncService.syncAll(projectId, workNodes, []);
+                } catch (error) {
+                    console.error('[Store] Debounced position sync failed:', error);
+                }
+            }, 2000),
 
 
-    // Debounced Node Sync (Hito 7.9)
-    debouncedSyncNode: debounce(async (projectId: string, node: WorkNode) => {
-        try {
-            await syncService.upsertNode(projectId, node);
-        } catch (error) {
-            console.error('[Store] Debounced node sync failed:', error);
-        }
-    }, 1000),
+            // Debounced Node Sync (Hito 7.9)
+            debouncedSyncNode: debounce(async (projectId: string, node: WorkNode) => {
+                try {
+                    await syncService.upsertNode(projectId, node);
+                } catch (error) {
+                    console.error('[Store] Debounced node sync failed:', error);
+                }
+            }, 1000),
 
-    // Debounced Edge Sync (Hito 7.9)
-    debouncedSyncEdge: debounce(async (projectId: string, edge: WorkEdge) => {
-        try {
-            await syncService.upsertEdge(projectId, edge);
-        } catch (error) {
-            console.error('[Store] Debounced edge sync failed:', error);
-        }
-    }, 1000),
+            // Debounced Edge Sync (Hito 7.9)
+            debouncedSyncEdge: debounce(async (projectId: string, edge: WorkEdge) => {
+                try {
+                    await syncService.upsertEdge(projectId, edge);
+                } catch (error) {
+                    console.error('[Store] Debounced edge sync failed:', error);
+                }
+            }, 1000),
 
 
-    voteOnNode: (nodeId, agentId, vote) => set((state) => {
-        const updatedGhostNodes = state.ghostNodes.map(node => {
-            if (node.id === nodeId) {
-                const nodeData = node.data;
-                const metadata = nodeData.metadata;
-                const consensus = metadata.consensus || { support_count: 0, skeptics_count: 0, voters: [] };
+            voteOnNode: (nodeId, agentId, vote) => set((state) => {
+                const updatedGhostNodes = state.ghostNodes.map(node => {
+                    if (node.id === nodeId) {
+                        const nodeData = node.data;
+                        const metadata = nodeData.metadata;
+                        const consensus = metadata.consensus || { support_count: 0, skeptics_count: 0, voters: [] };
 
-                if (consensus.voters.includes(agentId)) return node;
+                        if (consensus.voters.includes(agentId)) return node;
 
-                const newConsensus = {
-                    ...consensus,
-                    voters: [...consensus.voters, agentId],
-                    support_count: vote === 'support' ? consensus.support_count + 1 : consensus.support_count,
-                    skeptics_count: vote === 'skeptic' ? consensus.skeptics_count + 1 : consensus.skeptics_count,
+                        const newConsensus = {
+                            ...consensus,
+                            voters: [...consensus.voters, agentId],
+                            support_count: vote === 'support' ? consensus.support_count + 1 : consensus.support_count,
+                            skeptics_count: vote === 'skeptic' ? consensus.skeptics_count + 1 : consensus.skeptics_count,
+                        };
+
+                        return { ...node, data: { ...nodeData, metadata: { ...metadata, consensus: newConsensus } } };
+                    }
+                    return node;
+                });
+
+                return { ghostNodes: updatedGhostNodes };
+            }),
+
+            loadProject: async (projectId) => {
+                return traceSpan('store.load_project', { projectId }, async () => {
+                    set({ isLoading: true });
+                    try {
+                        // [Hito 4.1] Setup context before hydration
+                        set({ projectManifest: { id: projectId, name: 'Loading...', description: '', roles: {} } as any });
+
+                        const { nodes: rawNodes, edges: rawEdges } = await syncService.fetchGraph(projectId);
+                        const flowNodes = rawNodes.map(node => backendToFlow(node));
+                        const flowEdges = rawEdges.map(edge => ({
+                            id: edge.id,
+                            source: edge.source,
+                            target: edge.target,
+                            data: edge
+                        }));
+                        set({ nodes: flowNodes, edges: flowEdges, isLoading: false });
+                    } catch (error) {
+                        console.error('Failed to hydrate graph:', error);
+                        set({ isLoading: false });
+                    }
+                });
+            },
+
+            initProjectSwarm: async (name, description, roles) => {
+                return traceSpan('store.init_project_swarm', { name }, async () => {
+                    set({ isBooting: true, projectManifest: { id: 'pending', name, description, roles } });
+                    const { addRLMThought, currentUser } = get();
+
+                    addRLMThought({ message: `BOOT_SEQUENCE: Iniciando enjambre para '${name}'...`, type: 'info' });
+
+                    try {
+                        // [Phase 11] Trigger RLM Scaffolding
+                        addRLMThought({ message: "RLM_COMPILER: Analizando intención semántica...", type: 'reasoning' });
+
+                        // [Hito 7.9] Orchestrating RLM Dispatcher and SAT consistency
+                        // const { RLMDispatcher } = await import('../kernel/RLMDispatcher'); // Future
+
+                        // PERSISTENCE LAYER: Save to Supabase
+                        // Use current user (auth required)
+                        const ownerId = currentUser.id;
+                        if (!ownerId) throw new Error('AUTHORIZATION_REQUIRED: Debes iniciar sesión.');
+
+                        const project = await syncService.createProject(name, description, ownerId);
+
+                        addRLMThought({ message: `BOOT_COMPLETE: Proyecto '${name}' nacido en el Canon (ID: ${project.id}).`, type: 'success' });
+                        set({ isBooting: false, projectManifest: { id: project.id, name, description, roles } });
+
+                        return project.id; // Return for navigation
+                    } catch (error) {
+                        console.error('[GraphStore] Swarm Boot Error:', error);
+                        set({ isBooting: false });
+                        throw error;
+                    }
+                });
+            },
+
+            centerNode: (id) => set({ selectedNodeId: id }),
+
+            onNodesChange: (changes) => {
+                // [Observability Protection] Removed traceSpan here to avoid Log Spam on drag.
+                // We only trace atomic actions like 'addNode' or 'onNodeDragStop'.
+                const { nodes } = get();
+                const filteredChanges = changes.filter(c => c.type !== 'position');
+
+                if (filteredChanges.length > 0) {
+                    const updatedNodes = applyNodeChanges(filteredChanges, nodes) as AppNode[];
+                    set({ nodes: updatedNodes });
+                }
+            },
+
+            onEdgesChange: (changes) => {
+                // [Observability Protection] Removed traceSpan here.
+                set({
+                    edges: applyEdgeChanges(changes, get().edges) as AppEdge[],
+                });
+            },
+
+            onConnect: async (params) => {
+                const { edges } = get();
+                const { source, target } = params;
+                if (!source || !target) return;
+
+                try {
+                    const newWorkEdge: WorkEdge = {
+                        id: uuidv4() as EdgeId,
+                        source: source as NodeId,
+                        target: target as NodeId,
+                        relation: 'relates_to',
+                        metadata: {
+                            created_at: new Date().toISOString(),
+                            updated_at: new Date().toISOString(),
+                            version_hash: uuidv4(),
+                            origin: 'human',
+                            confidence: 1.0,
+                            validated: false,
+                            pin: false,
+                            access_control: {
+                                role_required: 'editor',
+                                owner_id: get().currentUser.id
+                            }
+                        }
+                    };
+
+                    // React Flow UI update
+                    const newEdge: AppEdge = {
+                        id: newWorkEdge.id,
+                        source: newWorkEdge.source,
+                        target: newWorkEdge.target,
+                        data: newWorkEdge,
+                    };
+
+                    set({
+                        edges: addEdge(newEdge, edges) as AppEdge[],
+                    });
+
+                    const projectId = get().projectManifest ? (get().projectManifest as any).id : null;
+                    if (projectId) {
+                        await syncService.upsertEdge(projectId, newWorkEdge);
+                    }
+
+                } catch (err) {
+                    console.error('[SyncGuardian] Edge creation rejected:', err);
+                }
+            },
+
+            onNodeDragStop: (_event, node) => {
+                traceSpan('store.on_node_drag_stop', { nodeId: node.id, x: node.position.x, y: node.position.y }, async () => {
+                    // [Performance] Transient Update Commit
+                    // React Flow handles the drag visually (uncontrolled or local state).
+                    // We only commit to the global store and DB when the drag ends.
+                    const { nodes, syncPositions } = get();
+
+                    // 1. Update Global Store (so other components like minimap reflect new position)
+                    const updatedNodes = nodes.map(n =>
+                        n.id === node.id ? { ...n, position: node.position } : n
+                    );
+                    set({ nodes: updatedNodes });
+
+                    // 2. Trigger Sync to DB
+                    syncPositions(updatedNodes);
+                });
+            },
+
+            setSelectedNode: (id) => set({ selectedNodeId: id }),
+
+            updateNodeContent: async (id, content) => {
+                return traceSpan('store.update_node_content', { nodeId: id }, async () => {
+                    const { nodes, currentUser } = get();
+                    let updatedNodeRecord: WorkNode | null = null;
+
+                    const updatedNodes = nodes.map((node) => {
+                        if (node.id === id) {
+                            // [RBAC] Guard check
+                            if (!canModifyNode(node.data, currentUser.role, currentUser.id)) {
+                                return node;
+                            }
+
+                            const nodeData = node.data;
+                            const newData = { ...nodeData };
+
+                            if (newData.type === 'note') newData.content = content;
+                            else if (newData.type === 'claim') newData.statement = content;
+                            else if (newData.type === 'evidence') newData.content = content;
+                            else if (newData.type === 'decision') newData.rationale = content;
+                            else if (newData.type === 'idea') newData.details = content;
+                            else if (newData.type === 'task') newData.description = content;
+                            else if (newData.type === 'artifact') newData.name = content;
+                            else if (newData.type === 'assumption') newData.premise = content;
+                            else if (newData.type === 'constraint') newData.rule = content;
+
+                            const updatedMetadata = createVersion(newData as WorkNode, node.data.metadata.version_hash);
+                            updatedNodeRecord = { ...newData, metadata: updatedMetadata } as WorkNode;
+
+                            return { ...node, data: updatedNodeRecord };
+                        }
+                        return node;
+                    });
+
+                    // [Hito 7.9] SyncGuardian Audit
+                    try {
+                        const { SyncGuardian } = await import('../kernel/SyncGuardian');
+                        await SyncGuardian.handleMutation(id, { statement: content, content: content });
+
+                        set({ nodes: updatedNodes });
+                        if (updatedNodeRecord) {
+                            const projectId = get().projectManifest ? (get().projectManifest as any).id : null;
+                            if (projectId) {
+                                get().debouncedSyncNode(projectId, updatedNodeRecord);
+                                markStale(projectId).catch(e => console.error("[Store] markStale failed:", e));
+                            }
+                        }
+                    } catch (err) {
+                        console.error('[SyncGuardian] Mutation rejected:', err);
+                    }
+                });
+            },
+
+            addNode: async (payload, position) => {
+                return traceSpan('store.add_node', { type: typeof payload === 'object' ? payload.type : payload }, async () => {
+                    const isFullNode = typeof payload === 'object';
+                    const type = isFullNode ? payload.type : payload;
+
+                    const id = isFullNode ? payload.id : uuidv4() as NodeId;
+                    const now = new Date().toISOString();
+                    const baseNode: any = isFullNode ? { ...payload } : {
+                        id,
+                        type,
+                        metadata: {
+                            created_at: now,
+                            updated_at: now,
+                            origin: 'human',
+                            version_hash: '' as any,
+                            confidence: 1.0,
+                            validated: false,
+                            pin: false,
+                            access_control: {
+                                role_required: 'editor',
+                                owner_id: get().currentUser.id
+                            }
+                        }
+                    };
+
+                    if (!isFullNode) {
+                        if (type === 'note') baseNode.content = 'New Note';
+                        else if (type === 'claim') baseNode.statement = 'New Claim';
+                        else if (type === 'evidence') baseNode.content = 'New Evidence';
+                        else if (type === 'decision') { baseNode.rationale = 'New Decision'; baseNode.chosen_option = ''; }
+                        else if (type === 'idea') baseNode.summary = 'New Idea';
+                        else if (type === 'task') { baseNode.title = 'New Task'; baseNode.status = 'todo'; }
+                        else if (type === 'artifact') { baseNode.name = 'New Artifact'; baseNode.uri = ''; }
+                        else if (type === 'assumption') { baseNode.premise = 'New Assumption'; baseNode.risk_level = 'medium'; }
+                        else if (type === 'constraint') { baseNode.rule = 'New Constraint'; baseNode.enforcement_level = 'strict'; }
+                    }
+
+                    const signedMetadata = isFullNode ? baseNode.metadata : createVersion(baseNode as WorkNode);
+                    const finalNode: WorkNode = { ...baseNode, metadata: signedMetadata };
+                    const flowNode = backendToFlow(finalNode, position || { x: Math.random() * 400, y: Math.random() * 400 });
+
+                    set({ nodes: [...get().nodes, flowNode] });
+                    const projectId = get().projectManifest ? (get().projectManifest as any).id : null;
+                    if (projectId) {
+                        await syncService.upsertNode(projectId, finalNode);
+                        markStale(projectId).catch(e => console.error("[Store] markStale failed:", e));
+                    }
+                });
+            },
+
+            mutateNodeType: async (id, newType) => {
+                const { nodes, projectManifest, triggerRipple } = get();
+                const originalNodes = [...nodes];
+                let updatedNodeRecord: WorkNode | null = null;
+
+                const updatedNodes = nodes.map((node) => {
+                    if (node.id === id) {
+                        const oldData = node.data;
+                        const newData: any = {
+                            id: oldData.id,
+                            type: newType,
+                            metadata: { ...oldData.metadata }
+                        };
+
+                        const oldContent = (oldData as any).content || (oldData as any).statement || (oldData as any).rationale || (oldData as any).summary || (oldData as any).description || (oldData as any).details || (oldData as any).name || (oldData as any).premise || (oldData as any).rule || '';
+
+                        if (newType === 'note') newData.content = oldContent;
+                        else if (newType === 'claim') { newData.statement = oldContent; newData.verification_status = 'pending'; }
+                        else if (newType === 'evidence') newData.content = oldContent;
+                        else if (newType === 'decision') { newData.rationale = oldContent; newData.chosen_option = ''; }
+                        else if (newType === 'idea') newData.summary = oldContent;
+                        else if (newType === 'task') { newData.title = 'Mutated Task'; newData.description = oldContent; newData.status = 'todo'; }
+                        else if (newType === 'artifact') { newData.name = oldContent; newData.uri = ''; }
+                        else if (newType === 'assumption') { newData.premise = oldContent; newData.risk_level = 'medium'; }
+                        else if (newType === 'constraint') { newData.rule = oldContent; newData.enforcement_level = 'strict'; }
+                        else if (newType === 'source') { newData.citation = oldContent; }
+
+                        // Optimistic Versioning (Calculated locally)
+                        const updatedMetadata = createVersion(newData as WorkNode, oldData.metadata.version_hash);
+                        updatedNodeRecord = { ...newData, metadata: updatedMetadata } as WorkNode;
+                        return { ...node, data: updatedNodeRecord };
+                    }
+                    return node;
+                });
+
+                // 1. Optimistic Update
+                set({ nodes: updatedNodes });
+
+                // 2. Background Verification & Persistence
+                try {
+                    const { SyncGuardian } = await import('../kernel/SyncGuardian');
+                    await SyncGuardian.handleMutation(id, { type: newType });
+
+                    if (updatedNodeRecord) {
+                        const projectId = projectManifest?.id;
+                        if (projectId) {
+                            get().debouncedSyncNode(projectId, updatedNodeRecord);
+                            markStale(projectId).catch(e => console.error("[Store] markStale failed:", e));
+                        }
+                    }
+                } catch (err: any) {
+                    console.warn('[Optimistic UI] Rollback:', err.message);
+                    set({ nodes: originalNodes });
+                    triggerRipple({ type: 'error', message: `Rechazado: ${err.message}`, intensity: 'medium' });
+                }
+            },
+
+            optimisticUpdate: async (action, rollback) => {
+                const snapshot = { nodes: [...get().nodes], edges: [...get().edges] };
+                try {
+                    return await action();
+                } catch (err) {
+                    rollback(snapshot);
+                    throw err;
+                }
+            },
+
+            deleteNode: async (id: string) => {
+                return traceSpan('store.delete_node', { nodeId: id }, async () => {
+                    const { nodes, edges, currentUser } = get();
+                    const targetNode = nodes.find(n => n.id === id);
+
+                    if (targetNode && !canDeleteNode(targetNode.data, { nodes: {}, edges: Object.fromEntries(edges.map(e => [e.id, e.data])) } as any, currentUser.role, currentUser.id)) {
+                        return;
+                    }
+
+                    set({
+                        nodes: nodes.filter(n => n.id !== id),
+                        edges: edges.filter(e => e.source !== id && e.target !== id)
+                    });
+
+                    const projectId = get().projectManifest?.id;
+                    if (projectId) {
+                        markStale(projectId).catch(e => console.error("[Store] markStale failed:", e));
+                    }
+
+                    try {
+                        await syncService.archiveNode(id);
+                        const edgesToArchive = edges
+                            .filter(e => e.source === id || e.target === id)
+                            .map(e => e.id);
+
+                        if (edgesToArchive.length > 0) {
+                            await syncService.archiveEdges(edgesToArchive);
+                        }
+                    } catch (error) {
+                        console.error('Failed to archive node/edges:', error);
+                    }
+                });
+            },
+
+            signNode: async (id, signerId) => {
+                const { nodes } = get();
+                let updatedNodeRecord: WorkNode | null = null;
+
+                // [Phase 7 Final] Use Rust Ed25519 signer for cryptographic authority
+                let signatureData: { signature?: string; public_key?: string; method: 'organic' | 'cryptographic' } = {
+                    method: 'organic'
                 };
 
-                return { ...node, data: { ...nodeData, metadata: { ...metadata, consensus: newConsensus } } };
-            }
-            return node;
-        });
+                try {
+                    const signerCore = await import('signer-core');
+                    await signerCore.default?.(); // Initialize WASM
 
-        return { ghostNodes: updatedGhostNodes };
-    }),
+                    const targetNode = nodes.find(n => n.id === id);
+                    const currentHash = computeNodeHash(targetNode?.data || {} as any);
 
-    loadProject: async (projectId) => {
-        return traceSpan('store.load_project', { projectId }, async () => {
-            set({ isLoading: true });
-            try {
-                // [Hito 4.1] Setup context before hydration
-                set({ projectManifest: { id: projectId, name: 'Loading...', description: '', roles: {} } as any });
+                    // Get or generate user's private key from secure storage
+                    const { useSettingsStore } = await import('./useSettingsStore');
+                    const settings = useSettingsStore.getState();
+                    let privateKey = (settings as any).signerPrivateKey;
 
-                const { nodes: rawNodes, edges: rawEdges } = await syncService.fetchGraph(projectId);
-                const flowNodes = rawNodes.map(node => backendToFlow(node));
-                const flowEdges = rawEdges.map(edge => ({
-                    id: edge.id,
-                    source: edge.source,
-                    target: edge.target,
-                    data: edge
-                }));
-                set({ nodes: flowNodes, edges: flowEdges, isLoading: false });
-            } catch (error) {
-                console.error('Failed to hydrate graph:', error);
-                set({ isLoading: false });
-            }
-        });
-    },
-
-    initProjectSwarm: async (name, description, roles) => {
-        return traceSpan('store.init_project_swarm', { name }, async () => {
-            set({ isBooting: true, projectManifest: { id: 'pending', name, description, roles } });
-            const { addRLMThought, currentUser } = get();
-
-            addRLMThought({ message: `BOOT_SEQUENCE: Iniciando enjambre para '${name}'...`, type: 'info' });
-
-            try {
-                // [Phase 11] Trigger RLM Scaffolding
-                addRLMThought({ message: "RLM_COMPILER: Analizando intención semántica...", type: 'reasoning' });
-
-                // [Hito 7.9] Orchestrating RLM Dispatcher and SAT consistency
-                // const { RLMDispatcher } = await import('../kernel/RLMDispatcher'); // Future
-
-                // PERSISTENCE LAYER: Save to Supabase
-                // Use current user (auth required)
-                const ownerId = currentUser.id;
-                if (!ownerId) throw new Error('AUTHORIZATION_REQUIRED: Debes iniciar sesión.');
-
-                const project = await syncService.createProject(name, description, ownerId);
-
-                addRLMThought({ message: `BOOT_COMPLETE: Proyecto '${name}' nacido en el Canon (ID: ${project.id}).`, type: 'success' });
-                set({ isBooting: false, projectManifest: { id: project.id, name, description, roles } });
-
-                return project.id; // Return for navigation
-            } catch (error) {
-                console.error('[GraphStore] Swarm Boot Error:', error);
-                set({ isBooting: false });
-                throw error;
-            }
-        });
-    },
-
-    centerNode: (id) => set({ selectedNodeId: id }),
-
-    onNodesChange: (changes) => {
-        traceSpan('store.on_nodes_change', { changeCount: changes.length }, async () => {
-            const { nodes } = get();
-            const filteredChanges = changes.filter(c => c.type !== 'position');
-
-            if (filteredChanges.length > 0) {
-                const updatedNodes = applyNodeChanges(filteredChanges, nodes) as AppNode[];
-                set({ nodes: updatedNodes });
-            }
-        });
-    },
-
-    onEdgesChange: (changes) => {
-        traceSpan('store.on_edges_change', { changeCount: changes.length }, async () => {
-            set({
-                edges: applyEdgeChanges(changes, get().edges) as AppEdge[],
-            });
-        });
-    },
-
-    onConnect: async (params) => {
-        const { edges } = get();
-        const { source, target } = params;
-        if (!source || !target) return;
-
-        try {
-            const newWorkEdge: WorkEdge = {
-                id: uuidv4() as EdgeId,
-                source: source as NodeId,
-                target: target as NodeId,
-                relation: 'relates_to',
-                metadata: {
-                    created_at: new Date().toISOString(),
-                    updated_at: new Date().toISOString(),
-                    version_hash: uuidv4(),
-                    origin: 'human',
-                    confidence: 1.0,
-                    validated: false,
-                    pin: false,
-                    access_control: {
-                        role_required: 'editor',
-                        owner_id: get().currentUser.id
-                    }
-                }
-            };
-
-            // React Flow UI update
-            const newEdge: AppEdge = {
-                id: newWorkEdge.id,
-                source: newWorkEdge.source,
-                target: newWorkEdge.target,
-                data: newWorkEdge,
-            };
-
-            set({
-                edges: addEdge(newEdge, edges) as AppEdge[],
-            });
-
-            const projectId = get().projectManifest ? (get().projectManifest as any).id : null;
-            if (projectId) {
-                await syncService.upsertEdge(projectId, newWorkEdge);
-            }
-
-        } catch (err) {
-            console.error('[SyncGuardian] Edge creation rejected:', err);
-        }
-    },
-
-    onNodeDragStop: (_event, node) => {
-        // [Performance] Transient Update Commit
-        // React Flow handles the drag visually (uncontrolled or local state).
-        // We only commit to the global store and DB when the drag ends.
-        const { nodes, syncPositions } = get();
-
-        // 1. Update Global Store (so other components like minimap reflect new position)
-        const updatedNodes = nodes.map(n =>
-            n.id === node.id ? { ...n, position: node.position } : n
-        );
-        set({ nodes: updatedNodes });
-
-        // 2. Trigger Sync to DB
-        // We call syncPositions (which is debounced, but here we invoke it directly for the specific change if needed, 
-        // or just let the debounce hande it if we passed the whole array.
-        // Actually, since we updated 'nodes' in state, we can just call syncPositions() with no args if it reads from state,
-        // OR pass the specific node if we want to be more granular.
-        syncPositions(updatedNodes);
-    },
-
-    setSelectedNode: (id) => set({ selectedNodeId: id }),
-
-    updateNodeContent: async (id, content) => {
-        return traceSpan('store.update_node_content', { nodeId: id }, async () => {
-            const { nodes, currentUser } = get();
-            let updatedNodeRecord: WorkNode | null = null;
-
-            const updatedNodes = nodes.map((node) => {
-                if (node.id === id) {
-                    // [RBAC] Guard check
-                    if (!canModifyNode(node.data, currentUser.role, currentUser.id)) {
-                        return node;
+                    if (!privateKey) {
+                        // Generate new keypair if user doesn't have one
+                        const keypairJson = signerCore.generate_keypair();
+                        const keypair = JSON.parse(keypairJson);
+                        privateKey = keypair.private_key;
+                        // Store for future use (in production, this would be in secure vault)
+                        console.log('[AuthoritySigner] Generated new Ed25519 keypair for user');
                     }
 
-                    const nodeData = node.data;
-                    const newData = { ...nodeData };
+                    // Sign the node hash with Ed25519
+                    const signResult = JSON.parse(signerCore.sign_node(currentHash, privateKey));
 
-                    if (newData.type === 'note') newData.content = content;
-                    else if (newData.type === 'claim') newData.statement = content;
-                    else if (newData.type === 'evidence') newData.content = content;
-                    else if (newData.type === 'decision') newData.rationale = content;
-                    else if (newData.type === 'idea') newData.details = content;
-                    else if (newData.type === 'task') newData.description = content;
-                    else if (newData.type === 'artifact') newData.name = content;
-                    else if (newData.type === 'assumption') newData.premise = content;
-                    else if (newData.type === 'constraint') newData.rule = content;
-
-                    const updatedMetadata = createVersion(newData as WorkNode, node.data.metadata.version_hash);
-                    updatedNodeRecord = { ...newData, metadata: updatedMetadata } as WorkNode;
-
-                    return { ...node, data: updatedNodeRecord };
+                    if (!signResult.error) {
+                        signatureData = {
+                            signature: signResult.signature,
+                            public_key: signResult.public_key,
+                            method: 'cryptographic'
+                        };
+                        console.log(`[AuthoritySigner] Node ${id} signed with Ed25519`);
+                    }
+                } catch (err) {
+                    console.warn('[AuthoritySigner] Rust signer not available, using organic fallback:', err);
                 }
-                return node;
-            });
 
-            // [Hito 7.9] SyncGuardian Audit
-            try {
-                const { SyncGuardian } = await import('../kernel/SyncGuardian');
-                await SyncGuardian.handleMutation(id, { statement: content, content: content });
+                const updatedNodes = nodes.map(node => {
+                    if (node.id === id) {
+                        const data = { ...node.data };
+                        const currentHash = computeNodeHash(data);
+                        data.metadata = {
+                            ...data.metadata,
+                            human_signature: {
+                                signer_id: signerId,
+                                timestamp: new Date().toISOString(),
+                                hash_at_signing: currentHash,
+                                ...signatureData
+                            }
+                        };
+                        updatedNodeRecord = data;
+                        return { ...node, data: updatedNodeRecord };
+                    }
+                    return node;
+                });
 
                 set({ nodes: updatedNodes });
                 if (updatedNodeRecord) {
-                    const projectId = get().projectManifest ? (get().projectManifest as any).id : null;
+                    const projectId = get().projectManifest?.id;
                     if (projectId) {
                         get().debouncedSyncNode(projectId, updatedNodeRecord);
                     }
                 }
-            } catch (err) {
-                console.error('[SyncGuardian] Mutation rejected:', err);
-            }
-        });
-    },
+            },
 
-    addNode: async (payload, position) => {
-        return traceSpan('store.add_node', { type: typeof payload === 'object' ? payload.type : payload }, async () => {
-            const isFullNode = typeof payload === 'object';
-            const type = isFullNode ? payload.type : payload;
+            breakSeal: async (id) => {
+                const { nodes } = get();
+                let updatedNodeRecord: WorkNode | null = null;
 
-            const id = isFullNode ? payload.id : uuidv4() as NodeId;
-            const now = new Date().toISOString();
-            const baseNode: any = isFullNode ? { ...payload } : {
-                id,
-                type,
-                metadata: {
-                    created_at: now,
-                    updated_at: now,
-                    origin: 'human',
-                    version_hash: '' as any,
-                    confidence: 1.0,
-                    validated: false,
-                    pin: false,
-                    access_control: {
-                        role_required: 'editor',
-                        owner_id: get().currentUser.id
+                const updatedNodes = nodes.map(node => {
+                    if (node.id === id) {
+                        const data = { ...node.data };
+                        delete data.metadata.human_signature;
+                        updatedNodeRecord = data;
+                        return { ...node, data: updatedNodeRecord };
+                    }
+                    return node;
+                });
+
+                set({ nodes: updatedNodes });
+                if (updatedNodeRecord) {
+                    const projectId = get().projectManifest?.id;
+                    if (projectId) {
+                        get().debouncedSyncNode(projectId, updatedNodeRecord);
                     }
                 }
-            };
+            },
 
-            if (!isFullNode) {
-                if (type === 'note') baseNode.content = 'New Note';
-                else if (type === 'claim') baseNode.statement = 'New Claim';
-                else if (type === 'evidence') baseNode.content = 'New Evidence';
-                else if (type === 'decision') { baseNode.rationale = 'New Decision'; baseNode.chosen_option = ''; }
-                else if (type === 'idea') baseNode.summary = 'New Idea';
-                else if (type === 'task') { baseNode.title = 'New Task'; baseNode.status = 'todo'; }
-                else if (type === 'artifact') { baseNode.name = 'New Artifact'; baseNode.uri = ''; }
-                else if (type === 'assumption') { baseNode.premise = 'New Assumption'; baseNode.risk_level = 'medium'; }
-                else if (type === 'constraint') { baseNode.rule = 'New Constraint'; baseNode.enforcement_level = 'strict'; }
-            }
+            proposeNode: (node, position) => {
+                const flowNode = backendToFlow(node, position || { x: Math.random() * 400, y: Math.random() * 400 });
+                // Mark as draft visually in React Flow
+                (flowNode as any).className = 'draft-proposal';
+                set({ draftNodes: [...get().draftNodes, flowNode] });
+            },
 
-            const signedMetadata = isFullNode ? baseNode.metadata : createVersion(baseNode as WorkNode);
-            const finalNode: WorkNode = { ...baseNode, metadata: signedMetadata };
-            const flowNode = backendToFlow(finalNode, position || { x: Math.random() * 400, y: Math.random() * 400 });
+            commitDraft: async (id) => {
+                const { draftNodes, nodes } = get();
+                const draft = draftNodes.find(n => n.id === id);
+                if (!draft) return;
 
-            set({ nodes: [...get().nodes, flowNode] });
-            const projectId = get().projectManifest ? (get().projectManifest as any).id : null;
-            if (projectId) {
-                await syncService.upsertNode(projectId, finalNode);
-            }
-        });
-    },
+                // Finalize node (sign it implicitly as accepted)
+                const finalizedNode = { ...draft.data };
+                finalizedNode.metadata.origin = 'human'; // Now human-approved
 
-    mutateNodeType: async (id, newType) => {
-        const { nodes, projectManifest, triggerRipple } = get();
-        const originalNodes = [...nodes];
-        let updatedNodeRecord: WorkNode | null = null;
+                set({
+                    nodes: [...nodes, { ...draft, data: finalizedNode, className: '' }],
+                    draftNodes: draftNodes.filter(n => n.id !== id)
+                });
 
-        const updatedNodes = nodes.map((node) => {
-            if (node.id === id) {
-                const oldData = node.data;
-                const newData: any = {
-                    id: oldData.id,
-                    type: newType,
-                    metadata: { ...oldData.metadata }
-                };
-
-                const oldContent = (oldData as any).content || (oldData as any).statement || (oldData as any).rationale || (oldData as any).summary || (oldData as any).description || (oldData as any).details || (oldData as any).name || (oldData as any).premise || (oldData as any).rule || '';
-
-                if (newType === 'note') newData.content = oldContent;
-                else if (newType === 'claim') { newData.statement = oldContent; newData.verification_status = 'pending'; }
-                else if (newType === 'evidence') newData.content = oldContent;
-                else if (newType === 'decision') { newData.rationale = oldContent; newData.chosen_option = ''; }
-                else if (newType === 'idea') newData.summary = oldContent;
-                else if (newType === 'task') { newData.title = 'Mutated Task'; newData.description = oldContent; newData.status = 'todo'; }
-                else if (newType === 'artifact') { newData.name = oldContent; newData.uri = ''; }
-                else if (newType === 'assumption') { newData.premise = oldContent; newData.risk_level = 'medium'; }
-                else if (newType === 'constraint') { newData.rule = oldContent; newData.enforcement_level = 'strict'; }
-                else if (newType === 'source') { newData.citation = oldContent; }
-
-                // Optimistic Versioning (Calculated locally)
-                const updatedMetadata = createVersion(newData as WorkNode, oldData.metadata.version_hash);
-                updatedNodeRecord = { ...newData, metadata: updatedMetadata } as WorkNode;
-                return { ...node, data: updatedNodeRecord };
-            }
-            return node;
-        });
-
-        // 1. Optimistic Update
-        set({ nodes: updatedNodes });
-
-        // 2. Background Verification & Persistence
-        try {
-            const { SyncGuardian } = await import('../kernel/SyncGuardian');
-            await SyncGuardian.handleMutation(id, { type: newType });
-
-            if (updatedNodeRecord) {
-                const projectId = projectManifest?.id;
+                const projectId = get().projectManifest?.id;
                 if (projectId) {
-                    get().debouncedSyncNode(projectId, updatedNodeRecord);
+                    await syncService.upsertNode(projectId, finalizedNode);
                 }
-            }
-        } catch (err: any) {
-            console.warn('[Optimistic UI] Rollback:', err.message);
-            set({ nodes: originalNodes });
-            triggerRipple({ type: 'error', message: `Rechazado: ${err.message}`, intensity: 'medium' });
-        }
-    },
+            },
 
-    optimisticUpdate: async (action, rollback) => {
-        const snapshot = { nodes: [...get().nodes], edges: [...get().edges] };
-        try {
-            return await action();
-        } catch (err) {
-            rollback(snapshot);
-            throw err;
-        }
-    },
+            discardDraft: (id) => {
+                set({ draftNodes: get().draftNodes.filter(n => n.id !== id) });
+            },
 
-    deleteNode: async (id: string) => {
-        return traceSpan('store.delete_node', { nodeId: id }, async () => {
-            const { nodes, edges, currentUser } = get();
-            const targetNode = nodes.find(n => n.id === id);
+            addGhostNode: (node, position) => {
+                const flowNode = backendToFlow(node, position || { x: Math.random() * 400, y: Math.random() * 400 });
+                (flowNode as any).className = 'ghost-predicted';
+                set({ ghostNodes: [...get().ghostNodes, flowNode] });
+            },
 
-            if (targetNode && !canDeleteNode(targetNode.data, { nodes: {}, edges: Object.fromEntries(edges.map(e => [e.id, e.data])) } as any, currentUser.role, currentUser.id)) {
-                return;
-            }
+            clearGhosts: () => set({ ghostNodes: [] }),
 
-            set({
-                nodes: nodes.filter(n => n.id !== id),
-                edges: edges.filter(e => e.source !== id && e.target !== id)
-            });
+            // --- MEDIATOR PROPOSAL ACTIONS ---
 
-            try {
-                await syncService.archiveNode(id);
-                const edgesToArchive = edges
-                    .filter(e => e.source === id || e.target === id)
-                    .map(e => e.id);
-
-                if (edgesToArchive.length > 0) {
-                    await syncService.archiveEdges(edgesToArchive);
-                }
-            } catch (error) {
-                console.error('Failed to archive node/edges:', error);
-            }
-        });
-    },
-
-    signNode: async (id, signerId) => {
-        const { nodes } = get();
-        let updatedNodeRecord: WorkNode | null = null;
-
-        // [Phase 7 Final] Use Rust Ed25519 signer for cryptographic authority
-        let signatureData: { signature?: string; public_key?: string; method: 'organic' | 'cryptographic' } = {
-            method: 'organic'
-        };
-
-        try {
-            const signerCore = await import('signer-core');
-            await signerCore.default?.(); // Initialize WASM
-
-            const targetNode = nodes.find(n => n.id === id);
-            const currentHash = computeNodeHash(targetNode?.data || {} as any);
-
-            // Get or generate user's private key from secure storage
-            const { useSettingsStore } = await import('./useSettingsStore');
-            const settings = useSettingsStore.getState();
-            let privateKey = (settings as any).signerPrivateKey;
-
-            if (!privateKey) {
-                // Generate new keypair if user doesn't have one
-                const keypairJson = signerCore.generate_keypair();
-                const keypair = JSON.parse(keypairJson);
-                privateKey = keypair.private_key;
-                // Store for future use (in production, this would be in secure vault)
-                console.log('[AuthoritySigner] Generated new Ed25519 keypair for user');
-            }
-
-            // Sign the node hash with Ed25519
-            const signResult = JSON.parse(signerCore.sign_node(currentHash, privateKey));
-
-            if (!signResult.error) {
-                signatureData = {
-                    signature: signResult.signature,
-                    public_key: signResult.public_key,
-                    method: 'cryptographic'
-                };
-                console.log(`[AuthoritySigner] Node ${id} signed with Ed25519`);
-            }
-        } catch (err) {
-            console.warn('[AuthoritySigner] Rust signer not available, using organic fallback:', err);
-        }
-
-        const updatedNodes = nodes.map(node => {
-            if (node.id === id) {
-                const data = { ...node.data };
-                const currentHash = computeNodeHash(data);
-                data.metadata = {
-                    ...data.metadata,
-                    human_signature: {
-                        signer_id: signerId,
-                        timestamp: new Date().toISOString(),
-                        hash_at_signing: currentHash,
-                        ...signatureData
-                    }
-                };
-                updatedNodeRecord = data;
-                return { ...node, data: updatedNodeRecord };
-            }
-            return node;
-        });
-
-        set({ nodes: updatedNodes });
-        if (updatedNodeRecord) {
-            const projectId = get().projectManifest?.id;
-            if (projectId) {
-                get().debouncedSyncNode(projectId, updatedNodeRecord);
-            }
-        }
-    },
-
-    breakSeal: async (id) => {
-        const { nodes } = get();
-        let updatedNodeRecord: WorkNode | null = null;
-
-        const updatedNodes = nodes.map(node => {
-            if (node.id === id) {
-                const data = { ...node.data };
-                delete data.metadata.human_signature;
-                updatedNodeRecord = data;
-                return { ...node, data: updatedNodeRecord };
-            }
-            return node;
-        });
-
-        set({ nodes: updatedNodes });
-        if (updatedNodeRecord) {
-            const projectId = get().projectManifest?.id;
-            if (projectId) {
-                get().debouncedSyncNode(projectId, updatedNodeRecord);
-            }
-        }
-    },
-
-    proposeNode: (node, position) => {
-        const flowNode = backendToFlow(node, position || { x: Math.random() * 400, y: Math.random() * 400 });
-        // Mark as draft visually in React Flow
-        (flowNode as any).className = 'draft-proposal';
-        set({ draftNodes: [...get().draftNodes, flowNode] });
-    },
-
-    commitDraft: async (id) => {
-        const { draftNodes, nodes } = get();
-        const draft = draftNodes.find(n => n.id === id);
-        if (!draft) return;
-
-        // Finalize node (sign it implicitly as accepted)
-        const finalizedNode = { ...draft.data };
-        finalizedNode.metadata.origin = 'human'; // Now human-approved
-
-        set({
-            nodes: [...nodes, { ...draft, data: finalizedNode, className: '' }],
-            draftNodes: draftNodes.filter(n => n.id !== id)
-        });
-
-        const projectId = get().projectManifest?.id;
-        if (projectId) {
-            await syncService.upsertNode(projectId, finalizedNode);
-        }
-    },
-
-    discardDraft: (id) => {
-        set({ draftNodes: get().draftNodes.filter(n => n.id !== id) });
-    },
-
-    addGhostNode: (node, position) => {
-        const flowNode = backendToFlow(node, position || { x: Math.random() * 400, y: Math.random() * 400 });
-        (flowNode as any).className = 'ghost-predicted';
-        set({ ghostNodes: [...get().ghostNodes, flowNode] });
-    },
-
-    clearGhosts: () => set({ ghostNodes: [] }),
-
-    // --- MEDIATOR PROPOSAL ACTIONS ---
-
-    addProposal: (proposal: ChangeProposal) => {
-        set({ proposals: [...get().proposals, proposal] });
-        if (proposal.type === 'CREATE_ARTIFACT' && proposal.content) {
-            const newNode: any = {
-                id: proposal.id as any,
-                type: 'artifact',
-                name: proposal.content.title || 'Proposed Artifact',
-                metadata: {
-                    created_at: new Date().toISOString(),
-                    updated_at: new Date().toISOString(),
-                    origin: 'ai',
-                    confidence: 0.8,
-                    validated: false,
-                    pin: false
-                }
-            };
-            get().proposeNode(newNode, { x: 100, y: 100 });
-        }
-    },
-
-    resolveProposal: async (id: string, decision: 'accept' | 'reject') => {
-        const { proposals } = get();
-        const proposal = proposals.find((p: ChangeProposal) => p.id === id);
-        if (!proposal) return;
-
-        if (decision === 'accept') {
-            if (proposal.type === 'CREATE_ARTIFACT') {
-                await get().commitDraft(id);
-            }
-        } else {
-            if (proposal.type === 'CREATE_ARTIFACT') {
-                get().discardDraft(id);
-            }
-        }
-
-        set({ proposals: proposals.filter((p: ChangeProposal) => p.id !== id) });
-    },
-
-    // --- INTERACTIVE EDITING ACTIONS ---
-
-    renameNode: async (id, newName) => {
-        const { nodes } = get();
-        let updatedNodeRecord: WorkNode | null = null;
-
-        const updatedNodes = nodes.map(node => {
-            if (node.id === id) {
-                const data = { ...node.data };
-
-                // Update the appropriate field based on node type
-                if (data.type === 'note') (data as any).content = newName;
-                else if (data.type === 'claim') (data as any).statement = newName;
-                else if (data.type === 'decision') (data as any).rationale = newName;
-                else if (data.type === 'task') (data as any).title = newName;
-                else if (data.type === 'artifact') (data as any).name = newName;
-                else if (data.type === 'assumption') (data as any).premise = newName;
-                else if (data.type === 'constraint') (data as any).rule = newName;
-
-                if (!data.metadata.access_control) {
-                    data.metadata.access_control = {
-                        role_required: 'editor',
-                        owner_id: get().currentUser.id
-                    };
-                }
-
-                const updatedMetadata = createVersion(data, node.data.metadata.version_hash);
-                updatedNodeRecord = { ...data, metadata: updatedMetadata };
-                return { ...node, data: updatedNodeRecord };
-            }
-            return node;
-        });
-
-        set({ nodes: updatedNodes });
-        if (updatedNodeRecord) {
-            const projectId = get().projectManifest?.id;
-            if (projectId) {
-                get().debouncedSyncNode(projectId, updatedNodeRecord);
-            }
-        }
-    },
-
-    addNodeComment: async (id, comment) => {
-        const { nodes } = get();
-        let updatedNodeRecord: WorkNode | null = null;
-
-        const updatedNodes = nodes.map(node => {
-            if (node.id === id) {
-                const data = { ...node.data };
-                data.metadata = {
-                    ...data.metadata,
-                    comment: comment
-                } as any; // Allow comment extension
-                updatedNodeRecord = data;
-                return { ...node, data: updatedNodeRecord };
-            }
-            return node;
-        });
-
-        set({ nodes: updatedNodes });
-        if (updatedNodeRecord) {
-            const projectId = get().projectManifest?.id;
-            if (projectId) {
-                get().debouncedSyncNode(projectId, updatedNodeRecord);
-            }
-        }
-    },
-
-    updateEdgeRelation: async (edgeId, newRelation) => {
-        const { edges } = get();
-        let updatedEdgeRecord: WorkEdge | null = null;
-
-        const updatedEdges = edges.map(edge => {
-            if (edge.id === edgeId && edge.data) {
-                const data = { ...edge.data };
-                data.relation = newRelation as any;
-                const updatedMetadata = createVersion(data as any, edge.data.metadata.version_hash);
-                updatedEdgeRecord = { ...data, metadata: updatedMetadata };
-                return { ...edge, data: updatedEdgeRecord };
-            }
-            return edge;
-        });
-
-        set({ edges: updatedEdges });
-        if (updatedEdgeRecord) {
-            const projectId = get().projectManifest?.id;
-            if (projectId) {
-                get().debouncedSyncEdge(projectId, updatedEdgeRecord);
-            }
-        }
-    },
-
-    deleteEdge: async (edgeId) => {
-        const { edges } = get();
-        set({ edges: edges.filter(e => e.id !== edgeId) });
-
-        try {
-            await syncService.archiveEdge(edgeId);
-        } catch (error) {
-            console.error('Failed to archive edge:', error);
-        }
-    },
-
-    setAntigravity: (active) => set({ isAntigravityActive: active }),
-    toggleAntigravity: () => set({ isAntigravityActive: !get().isAntigravityActive }),
-
-    currentChannel: null,
-
-    subscribeToGraph: (projectId) => {
-        const { unsubscribeFromGraph } = get();
-        unsubscribeFromGraph(); // Clean up existing
-
-        console.log(`[RealTime] Suscribiendo al proyecto: ${projectId}`);
-        const { supabase } = require('../lib/supabase');
-
-        const channel = supabase
-            .channel(`project_graph_${projectId}`)
-            .on('postgres_changes', {
-                event: '*',
-                schema: 'public',
-                table: 'work_nodes',
-                filter: `project_id=eq.${projectId}`
-            }, (payload: any) => {
-                const { nodes, setNodes } = get();
-
-                if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
-                    const row = payload.new;
-                    if (row.deleted_at) {
-                        set({ nodes: nodes.filter(n => n.id !== row.id) });
-                        return;
-                    }
-
-                    // Reconstruct WorkNode (Flatenning content)
-                    const node: WorkNode = {
-                        id: row.id,
-                        type: row.type,
+            addProposal: (proposal: ChangeProposal) => {
+                set({ proposals: [...get().proposals, proposal] });
+                if (proposal.type === 'CREATE_ARTIFACT' && proposal.content) {
+                    const newNode: any = {
+                        id: proposal.id as any,
+                        type: 'artifact',
+                        name: proposal.content.title || 'Proposed Artifact',
                         metadata: {
-                            created_at: row.created_at,
-                            updated_at: row.updated_at,
-                            version_hash: row.current_version_hash,
-                            origin: row.origin,
-                            confidence: row.confidence,
-                            pin: row.is_pinned,
-                            validated: row.is_validated,
-                            ...row.metadata
-                        },
-                        ...row.content
-                    } as WorkNode;
-
-                    const flowNode = backendToFlow(node);
-
-                    if (payload.eventType === 'INSERT') {
-                        // Check if already exists (optimistic update might have added it)
-                        if (!nodes.find(n => n.id === flowNode.id)) {
-                            set({ nodes: [...nodes, flowNode] });
+                            created_at: new Date().toISOString(),
+                            updated_at: new Date().toISOString(),
+                            origin: 'ai',
+                            confidence: 0.8,
+                            validated: false,
+                            pin: false
                         }
-                    } else {
-                        set({ nodes: nodes.map(n => n.id === flowNode.id ? { ...flowNode, position: n.position } : n) });
-                    }
-                } else if (payload.eventType === 'DELETE') {
-                    set({ nodes: nodes.filter(n => n.id !== payload.old.id) });
-                }
-            })
-            .on('postgres_changes', {
-                event: '*',
-                schema: 'public',
-                table: 'work_edges',
-                filter: `project_id=eq.${projectId}`
-            }, (payload: any) => {
-                const { edges } = get();
-
-                if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
-                    const row = payload.new;
-                    if (row.deleted_at) {
-                        set({ edges: edges.filter(e => e.id !== row.id) });
-                        return;
-                    }
-
-                    const edge: AppEdge = {
-                        id: row.id,
-                        source: row.source_node_id,
-                        target: row.target_node_id,
-                        data: {
-                            id: row.id,
-                            source: row.source_node_id,
-                            target: row.target_node_id,
-                            relation: row.relation,
-                            metadata: row.metadata
-                        } as any
                     };
-
-                    if (payload.eventType === 'INSERT') {
-                        if (!edges.find(e => e.id === edge.id)) {
-                            set({ edges: [...edges, edge] });
-                        }
-                    } else {
-                        set({ edges: edges.map(e => e.id === edge.id ? edge : e) });
-                    }
-                } else if (payload.eventType === 'DELETE') {
-                    set({ edges: edges.filter(e => e.id !== payload.old.id) });
+                    get().proposeNode(newNode, { x: 100, y: 100 });
                 }
-            })
-            .subscribe();
+            },
 
-        set({ currentChannel: channel });
-    },
+            resolveProposal: async (id: string, decision: 'accept' | 'reject') => {
+                const { proposals } = get();
+                const proposal = proposals.find((p: ChangeProposal) => p.id === id);
+                if (!proposal) return;
 
-    unsubscribeFromGraph: () => {
-        const { currentChannel } = get();
-        if (currentChannel) {
-            const { supabase } = require('../lib/supabase');
-            supabase.removeChannel(currentChannel);
-            set({ currentChannel: null });
+                if (decision === 'accept') {
+                    if (proposal.type === 'CREATE_ARTIFACT') {
+                        await get().commitDraft(id);
+                    }
+                } else {
+                    if (proposal.type === 'CREATE_ARTIFACT') {
+                        get().discardDraft(id);
+                    }
+                }
+
+                set({ proposals: proposals.filter((p: ChangeProposal) => p.id !== id) });
+            },
+
+            // --- INTERACTIVE EDITING ACTIONS ---
+
+            renameNode: async (id, newName) => {
+                const { nodes } = get();
+                let updatedNodeRecord: WorkNode | null = null;
+
+                const updatedNodes = nodes.map(node => {
+                    if (node.id === id) {
+                        const data = { ...node.data };
+
+                        // Update the appropriate field based on node type
+                        if (data.type === 'note') (data as any).content = newName;
+                        else if (data.type === 'claim') (data as any).statement = newName;
+                        else if (data.type === 'decision') (data as any).rationale = newName;
+                        else if (data.type === 'task') (data as any).title = newName;
+                        else if (data.type === 'artifact') (data as any).name = newName;
+                        else if (data.type === 'assumption') (data as any).premise = newName;
+                        else if (data.type === 'constraint') (data as any).rule = newName;
+
+                        if (!data.metadata.access_control) {
+                            data.metadata.access_control = {
+                                role_required: 'editor',
+                                owner_id: get().currentUser.id
+                            };
+                        }
+
+                        const updatedMetadata = createVersion(data, node.data.metadata.version_hash);
+                        updatedNodeRecord = { ...data, metadata: updatedMetadata };
+                        return { ...node, data: updatedNodeRecord };
+                    }
+                    return node;
+                });
+
+                set({ nodes: updatedNodes });
+                if (updatedNodeRecord) {
+                    const projectId = get().projectManifest?.id;
+                    if (projectId) {
+                        get().debouncedSyncNode(projectId, updatedNodeRecord);
+                    }
+                }
+            },
+
+            addNodeComment: async (id, comment) => {
+                const { nodes } = get();
+                let updatedNodeRecord: WorkNode | null = null;
+
+                const updatedNodes = nodes.map(node => {
+                    if (node.id === id) {
+                        const data = { ...node.data };
+                        data.metadata = {
+                            ...data.metadata,
+                            comment: comment
+                        } as any; // Allow comment extension
+                        updatedNodeRecord = data;
+                        return { ...node, data: updatedNodeRecord };
+                    }
+                    return node;
+                });
+
+                set({ nodes: updatedNodes });
+                if (updatedNodeRecord) {
+                    const projectId = get().projectManifest?.id;
+                    if (projectId) {
+                        get().debouncedSyncNode(projectId, updatedNodeRecord);
+                    }
+                }
+            },
+
+            updateEdgeRelation: async (edgeId, newRelation) => {
+                const { edges } = get();
+                let updatedEdgeRecord: WorkEdge | null = null;
+
+                const updatedEdges = edges.map(edge => {
+                    if (edge.id === edgeId && edge.data) {
+                        const data = { ...edge.data };
+                        data.relation = newRelation as any;
+                        const updatedMetadata = createVersion(data as any, edge.data.metadata.version_hash);
+                        updatedEdgeRecord = { ...data, metadata: updatedMetadata };
+                        return { ...edge, data: updatedEdgeRecord };
+                    }
+                    return edge;
+                });
+
+                set({ edges: updatedEdges });
+                if (updatedEdgeRecord) {
+                    const projectId = get().projectManifest?.id;
+                    if (projectId) {
+                        get().debouncedSyncEdge(projectId, updatedEdgeRecord);
+                    }
+                }
+            },
+
+            deleteEdge: async (edgeId) => {
+                const { edges } = get();
+                set({ edges: edges.filter(e => e.id !== edgeId) });
+
+                try {
+                    await syncService.archiveEdge(edgeId);
+                } catch (error) {
+                    console.error('Failed to archive edge:', error);
+                }
+            },
+
+            setAntigravity: (active) => set({ isAntigravityActive: active }),
+            toggleAntigravity: () => set({ isAntigravityActive: !get().isAntigravityActive }),
+
+            currentChannel: null,
+
+            subscribeToGraph: (projectId) => {
+                const { unsubscribeFromGraph } = get();
+                unsubscribeFromGraph(); // Clean up existing
+
+                console.log(`[RealTime] Suscribiendo al proyecto: ${projectId}`);
+                const { supabase } = require('../lib/supabase');
+
+                const channel = supabase
+                    .channel(`project_graph_${projectId}`)
+                    .on('postgres_changes', {
+                        event: '*',
+                        schema: 'public',
+                        table: 'work_nodes',
+                        filter: `project_id=eq.${projectId}`
+                    }, (payload: any) => {
+                        const { nodes, setNodes } = get();
+
+                        if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
+                            const row = payload.new;
+                            if (row.deleted_at) {
+                                set({ nodes: nodes.filter(n => n.id !== row.id) });
+                                return;
+                            }
+
+                            // Reconstruct WorkNode (Flatenning content)
+                            const node: WorkNode = {
+                                id: row.id,
+                                type: row.type,
+                                metadata: {
+                                    created_at: row.created_at,
+                                    updated_at: row.updated_at,
+                                    version_hash: row.current_version_hash,
+                                    origin: row.origin,
+                                    confidence: row.confidence,
+                                    pin: row.is_pinned,
+                                    validated: row.is_validated,
+                                    ...row.metadata
+                                },
+                                ...row.content
+                            } as WorkNode;
+
+                            const flowNode = backendToFlow(node);
+
+                            if (payload.eventType === 'INSERT') {
+                                // Check if already exists (optimistic update might have added it)
+                                if (!nodes.find(n => n.id === flowNode.id)) {
+                                    set({ nodes: [...nodes, flowNode] });
+                                }
+                            } else {
+                                set({ nodes: nodes.map(n => n.id === flowNode.id ? { ...flowNode, position: n.position } : n) });
+                            }
+                        } else if (payload.eventType === 'DELETE') {
+                            set({ nodes: nodes.filter(n => n.id !== payload.old.id) });
+                        }
+                    })
+                    .on('postgres_changes', {
+                        event: '*',
+                        schema: 'public',
+                        table: 'work_edges',
+                        filter: `project_id=eq.${projectId}`
+                    }, (payload: any) => {
+                        const { edges } = get();
+
+                        if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
+                            const row = payload.new;
+                            if (row.deleted_at) {
+                                set({ edges: edges.filter(e => e.id !== row.id) });
+                                return;
+                            }
+
+                            const edge: AppEdge = {
+                                id: row.id,
+                                source: row.source_node_id,
+                                target: row.target_node_id,
+                                data: {
+                                    id: row.id,
+                                    source: row.source_node_id,
+                                    target: row.target_node_id,
+                                    relation: row.relation,
+                                    metadata: row.metadata
+                                } as any
+                            };
+
+                            if (payload.eventType === 'INSERT') {
+                                if (!edges.find(e => e.id === edge.id)) {
+                                    set({ edges: [...edges, edge] });
+                                }
+                            } else {
+                                set({ edges: edges.map(e => e.id === edge.id ? edge : e) });
+                            }
+                        } else if (payload.eventType === 'DELETE') {
+                            set({ edges: edges.filter(e => e.id !== payload.old.id) });
+                        }
+                    })
+                    .subscribe();
+
+                set({ currentChannel: channel });
+            },
+
+            unsubscribeFromGraph: () => {
+                const { currentChannel } = get();
+                if (currentChannel) {
+                    const { supabase } = require('../lib/supabase');
+                    supabase.removeChannel(currentChannel);
+                    set({ currentChannel: null });
+                }
+            },
+
+            applyForces: () => {
+                // [DEPRECATED] Physics moved to Web Worker (physics.worker.ts)
+            },
+        }),
+        {
+            name: 'workgraph-storage',
+            partialize: (state) => ({
+                nodes: state.nodes,
+                edges: state.edges,
+                projectManifest: state.projectManifest,
+                currentUser: state.currentUser,
+            }),
         }
-    },
-
-    applyForces: () => {
-        // [DEPRECATED] Physics moved to Web Worker (physics.worker.ts)
-    },
-}));
+    )
+);

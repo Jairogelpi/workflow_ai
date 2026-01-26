@@ -56,14 +56,11 @@
 | **ingestor-rust** | Parsing PDF/HTML | lopdf, scraper |
 | **stream-assembler** | Exportación streaming | axum, tokio |
 
-## 📚 Documentación de Arquitectura (Nueva Fase 2)
-- [🧠 Arquitectura Graph-RAG (Vector Memory)](documentacion/GRAPH_RAG_ARCHITECTURE.md)
-- [🐝 Inteligencia de Enjambre (Swarm)](documentacion/SWARM_INTELLIGENCE.md)
-- [⚡ UX Performance (Transient Updates)](documentacion/UX_PERFORMANCE.md)
-
-## 💸 Economía y Memoria (Fase 3)
-- [📉 Token Economy & Pricing](docs/TOKEN_ECONOMY.md)
-- [🧩 Digest Engine (Hierarchical Memory)](docs/DIGEST_ENGINE.md)
+## 📚 Documentación de Arquitectura (Nivel Pro)
+- [📉 Token Economy & Pricing](docs/TOKEN_ECONOMY.md) - Gestión de costes reales con OpenRouter.
+- [🧩 Digest Engine (Hierarchical Memory)](docs/DIGEST_ENGINE.md) - Arquitectura Fractal Map-Reduce.
+- [🐝 Swarm Intelligence Agents](docs/AGENTS.md) - Orquestación de agentes con "Absolute Reality".
+- [🧠 Arquitectura Graph-RAG](documentacion/GRAPH_RAG_ARCHITECTURE.md) - Memoria vectorial y Grafos.
 
 ---
 

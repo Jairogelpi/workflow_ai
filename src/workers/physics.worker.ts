@@ -88,41 +88,42 @@ class WasmEngine implements PhysicsEngine {
                 const result = this.wasmModule.apply_forces(this.nodes, this.edges);
 
                 if (result) {
-                    // [Performance] Calculate Kinetic Energy (Displacement)
-                    // If the system has settled, we notify the main thread to sync to DB.
-                    let totalDisplacement = 0;
-                    // Optimization: Use simple loop assuming order preservation from WASM
                     const len = result.length;
+                    const positions = new Float32Array(len * 2);
+
+                    let totalDisplacement = 0;
+
+                    // Optimization: Use simple loop assuming order preservation from WASM
                     for (let i = 0; i < len; i++) {
                         const oldNode = this.nodes[i];
                         const newNode = result[i];
+
+                        // Safety check for ID stability (Critical for Zero-Copy map)
                         if (oldNode && newNode && oldNode.id === newNode.id) {
                             const dx = (newNode.x || 0) - (oldNode.x || 0);
                             const dy = (newNode.y || 0) - (oldNode.y || 0);
                             totalDisplacement += Math.abs(dx) + Math.abs(dy);
                         }
+
+                        // Fill Zero-Copy Buffer [x, y, x, y...]
+                        positions[i * 2] = newNode.x || 0;
+                        positions[i * 2 + 1] = newNode.y || 0;
                     }
 
                     // Update local state
                     this.nodes = result;
 
-                    // Threshold: 1.0 total pixel movement across all nodes
+                    // Threshold: 0.5 total pixel movement across all nodes
                     if (totalDisplacement < 0.5) {
                         postMessage({
                             type: 'SIMULATION_END',
-                            nodes: result
-                        });
-                        // Optional: Stop loop or sleep? 
-                        // For now, continue loop but maybe with reduced frequency or just send END messages repeatedly?
-                        // Better: Stop sending TICKs, just sends END once then waits for interaction?
-                        // Let sends END every frame if settled? No, that spams.
-                        // We should probably check if we *was* running. 
-                        // But simplification: The hook will handle the debounce/idempotency.
+                            positions: positions
+                        }, [positions.buffer]);
                     } else {
                         postMessage({
                             type: 'TICK_RESULT',
-                            nodes: result
-                        });
+                            positions: positions
+                        }, [positions.buffer]);
                     }
                 }
             }

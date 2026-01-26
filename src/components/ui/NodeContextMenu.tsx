@@ -1,6 +1,7 @@
 import React from 'react';
-import { Edit3, MessageSquare, Shuffle, Trash2, Pin, PinOff } from 'lucide-react';
+import { Edit3, MessageSquare, Shuffle, Trash2, Pin, PinOff, BrainCircuit } from 'lucide-react';
 import { useGraphStore } from '../../store/useGraphStore';
+import { KernelBridge } from '../../kernel/KernelBridge';
 
 interface NodeContextMenuProps {
     nodeId: string;
@@ -60,6 +61,24 @@ export const NodeContextMenu: React.FC<NodeContextMenuProps> = ({ nodeId, x, y, 
         onClose();
     };
 
+    const handleSynthesize = () => {
+        KernelBridge.emit({
+            type: 'RLM_THOUGHT',
+            payload: {
+                message: `Iniciando síntesis cognitiva para el nodo ${nodeId}...`,
+                type: 'info'
+            }
+        });
+
+        // Dynamic import to avoid circular dependency or heavy kernel in UI
+        import('../../kernel/digest_engine').then(m => {
+            m.triggerBranchDigest(nodeId).catch((err: any) => {
+                console.error("Failed to trigger digest:", err);
+            });
+        });
+        onClose();
+    };
+
     return (
         <>
             {/* Backdrop to close menu */}
@@ -73,6 +92,16 @@ export const NodeContextMenu: React.FC<NodeContextMenuProps> = ({ nodeId, x, y, 
                 className="fixed bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 py-1 z-50 min-w-[200px]"
                 style={{ left: x, top: y }}
             >
+                <button
+                    onClick={handleSynthesize}
+                    className="w-full px-4 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2 text-purple-600 dark:text-purple-400 font-medium"
+                >
+                    <BrainCircuit size={16} />
+                    <span>Sintetizar Rama (Deep Digest)</span>
+                </button>
+
+                <div className="border-t border-gray-200 dark:border-gray-700 my-1" />
+
                 <button
                     onClick={handleRename}
                     className="w-full px-4 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
@@ -106,9 +135,7 @@ export const NodeContextMenu: React.FC<NodeContextMenuProps> = ({ nodeId, x, y, 
                     {isPinned ? (
                         <>
                             <PinOff size={16} className="text-orange-500" />
-                            <span>Desan
-
-                                clar</span>
+                            <span>Desanclar</span>
                         </>
                     ) : (
                         <>

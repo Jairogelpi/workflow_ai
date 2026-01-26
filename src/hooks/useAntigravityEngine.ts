@@ -18,7 +18,8 @@ export function useAntigravityEngine() {
     const { setNodes: setNodesFlow } = useReactFlow();
     const workerRef = useRef<Worker | null>(null);
     // [Performance] Mutable Ref for latest positions (Zero React Render on Update)
-    const latestPositions = useRef<any[] | null>(null);
+    const latestPositions = useRef<Float32Array | null>(null);
+    const nodeOrderRef = useRef<string[]>([]);
     const rafRef = useRef<number | null>(null);
     const isRunning = useRef(false);
 
@@ -28,29 +29,39 @@ export function useAntigravityEngine() {
             workerRef.current = new Worker(new URL('../workers/physics.worker.ts', import.meta.url));
 
             workerRef.current.onmessage = (e: MessageEvent) => {
-                const { type, nodes: updatedPositions } = e.data;
+                const { type, positions } = e.data;
 
                 if (type === 'TICK_RESULT') {
-                    // Just update the Red, DO NOT Trigger Render here
-                    latestPositions.current = updatedPositions;
+                    // Zero-Copy: Receive Float32Array directly
+                    latestPositions.current = positions;
                     if (!isRunning.current) startLoop();
                 }
                 else if (type === 'SIMULATION_END') {
                     isRunning.current = false;
-                    latestPositions.current = updatedPositions; // Ensure final frame
+                    latestPositions.current = positions; // Ensure final frame
 
-                    // Final Render Force
+                    // Final Render (Sync Mode)
+                    const nodeOrder = nodeOrderRef.current;
+                    const finalUpdates = new Map<string, { x: number, y: number }>();
+                    if (positions) {
+                        for (let i = 0; i < nodeOrder.length; i++) {
+                            if (i * 2 + 1 < positions.length) {
+                                finalUpdates.set(nodeOrder[i], { x: positions[i * 2], y: positions[i * 2 + 1] });
+                            }
+                        }
+                    }
+
                     setNodesFlow((currentFlowNodes) => {
                         return currentFlowNodes.map(n => {
-                            const update = updatedPositions.find((u: any) => u.id === n.id);
-                            return update ? { ...n, position: { x: update.x, y: update.y } } : n;
+                            const up = finalUpdates.get(n.id || '');
+                            return up ? { ...n, position: up } : n;
                         });
                     });
 
                     // Sync to Store (Persistence)
                     const appNodes = nodes.map(n => {
-                        const update = updatedPositions.find((u: any) => u.id === n.id);
-                        return update ? { ...n, position: { x: update.x, y: update.y } } : n;
+                        const up = finalUpdates.get(n.id || '');
+                        return up ? { ...n, position: up } : n;
                     });
                     syncPositions(appNodes);
                 }
@@ -74,16 +85,26 @@ export function useAntigravityEngine() {
             if (!isRunning.current) return;
 
             if (latestPositions.current) {
-                const updates = latestPositions.current;
+                const positions = latestPositions.current;
                 latestPositions.current = null; // Clear queue
+
+                const nodeOrder = nodeOrderRef.current;
+                const updates = new Map<string, { x: number, y: number }>();
+
+                // Fast Map: O(N) instead of O(N^2)
+                for (let i = 0; i < nodeOrder.length; i++) {
+                    if (i * 2 + 1 < positions.length) {
+                        updates.set(nodeOrder[i], { x: positions[i * 2], y: positions[i * 2 + 1] });
+                    }
+                }
 
                 setNodesFlow((currentFlowNodes) => {
                     return currentFlowNodes.map(n => {
-                        const update = updates.find((u: any) => u.id === n.id);
-                        if (update) {
+                        const up = updates.get(n.id || '');
+                        if (up) {
                             return {
                                 ...n,
-                                position: { x: update.x, y: update.y },
+                                position: up,
                             };
                         }
                         return n;
@@ -112,6 +133,9 @@ export function useAntigravityEngine() {
                 isPinned: n.data.metadata.pin,
                 relation: 'relates_to' // Default for now
             }));
+
+            // [Topology Sync] Update ID order for Zero-Copy mapping
+            nodeOrderRef.current = physicsNodes.map(n => n.id);
 
             const physicsEdges = edges.map(e => ({
                 source: e.source,

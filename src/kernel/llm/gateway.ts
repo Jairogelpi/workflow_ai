@@ -3,11 +3,30 @@ import { traceSpan, measureCost, estimateCallCost, getModelTier, auditStore } fr
 import { useSettingsStore } from '../../store/useSettingsStore';
 import { Vault } from '../../lib/security/vault';
 import { sanitizeLogs } from '../guards';
-import { PriceRegistry, TaskTier as EconomyTier } from '../economy/PriceRegistry';
+import { PriceRegistry } from '../economy/PriceRegistry';
 
-// ... (Existing Imports)
+export type TaskTier = 'REFLEX' | 'REASONING' | 'CREATIVE';
 
-// ... (Existing Functions until generateText)
+interface LLMResponse {
+    content: string;
+    usage: {
+        inputTokens: number;
+        outputTokens: number;
+    };
+    toolCalls?: any[];
+}
+
+export function predictCost(sys: string, usr: string, model: string): number {
+    // Simple heuristic for pre-flight estimation (System Overhead)
+    return (sys.length + usr.length) * 0.00001;
+}
+
+export const SmartRouter = {
+    getOptimalModel: (tier: TaskTier) => {
+        const { modelConfig } = useSettingsStore.getState();
+        return tier === 'REASONING' ? modelConfig.reasoningModel.modelId : modelConfig.efficiencyModel.modelId;
+    }
+};
 
 export async function generateText(
     systemPrompt: string,
