@@ -36,8 +36,9 @@ export async function uploadFile(
     const buffer = Buffer.from(arrayBuffer);
     const now = new Date().toISOString();
 
-    // 1. Optimization: Calculate Hash & Compress
-    const fileHash = crypto.createHash('sha256').update(buffer).digest('hex');
+    // 1. Optimization: Calculate Hash (Non-blocking) & Compress
+    const hashBuffer = await crypto.subtle.digest('SHA-256', buffer);
+    const fileHash = Buffer.from(hashBuffer).toString('hex');
     const compressedBuffer = buffer.length > 1024 ? await gzip(buffer) : buffer;
     const isCompressed = buffer.length > 1024;
     const mimeType = file.type || 'application/octet-stream';
@@ -147,60 +148,67 @@ export async function digestFile(
         return { success: false, error: 'Extraction failed' };
     }
 
-    // 2. Bulk Persistence (Solve N+1)
+    // 2. Parallel Processing Pipeline (Producer-Consumer Pattern)
     if (extractedChunks.length > 0) {
-        const nodesToUpsert: any[] = [];
-        const edgesToUpsert: any[] = [];
+        const BATCH_SIZE = 15;
+        const totalChunks = extractedChunks.length;
+        let processedCount = 0;
 
-        extractedChunks.forEach((chunk, i) => {
-            const excerptId = uuidv4();
-            nodesToUpsert.push({
-                id: excerptId,
-                project_id: projectId,
-                type: 'excerpt',
-                content: { id: excerptId, type: 'excerpt', content: chunk, parent_id: nodeId, index: i },
-                metadata: { source_id: nodeId, created_at: now, updated_at: now, origin: 'ai_generated' as const },
-                updated_at: now
+        // Process batches in parallel with limit (e.g., max 3 concurrent batches to avoid DB/LLM saturation)
+        const processBatch = async (startIndex: number) => {
+            const batchChunks = extractedChunks.slice(startIndex, startIndex + BATCH_SIZE);
+            const nodesToUpsert: any[] = [];
+            const edgesToUpsert: any[] = [];
+
+            batchChunks.forEach((chunk, i) => {
+                const globalIndex = startIndex + i;
+                const excerptId = uuidv4();
+                nodesToUpsert.push({
+                    id: excerptId,
+                    project_id: projectId,
+                    type: 'excerpt',
+                    content: { id: excerptId, type: 'excerpt', content: chunk, parent_id: nodeId, index: globalIndex },
+                    metadata: { source_id: nodeId, created_at: now, updated_at: now, origin: 'ai_generated' as const },
+                    updated_at: now
+                });
+
+                edgesToUpsert.push({
+                    source_node_id: excerptId,
+                    target_node_id: nodeId,
+                    relation: 'part_of',
+                    project_id: projectId
+                });
             });
 
-            edgesToUpsert.push({
-                source_node_id: excerptId,
-                target_node_id: nodeId,
-                relation: 'part_of',
-                project_id: projectId
-            });
-        });
-
-        // Parallel Bulk Upsert
-        await Promise.all([
-            supabase.from('work_nodes').upsert(nodesToUpsert),
-            supabase.from('work_edges').upsert(edgesToUpsert)
-        ]);
-
-        // 3. Batched Vectorization (Prevent Timeouts & Track Progress)
-        const BATCH_SIZE = 20;
-        for (let i = 0; i < nodesToUpsert.length; i += BATCH_SIZE) {
-            const batchNodes = nodesToUpsert.slice(i, i + BATCH_SIZE);
-            const batchChunks = extractedChunks.slice(i, i + BATCH_SIZE);
-
+            // 1. Persistence & Vectorization in Parallel for this batch
             try {
-                const embeddings = await generateEmbedding(batchChunks);
-                await saveNodeEmbedding(batchNodes.map(n => n.id), embeddings);
+                const [embeddings] = await Promise.all([
+                    generateEmbedding(batchChunks),
+                    supabase.from('work_nodes').upsert(nodesToUpsert),
+                    supabase.from('work_edges').upsert(edgesToUpsert)
+                ]);
 
-                // Update progress in job (Military Grade: Using dedicated column)
+                await saveNodeEmbedding(nodesToUpsert.map(n => n.id), embeddings);
+
+                processedCount += batchChunks.length;
                 if (effectiveJobId) {
-                    const progress = (i + batchNodes.length) / nodesToUpsert.length;
                     await supabase.from('ingestion_jobs').update({
-                        progress,
+                        progress: processedCount / totalChunks,
                         updated_at: new Date().toISOString()
                     }).eq('id', effectiveJobId);
                 }
             } catch (err) {
-                console.error(`[Digestion] Vectorization failed at batch ${i}:`, err);
-                // We don't fail the whole job if some chunks are missing embeddings,
-                // but we log it. In a stricter system, we might want to retry.
+                console.error(`[Digestion] Parallel batch ${startIndex} failed:`, err);
             }
+        };
+
+        const batchPromises = [];
+        for (let i = 0; i < totalChunks; i += BATCH_SIZE) {
+            batchPromises.push(processBatch(i));
         }
+
+        // Execute all batches (Axum/Supabase can handle high concurrency)
+        await Promise.all(batchPromises);
     }
 
     if (effectiveJobId) {

@@ -38,7 +38,7 @@ impl LogicEngine {
     }
 
     /// Non-binary validation of a claim against active context and pin-nodes.
-    pub fn validate(&self, claim: &str, context: &str) -> JsValue {
+    pub fn validate(&self, claim: &str, _context: &str) -> JsValue {
         // 1. Check for Semantic Ambiguity (Zero-Mock Heuristic)
         if let Some(reason) = self.check_ambiguity(claim) {
             let res = ValidationResult {

@@ -17,6 +17,36 @@ interface LLMOptions {
 }
 
 /**
+ * PRODUCTION-GRADE CIRCUIT BREAKER v1.0
+ * Prevents "Double Latency" penalty during provider outages.
+ */
+class CircuitBreaker {
+    private static failures: Record<string, number> = {};
+    private static circuitOpenUntil: Record<string, number> = {};
+    private static THRESHOLD = 3;
+    private static TIMEOUT_MS = 1000 * 60 * 5; // 5 minutes
+
+    static isOpen(provider: string): boolean {
+        const openUntil = this.circuitOpenUntil[provider] || 0;
+        if (Date.now() < openUntil) return true;
+        return false;
+    }
+
+    static recordFailure(provider: string) {
+        this.failures[provider] = (this.failures[provider] || 0) + 1;
+        if (this.failures[provider] >= this.THRESHOLD) {
+            console.warn(`[CIRCUIT BREAKER] Opening circuit for ${provider} for 5 minutes.`);
+            this.circuitOpenUntil[provider] = Date.now() + this.TIMEOUT_MS;
+        }
+    }
+
+    static recordSuccess(provider: string) {
+        this.failures[provider] = 0;
+        this.circuitOpenUntil[provider] = 0;
+    }
+}
+
+/**
  * Direct call to Google Gemini via Server-side Key.
  */
 async function callGeminiServer(messages: LLMMessage[], options: LLMOptions): Promise<string | null> {
@@ -104,26 +134,40 @@ export async function generateTextServer(
     messages: LLMMessage[],
     options: LLMOptions = {}
 ): Promise<string> {
-    // [SMART ROUTER] Default to the most efficient model
-    const model = options.model || 'gemini-1.5-flash';
+    // [MODEL ROUTING AGENT] Choose model based on complexity and health
+    const isComplex = messages.some(m => m.content.length > 1000) ||
+        messages.some(m => m.content.toLowerCase().includes('razona') || m.content.toLowerCase().includes('analiza'));
+
+    let model = options.model || (isComplex ? 'gemini-1.5-pro' : 'gemini-1.5-flash');
+
+    // [CIRCUIT BREAKER] Immediate Failover
+    const provider = model.includes('gemini') ? 'gemini' : 'openai';
+    if (provider === 'gemini' && CircuitBreaker.isOpen('gemini')) {
+        console.warn('[LLM Server] Circuit Open for Gemini. Routing directly to OpenAI.');
+        return await callOpenAIServer(messages, { ...options, model: 'gpt-4o-mini' });
+    }
 
     try {
         if (model.includes('gemini')) {
-            // Try Gemini first (Tier 1)
-            const result = await callGeminiServer(messages, options);
-            if (result) return result;
+            const result = await callGeminiServer(messages, { ...options, model });
+            if (result) {
+                CircuitBreaker.recordSuccess('gemini');
+                return result;
+            }
 
-            // Escalation Triggered (Tier 2)
-            console.log('[LLM Server] Tiered Execution: Upgrading to GPT-4o-mini for better reasoning.');
+            // Escalation (not necessarily a failure, just low confidence)
             return await callOpenAIServer(messages, { ...options, model: 'gpt-4o-mini' });
         } else {
-            return await callOpenAIServer(messages, options);
+            const result = await callOpenAIServer(messages, options);
+            CircuitBreaker.recordSuccess('openai');
+            return result;
         }
     } catch (err) {
         console.error('[LLM Server] Generation failed:', err);
-        // Failover Strategy: If Gemini throws explicit error, try OpenAI
-        if (model.includes('gemini') && process.env.OPENAI_API_KEY) {
-            console.warn('[LLM Server] Failover: Switching to OpenAI gpt-4o-mini');
+        CircuitBreaker.recordFailure(provider);
+
+        // Failover Strategy: Only if we have another provider ready
+        if (provider === 'gemini' && process.env.OPENAI_API_KEY) {
             return await callOpenAIServer(messages, { ...options, model: 'gpt-4o-mini' });
         }
         throw err;

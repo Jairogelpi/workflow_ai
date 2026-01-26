@@ -1,7 +1,7 @@
 'use client';
 import React from 'react';
+import dynamic from 'next/dynamic';
 import { useParams, useRouter } from 'next/navigation';
-import GraphCanvas from '@/components/graph/GraphCanvas';
 import GlobalDropzone from '@/components/graph/GlobalDropzone';
 import { CommandHUD } from '@/components/ui/CommandHUD';
 import { NeuralRipple } from '@/components/graph/NeuralRipple';
@@ -14,6 +14,12 @@ import { supabase } from '@/lib/supabase';
 import { BootSequence } from '@/components/ui/BootSequence';
 import { TrafficLightHUD } from '@/components/workflow/TrafficLightHUD';
 import { CircuitBreakerOverlay } from '@/components/ui/CircuitBreaker';
+
+// Dynamic import for heavy client-only components (WASM/WebGL)
+const GraphCanvas = dynamic(() => import('@/components/graph/GraphCanvas'), {
+    ssr: false,
+    loading: () => <div className="w-full h-full bg-slate-950 flex items-center justify-center text-slate-500 text-xs">Initializing Graph Engine...</div>
+});
 
 export default function ProjectWorkspace() {
     const params = useParams();

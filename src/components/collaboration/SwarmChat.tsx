@@ -87,22 +87,25 @@ export const SwarmChat = () => {
             {/* Messages */}
             <div className="flex-1 overflow-y-auto p-4 space-y-4">
                 {messages.map((m, i) => (
-                    <div key={i} className={`flex items-start gap-3 ${m.role === 'user' ? 'flex-row-reverse' : ''}`}>
-                        <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${m.role === 'user' ? 'bg-slate-900 text-white' : 'bg-purple-600 text-white'}`}>
-                            {m.role === 'user' ? <User size={14} /> : <Bot size={14} />}
+                    <div
+                        key={i}
+                        className={`flex items-start gap-3 ${m.role === 'user' ? 'flex-row-reverse' : ''} animate-in fade-in slide-in-from-bottom-2 duration-300`}
+                    >
+                        <div className={`w-9 h-9 rounded-2xl flex items-center justify-center shrink-0 shadow-elevation-1 ${m.role === 'user' ? 'bg-slate-900 text-white' : 'bg-purple-600 text-white'}`}>
+                            {m.role === 'user' ? <User size={16} /> : <Bot size={16} />}
                         </div>
-                        <div className={`p-3 rounded-2xl text-xs max-w-[80%] leading-relaxed shadow-sm ${m.role === 'user' ? 'bg-white text-slate-700' : 'bg-purple-50 text-purple-900'}`}>
+                        <div className={`p-3.5 rounded-2xl text-[13px] max-w-[85%] leading-relaxed shadow-sm border border-slate-100 ${m.role === 'user' ? 'bg-white text-slate-700' : 'bg-purple-50 text-purple-900'}`}>
                             {m.content}
                         </div>
                     </div>
                 ))}
                 {loading && (
-                    <div className="flex items-start gap-3">
-                        <div className="w-8 h-8 rounded-full bg-purple-600 text-white flex items-center justify-center">
-                            <Bot size={14} />
+                    <div className="flex items-start gap-3 animate-pulse">
+                        <div className="w-9 h-9 rounded-2xl bg-purple-600 text-white flex items-center justify-center shadow-elevation-1">
+                            <Bot size={16} />
                         </div>
-                        <div className="p-3 rounded-2xl bg-purple-50 text-purple-900 text-xs shadow-sm italic">
-                            Pensando...
+                        <div className="p-3.5 rounded-2xl bg-purple-50 text-purple-900 text-[13px] shadow-sm italic border border-purple-100/50">
+                            Procesando en el Enjambre...
                         </div>
                     </div>
                 )}

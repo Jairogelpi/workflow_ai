@@ -36,12 +36,14 @@ export async function traceSpan<T>(
         const duration_ms = Math.round(end - start);
         const cost_usd = attributes.cost_usd || 0;
 
-        // Log to console for dev visibility (Local Span export)
-        console.log(`[OTel] Span: ${name}`, {
-            ...attributes,
-            latency_ms: duration_ms,
-            status: 'OK'
-        });
+        // Log to console only in Development (Hot-path optimization)
+        if (process.env.NODE_ENV !== 'production') {
+            console.log(`[OTel] Span: ${name}`, {
+                ...attributes,
+                latency_ms: duration_ms,
+                status: 'OK'
+            });
+        }
 
         // [Hito 4.3] Push to the GraphStore for the Forensic Audit View
         try {
@@ -62,12 +64,14 @@ export async function traceSpan<T>(
         return result;
     } catch (error) {
         const end = performance.now();
-        console.error(`[OTel] Span: ${name} FAILED`, {
-            ...attributes,
-            latency_ms: Math.round(end - start),
-            status: 'ERROR',
-            error
-        });
+        if (process.env.NODE_ENV !== 'production') {
+            console.error(`[OTel] Span: ${name} FAILED`, {
+                ...attributes,
+                latency_ms: Math.round(end - start),
+                status: 'ERROR',
+                error
+            });
+        }
         throw error;
     }
 }

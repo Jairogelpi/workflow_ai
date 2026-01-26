@@ -182,12 +182,12 @@ export const WorkNodeComponent = React.memo((props: any) => {
                     min-w-[200px] max-w-[280px] rounded-[32px] 
                     transition-all duration-300 ease-out
                     ${isGhost ? 'opacity-40 grayscale' : ''}
-                    ${selected ? 'scale-105 shadow-[0_25px_60px_-15px_rgba(0,0,0,0.15)] ring-2 ring-blue-500/20' : 'shadow-[0_8px_30px_rgba(0,0,0,0.04)]'}
-                    ${data.metadata.origin === 'ai' && !isGhost ? 'opacity-80 border-dashed border-slate-200' : ''}
-                    ${hasHiddenConflict && !isXRayActive ? 'animate-heartbeat ring-2 ring-amber-500/50' : ''}
-                    ${hasHiddenConflict && isXRayActive ? 'ring-4 ring-red-600 shadow-[0_0_30px_rgba(220,38,38,0.6)]' : ''}
-                    ${isUncertain ? 'ring-2 ring-yellow-500/40 bg-yellow-50/5' : ''}
-                    ${isCorrected ? 'ring-2 ring-emerald-500/40 bg-emerald-50/5' : ''}
+                    ${selected ? 'scale-[1.03] shadow-elevation-5' : 'shadow-elevation-1'}
+                    ${data.metadata.origin === 'ai' && !isGhost ? 'opacity-90 border-dashed' : ''}
+                    ${hasHiddenConflict && !isXRayActive ? 'animate-pulse ring-2 ring-amber-500/30' : ''}
+                    ${hasHiddenConflict && isXRayActive ? 'ring-4 ring-red-600 shadow-[0_0_40px_rgba(220,38,38,0.4)]' : ''}
+                    ${isUncertain ? 'ring-2 ring-yellow-400/20 glass-morphism' : ''}
+                    ${isCorrected ? 'ring-2 ring-emerald-400/20 glass-morphism-green' : ''}
                     ${isInterrupted ? 'ring-4 ring-red-600 animate-vibration' : ''}
                 `}
                 style={{
@@ -216,8 +216,22 @@ export const WorkNodeComponent = React.memo((props: any) => {
                         50% { box-shadow: 0 0 20px 10px rgba(245, 158, 11, 0); border-color: rgba(245, 158, 11, 1); }
                         100% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0); border-color: rgba(245, 158, 11, 0.4); }
                     }
-                    .animate-vibration {
-                        animation: vibration 0.2s infinite linear;
+                    .glass-morphism {
+                        background: rgba(251, 191, 36, 0.03) !important;
+                        backdrop-filter: blur(8px);
+                        box-shadow: inset 0 0 20px rgba(251, 191, 36, 0.05);
+                    }
+                    .glass-morphism-green {
+                        background: rgba(16, 185, 129, 0.03) !important;
+                        backdrop-filter: blur(8px);
+                        box-shadow: inset 0 0 20px rgba(16, 185, 129, 0.05);
+                    }
+                    @keyframes truth-ripple {
+                        0% { outline: 0px solid rgba(16, 185, 129, 0.5); outline-offset: 0px; }
+                        100% { outline: 15px solid rgba(16, 185, 129, 0); outline-offset: 10px; }
+                    }
+                    .animate-truth-ripple {
+                        animation: truth-ripple 1.5s cubic-bezier(0, 0.2, 0.8, 1) infinite;
                     }
                 `}</style>
                 {tensionLevel > 0 && (
@@ -234,16 +248,16 @@ export const WorkNodeComponent = React.memo((props: any) => {
                 )}
 
                 {isUncertain && (
-                    <div className="absolute -top-3 left-4 px-2 py-0.5 bg-yellow-500 text-black text-[9px] font-black uppercase tracking-tighter rounded-full flex items-center gap-1 shadow-lg ring-1 ring-yellow-400">
-                        <AlertTriangle size={10} />
-                        <span>Verificación Pendiente</span>
+                    <div className="absolute -top-3 left-4 px-2.5 py-1 glass-panel text-black text-[8px] font-black uppercase tracking-widest rounded-full flex items-center gap-1.5 shadow-xl border border-yellow-500/30">
+                        <AlertTriangle size={10} className="text-yellow-600 animate-pulse" />
+                        <span className="bg-gradient-to-r from-yellow-700 to-yellow-900 bg-clip-text text-transparent">Especulando Verdad</span>
                     </div>
                 )}
 
                 {isCorrected && (
-                    <div className="absolute -top-3 left-4 px-2 py-0.5 bg-emerald-500 text-white text-[9px] font-black uppercase tracking-tighter rounded-full flex items-center gap-1 shadow-lg ring-1 ring-emerald-400">
-                        <ShieldCheck size={10} />
-                        <span>Auto-Corregido</span>
+                    <div className="absolute -top-3 left-4 px-2.5 py-1 glass-panel-green text-white text-[8px] font-black uppercase tracking-widest rounded-full flex items-center gap-1.5 shadow-xl border border-emerald-500/30 animate-truth-ripple">
+                        <ShieldCheck size={10} className="text-emerald-400" />
+                        <span className="bg-gradient-to-r from-emerald-400 to-emerald-100 bg-clip-text text-transparent">Soberanía Aplicada</span>
                     </div>
                 )}
 

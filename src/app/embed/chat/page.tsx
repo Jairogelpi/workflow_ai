@@ -1,6 +1,11 @@
 'use client';
 
-import { SwarmChat } from '@/components/collaboration/SwarmChat';
+import dynamic from 'next/dynamic';
+
+const SwarmChat = dynamic(() => import('@/components/collaboration/SwarmChat').then(m => m.SwarmChat), {
+    ssr: false,
+    loading: () => <div className="flex-1 flex items-center justify-center text-slate-400 text-xs">Loading Chat...</div>
+});
 
 export default function EmbedChatPage() {
     return (

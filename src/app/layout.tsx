@@ -2,9 +2,8 @@ import React from 'react';
 import './globals.css';
 import { Metadata } from 'next';
 import Providers from './providers';
-import { KernelStateBridge } from '../components/KernelStateBridge';
-import { BudgetHUD } from '../components/ui/BudgetHUD';
 import { AppErrorBoundary } from '../components/ui/AppErrorBoundary';
+import { ClientShell } from './ClientShell';
 
 export const metadata: Metadata = {
     title: 'Axiom GraphOs',
@@ -21,8 +20,7 @@ export default function RootLayout({
             <body className="antialiased">
                 <AppErrorBoundary>
                     <Providers>
-                        <KernelStateBridge />
-                        <BudgetHUD />
+                        <ClientShell />
                         {children}
                     </Providers>
                 </AppErrorBoundary>

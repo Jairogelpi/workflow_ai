@@ -22,9 +22,25 @@ export function predictCost(sys: string, usr: string, model: string): number {
 }
 
 export const SmartRouter = {
-    getOptimalModel: (tier: TaskTier) => {
+    getOptimalModel: (tier: TaskTier, prompt: string) => {
         const { modelConfig } = useSettingsStore.getState();
-        return tier === 'REASONING' ? modelConfig.reasoningModel.modelId : modelConfig.efficiencyModel.modelId;
+
+        if (tier === 'REASONING') {
+            const complexity = SmartRouter.classifyTaskComplexity(prompt);
+            // If complexity is low, we can use the'efficiency' model even for reasoning tasks
+            return complexity === 'LOW' ? modelConfig.efficiencyModel.modelId : modelConfig.reasoningModel.modelId;
+        }
+
+        return modelConfig.efficiencyModel.modelId;
+    },
+
+    classifyTaskComplexity: (prompt: string): 'LOW' | 'HIGH' => {
+        const p = prompt.toLowerCase();
+        const complexKeywords = ['analiza', 'razona', 'compara', 'profundo', 'crítico', 'summarize', 'evalúa'];
+        const isLong = prompt.length > 500;
+        const hasComplexTerms = complexKeywords.some(kw => p.includes(kw));
+
+        return (isLong || hasComplexTerms) ? 'HIGH' : 'LOW';
     }
 };
 
@@ -42,8 +58,9 @@ export async function generateText(
     // For now, we respect the User Settings, but we could enforce Registry here.
     // Let's use Registry for Cost Tracking primarily.
 
-    // Smart Routing Logic
-    const activeConfig = tier === 'REASONING'
+    // [MODEL ROUTING AGENT] Dynamic Model Selection
+    const complexity = tier === 'REASONING' ? SmartRouter.classifyTaskComplexity(userPrompt) : 'LOW';
+    const activeConfig = (tier === 'REASONING' && complexity === 'HIGH')
         ? modelConfig.reasoningModel
         : modelConfig.efficiencyModel;
 

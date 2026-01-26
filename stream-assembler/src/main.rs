@@ -170,7 +170,7 @@ impl NeuroAssembler {
         Self {
             buffer: Vec::new(),
             axioms,
-            safety_window: 5,
+            safety_window: 3, // Fine-tuned for V3.1.0 "Zero Friction"
         }
     }
 

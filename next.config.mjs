@@ -3,7 +3,7 @@ const nextConfig = {
     reactStrictMode: true,
     output: 'standalone', // Optimized for Docker/Render
     experimental: {
-        instrumentationHook: true,
+        // instrumentationHook is now enabled by default
     },
     typescript: {
         // !! WARN !!

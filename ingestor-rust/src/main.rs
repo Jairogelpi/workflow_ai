@@ -47,7 +47,8 @@ async fn main() {
                 .allow_origin(Any)
                 .allow_methods(Any)
                 .allow_headers(Any)
-        );
+        )
+        .layer(axum::extract::DefaultBodyLimit::max(500 * 1024 * 1024)); // 500MB Limit
 
     let addr = SocketAddr::from(([127, 0, 0, 1], 8080));
     tracing::info!("WorkGraph Ingestor (Rust) listening on {}", addr);
@@ -68,14 +69,14 @@ async fn process_file(
         .and_then(|h| h.to_str().ok())
         .unwrap_or("pdf");
 
-    let data = body.to_vec();
-    
+    // Zero-Copy approach: Pass Bytes reference instead of cloning to Vec<u8>
     // 1. Parsing
     let text = if file_type == "html" {
-        let raw_html = String::from_utf8_lossy(&data);
+        let raw_html = String::from_utf8_lossy(&body);
         parsers::parse_html(&raw_html)
     } else {
-        parsers::parse_pdf(data).unwrap_or_else(|e| format!("Error parsing PDF: {}", e))
+        // PDF parser still needs the full buffer for now, but we avoid one redundant clone
+        parsers::parse_pdf(body.to_vec()).unwrap_or_else(|e| format!("Error parsing PDF: {}", e))
     };
 
     // 2. Semantic Chunking (800 chars target for RLM)
@@ -83,6 +84,6 @@ async fn process_file(
 
     Json(IngestResponse {
         chunks,
-        engine: "rust-worker-v1".to_string(),
+        engine: "rust-worker-v4-optim".to_string(),
     })
 }
