@@ -17,47 +17,41 @@ export function useAntigravityEngine() {
 
     const { setNodes: setNodesFlow } = useReactFlow();
     const workerRef = useRef<Worker | null>(null);
+    // [Performance] Mutable Ref for latest positions (Zero React Render on Update)
+    const latestPositions = useRef<any[] | null>(null);
+    const rafRef = useRef<number | null>(null);
+    const isRunning = useRef(false);
 
-    // 1. Initialize Worker
+    // 1. Initialize Worker & Loop
     useEffect(() => {
         if (!workerRef.current) {
             workerRef.current = new Worker(new URL('../workers/physics.worker.ts', import.meta.url));
 
-            // Listen for ticks
             workerRef.current.onmessage = (e: MessageEvent) => {
                 const { type, nodes: updatedPositions } = e.data;
 
-                // [TRANSIENT UPDATE] 60fps Animation Loop
-                // Updates ONLY the React Flow internal state (Visuals)
-                // Does NOT touch Zustand or Supabase
-                if (type === 'TICK_RESULT' || type === 'SIMULATION_END') {
+                if (type === 'TICK_RESULT') {
+                    // Just update the Red, DO NOT Trigger Render here
+                    latestPositions.current = updatedPositions;
+                    if (!isRunning.current) startLoop();
+                }
+                else if (type === 'SIMULATION_END') {
+                    isRunning.current = false;
+                    latestPositions.current = updatedPositions; // Ensure final frame
+
+                    // Final Render Force
                     setNodesFlow((currentFlowNodes) => {
                         return currentFlowNodes.map(n => {
                             const update = updatedPositions.find((u: any) => u.id === n.id);
-                            if (update) {
-                                return {
-                                    ...n,
-                                    position: { x: update.x, y: update.y },
-                                    // Optimization: Only update if position actually changed > epsilon
-                                    // But map is cheap enough for now
-                                };
-                            }
-                            return n;
+                            return update ? { ...n, position: { x: update.x, y: update.y } } : n;
                         });
                     });
-                }
 
-                // [PERSISTENCE UPDATE] Only when physics settles
-                // Sincroniza con el Store de Zustand solo cuando el movimiento se detenga
-                if (type === 'SIMULATION_END') {
-                    // Reconstruct full nodes from latest visual state to sync
-                    // Since setNodesFlow is async, we use the data from worker directly for sync
-                    // We need to map the worker 'nodes' back to AppNodes structure
+                    // Sync to Store (Persistence)
                     const appNodes = nodes.map(n => {
                         const update = updatedPositions.find((u: any) => u.id === n.id);
                         return update ? { ...n, position: { x: update.x, y: update.y } } : n;
                     });
-
                     syncPositions(appNodes);
                 }
             };
@@ -68,8 +62,39 @@ export function useAntigravityEngine() {
                 workerRef.current.terminate();
                 workerRef.current = null;
             }
+            if (rafRef.current) cancelAnimationFrame(rafRef.current);
         };
     }, []);
+
+    // [Render Loop] Decoupled from Worker Frequency
+    const startLoop = () => {
+        isRunning.current = true;
+
+        const loop = () => {
+            if (!isRunning.current) return;
+
+            if (latestPositions.current) {
+                const updates = latestPositions.current;
+                latestPositions.current = null; // Clear queue
+
+                setNodesFlow((currentFlowNodes) => {
+                    return currentFlowNodes.map(n => {
+                        const update = updates.find((u: any) => u.id === n.id);
+                        if (update) {
+                            return {
+                                ...n,
+                                position: { x: update.x, y: update.y },
+                            };
+                        }
+                        return n;
+                    });
+                });
+            }
+
+            rafRef.current = requestAnimationFrame(loop);
+        };
+        loop();
+    };
 
     // [Performance] Compute a lightweight hash for pin state to avoid re-syncing on text changes
     const pinSignature = nodes.map(n => n.data.metadata.pin ? '1' : '0').join('');

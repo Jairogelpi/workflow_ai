@@ -8,7 +8,7 @@
  */
 
 import { createClient } from '@supabase/supabase-js';
-import { digestFile } from '../lib/ingest'; // We reuse the core logic
+import { digestFile } from '../lib/ingest/digest'; // Heavy lifting module
 import dotenv from 'dotenv';
 
 dotenv.config({ path: '.env.local' });
