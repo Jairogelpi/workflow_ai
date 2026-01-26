@@ -20,11 +20,15 @@ from datetime import datetime
 import numpy as np
 import math
 from functools import lru_cache
+# Optional imports for local inference (not available in cloud-only mode)
 try:
-    from rlm_core import neuro_hypervisor as logic_engine
+    from llama_cpp import Llama, LogitsProcessorList
+    LLAMA_CPP_AVAILABLE = True
 except ImportError:
-    import neuro_hypervisor as logic_engine # For local dev
-from llama_cpp import Llama, LogitsProcessorList
+    Llama = None
+    LogitsProcessorList = None
+    LLAMA_CPP_AVAILABLE = False
+    print("[RLM-Core] llama-cpp-python not available, surgical inference disabled.")
 
 app = FastAPI(
     title="RLM Core",
@@ -63,19 +67,18 @@ app.add_middleware(
 DEFAULT_LOCAL_MODEL = os.getenv("DEFAULT_LOCAL_MODEL", "phi3:mini")
 MODEL_PATH = os.getenv("MODEL_PATH", "models/phi-3-mini-4k-instruct-q4.gguf")
 
-# --- Neuro-Symbolic Hypervisor ---
 # --- Neuro-Symbolic Hypervisor (with Cloud Fallback) ---
+class MockHypervisor:
+    """Fallback when Rust extension is not available."""
+    def calculate_logit_bias(self, text, token_map): return {}
+    def sync_axioms(self, axioms): pass
+
 try:
     from rlm_core import neuro_hypervisor as logic_engine
     hypervisor = logic_engine.TruthHypervisor()
-    print("[Hypervisor] 🦀 Rust Engine Loaded Successfully.")
+    print("[Hypervisor] Rust Engine Loaded Successfully.")
 except ImportError:
-    print("[Hypervisor] ⚠️ Rust Extension missing. Activating Cloud-Only Fallback.")
-    
-    class MockHypervisor:
-        def calculate_logit_bias(self, text, map): return {}
-        def sync_axioms(self, axioms): pass
-    
+    print("[Hypervisor] Rust Extension missing. Activating Cloud-Only Fallback.")
     hypervisor = MockHypervisor()
 
 GLOBAL_TOKEN_MAP = {}
@@ -111,9 +114,9 @@ class RustTruthEnforcer:
         
         return scores
 
-# Initialize local LLM directly for surgical tasks
+# Initialize local LLM directly for surgical tasks (only if llama-cpp available)
 local_llm = None
-if os.path.exists(MODEL_PATH):
+if LLAMA_CPP_AVAILABLE and Llama and os.path.exists(MODEL_PATH):
     local_llm = Llama(model_path=MODEL_PATH, logits_all=True)
 
 class VectorSkip:
