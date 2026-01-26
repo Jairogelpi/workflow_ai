@@ -158,9 +158,11 @@ interface GraphState {
     voteOnNode: (nodeId: string, agentId: string, vote: 'support' | 'skeptic') => void;
 
     // React Flow Handlers
+    // React Flow Handlers
     onNodesChange: OnNodesChange;
     onEdgesChange: OnEdgesChange;
     onConnect: (connection: Connection) => void;
+    onNodeDragStop: (event: React.MouseEvent, node: AppNode) => void;
 
     // Interaction
     setSelectedNode: (id: string | null) => void;
@@ -605,23 +607,22 @@ export const useGraphStore = create<GraphState>((set, get) => ({
     centerNode: (id) => set({ selectedNodeId: id }),
 
     onNodesChange: (changes) => {
-        const { nodes } = get();
-        // [Optimization] Filter out position changes from global state update to prevent re-render storms
-        // React Flow handles the visual movement internally; we only need to sync back occasionally.
-        const filteredChanges = changes.filter(c => c.type !== 'position');
+        traceSpan('store.on_nodes_change', { changeCount: changes.length }, async () => {
+            const { nodes } = get();
+            const filteredChanges = changes.filter(c => c.type !== 'position');
 
-        if (filteredChanges.length > 0) {
-            const updatedNodes = applyNodeChanges(filteredChanges, nodes) as AppNode[];
-            set({ nodes: updatedNodes });
-        }
-
-        // If something other than position changed (e.g., selection), we sync immediately.
-        // Position sync is handled by debouncedSyncPositions or dragStop.
+            if (filteredChanges.length > 0) {
+                const updatedNodes = applyNodeChanges(filteredChanges, nodes) as AppNode[];
+                set({ nodes: updatedNodes });
+            }
+        });
     },
 
     onEdgesChange: (changes) => {
-        set({
-            edges: applyEdgeChanges(changes, get().edges) as AppEdge[],
+        traceSpan('store.on_edges_change', { changeCount: changes.length }, async () => {
+            set({
+                edges: applyEdgeChanges(changes, get().edges) as AppEdge[],
+            });
         });
     },
 
@@ -673,102 +674,126 @@ export const useGraphStore = create<GraphState>((set, get) => ({
         }
     },
 
+    onNodeDragStop: (_event, node) => {
+        // [Performance] Transient Update Commit
+        // React Flow handles the drag visually (uncontrolled or local state).
+        // We only commit to the global store and DB when the drag ends.
+        const { nodes, syncPositions } = get();
+
+        // 1. Update Global Store (so other components like minimap reflect new position)
+        const updatedNodes = nodes.map(n =>
+            n.id === node.id ? { ...n, position: node.position } : n
+        );
+        set({ nodes: updatedNodes });
+
+        // 2. Trigger Sync to DB
+        // We call syncPositions (which is debounced, but here we invoke it directly for the specific change if needed, 
+        // or just let the debounce hande it if we passed the whole array.
+        // Actually, since we updated 'nodes' in state, we can just call syncPositions() with no args if it reads from state,
+        // OR pass the specific node if we want to be more granular.
+        syncPositions(updatedNodes);
+    },
+
     setSelectedNode: (id) => set({ selectedNodeId: id }),
 
     updateNodeContent: async (id, content) => {
-        const { nodes, currentUser } = get();
-        let updatedNodeRecord: WorkNode | null = null;
+        return traceSpan('store.update_node_content', { nodeId: id }, async () => {
+            const { nodes, currentUser } = get();
+            let updatedNodeRecord: WorkNode | null = null;
 
-        const updatedNodes = nodes.map((node) => {
-            if (node.id === id) {
-                // [RBAC] Guard check
-                if (!canModifyNode(node.data, currentUser.role, currentUser.id)) {
-                    return node;
+            const updatedNodes = nodes.map((node) => {
+                if (node.id === id) {
+                    // [RBAC] Guard check
+                    if (!canModifyNode(node.data, currentUser.role, currentUser.id)) {
+                        return node;
+                    }
+
+                    const nodeData = node.data;
+                    const newData = { ...nodeData };
+
+                    if (newData.type === 'note') newData.content = content;
+                    else if (newData.type === 'claim') newData.statement = content;
+                    else if (newData.type === 'evidence') newData.content = content;
+                    else if (newData.type === 'decision') newData.rationale = content;
+                    else if (newData.type === 'idea') newData.details = content;
+                    else if (newData.type === 'task') newData.description = content;
+                    else if (newData.type === 'artifact') newData.name = content;
+                    else if (newData.type === 'assumption') newData.premise = content;
+                    else if (newData.type === 'constraint') newData.rule = content;
+
+                    const updatedMetadata = createVersion(newData as WorkNode, node.data.metadata.version_hash);
+                    updatedNodeRecord = { ...newData, metadata: updatedMetadata } as WorkNode;
+
+                    return { ...node, data: updatedNodeRecord };
                 }
+                return node;
+            });
 
-                const nodeData = node.data;
-                const newData = { ...nodeData };
+            // [Hito 7.9] SyncGuardian Audit
+            try {
+                const { SyncGuardian } = await import('../kernel/SyncGuardian');
+                await SyncGuardian.handleMutation(id, { statement: content, content: content });
 
-                if (newData.type === 'note') newData.content = content;
-                else if (newData.type === 'claim') newData.statement = content;
-                else if (newData.type === 'evidence') newData.content = content;
-                else if (newData.type === 'decision') newData.rationale = content;
-                else if (newData.type === 'idea') newData.details = content;
-                else if (newData.type === 'task') newData.description = content;
-                else if (newData.type === 'artifact') newData.name = content;
-                else if (newData.type === 'assumption') newData.premise = content;
-                else if (newData.type === 'constraint') newData.rule = content;
-
-                const updatedMetadata = createVersion(newData as WorkNode, node.data.metadata.version_hash);
-                updatedNodeRecord = { ...newData, metadata: updatedMetadata } as WorkNode;
-
-                return { ...node, data: updatedNodeRecord };
+                set({ nodes: updatedNodes });
+                if (updatedNodeRecord) {
+                    const projectId = get().projectManifest ? (get().projectManifest as any).id : null;
+                    if (projectId) {
+                        get().debouncedSyncNode(projectId, updatedNodeRecord);
+                    }
+                }
+            } catch (err) {
+                console.error('[SyncGuardian] Mutation rejected:', err);
             }
-            return node;
         });
-
-        // [Hito 7.9] SyncGuardian Audit
-        try {
-            const { SyncGuardian } = await import('../kernel/SyncGuardian');
-            await SyncGuardian.handleMutation(id, { statement: content, content: content });
-
-            set({ nodes: updatedNodes });
-            if (updatedNodeRecord) {
-                const projectId = get().projectManifest ? (get().projectManifest as any).id : null;
-                if (projectId) {
-                    get().debouncedSyncNode(projectId, updatedNodeRecord);
-                }
-            }
-        } catch (err) {
-            console.error('[SyncGuardian] Mutation rejected:', err);
-        }
     },
 
     addNode: async (payload, position) => {
-        const isFullNode = typeof payload === 'object';
-        const type = isFullNode ? payload.type : payload;
+        return traceSpan('store.add_node', { type: typeof payload === 'object' ? payload.type : payload }, async () => {
+            const isFullNode = typeof payload === 'object';
+            const type = isFullNode ? payload.type : payload;
 
-        const id = isFullNode ? payload.id : uuidv4() as NodeId;
-        const now = new Date().toISOString();
-        const baseNode: any = isFullNode ? { ...payload } : {
-            id,
-            type,
-            metadata: {
-                created_at: now,
-                updated_at: now,
-                origin: 'human',
-                version_hash: '' as any,
-                confidence: 1.0,
-                validated: false,
-                pin: false,
-                access_control: {
-                    role_required: 'editor',
-                    owner_id: get().currentUser.id
+            const id = isFullNode ? payload.id : uuidv4() as NodeId;
+            const now = new Date().toISOString();
+            const baseNode: any = isFullNode ? { ...payload } : {
+                id,
+                type,
+                metadata: {
+                    created_at: now,
+                    updated_at: now,
+                    origin: 'human',
+                    version_hash: '' as any,
+                    confidence: 1.0,
+                    validated: false,
+                    pin: false,
+                    access_control: {
+                        role_required: 'editor',
+                        owner_id: get().currentUser.id
+                    }
                 }
+            };
+
+            if (!isFullNode) {
+                if (type === 'note') baseNode.content = 'New Note';
+                else if (type === 'claim') baseNode.statement = 'New Claim';
+                else if (type === 'evidence') baseNode.content = 'New Evidence';
+                else if (type === 'decision') { baseNode.rationale = 'New Decision'; baseNode.chosen_option = ''; }
+                else if (type === 'idea') baseNode.summary = 'New Idea';
+                else if (type === 'task') { baseNode.title = 'New Task'; baseNode.status = 'todo'; }
+                else if (type === 'artifact') { baseNode.name = 'New Artifact'; baseNode.uri = ''; }
+                else if (type === 'assumption') { baseNode.premise = 'New Assumption'; baseNode.risk_level = 'medium'; }
+                else if (type === 'constraint') { baseNode.rule = 'New Constraint'; baseNode.enforcement_level = 'strict'; }
             }
-        };
 
-        if (!isFullNode) {
-            if (type === 'note') baseNode.content = 'New Note';
-            else if (type === 'claim') baseNode.statement = 'New Claim';
-            else if (type === 'evidence') baseNode.content = 'New Evidence';
-            else if (type === 'decision') { baseNode.rationale = 'New Decision'; baseNode.chosen_option = ''; }
-            else if (type === 'idea') baseNode.summary = 'New Idea';
-            else if (type === 'task') { baseNode.title = 'New Task'; baseNode.status = 'todo'; }
-            else if (type === 'artifact') { baseNode.name = 'New Artifact'; baseNode.uri = ''; }
-            else if (type === 'assumption') { baseNode.premise = 'New Assumption'; baseNode.risk_level = 'medium'; }
-            else if (type === 'constraint') { baseNode.rule = 'New Constraint'; baseNode.enforcement_level = 'strict'; }
-        }
+            const signedMetadata = isFullNode ? baseNode.metadata : createVersion(baseNode as WorkNode);
+            const finalNode: WorkNode = { ...baseNode, metadata: signedMetadata };
+            const flowNode = backendToFlow(finalNode, position || { x: Math.random() * 400, y: Math.random() * 400 });
 
-        const signedMetadata = isFullNode ? baseNode.metadata : createVersion(baseNode as WorkNode);
-        const finalNode: WorkNode = { ...baseNode, metadata: signedMetadata };
-        const flowNode = backendToFlow(finalNode, position || { x: Math.random() * 400, y: Math.random() * 400 });
-
-        set({ nodes: [...get().nodes, flowNode] });
-        const projectId = get().projectManifest ? (get().projectManifest as any).id : null;
-        if (projectId) {
-            await syncService.upsertNode(projectId, finalNode);
-        }
+            set({ nodes: [...get().nodes, flowNode] });
+            const projectId = get().projectManifest ? (get().projectManifest as any).id : null;
+            if (projectId) {
+                await syncService.upsertNode(projectId, finalNode);
+            }
+        });
     },
 
     mutateNodeType: async (id, newType) => {

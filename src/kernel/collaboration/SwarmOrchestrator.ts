@@ -1,4 +1,5 @@
-import { useGraphStore } from '../../store/useGraphStore';
+// import { useGraphStore } from '../../store/useGraphStore'; // Decoupled via KernelBridge
+import { KernelBridge } from '../KernelBridge';
 import { MediatorAgent } from './MediatorAgent';
 import { TaskComplexity } from '../llm/gateway';
 import { retrieveContext } from '../../compiler/retriever';
@@ -29,11 +30,12 @@ export class SwarmOrchestrator {
      * Dispatches a thematic pulse to the entire swarm.
      */
     static async dispatchSwarmPulse(contextNodeIds: string[]) {
-        const { addRLMThought } = useGraphStore.getState();
-
-        addRLMThought({
-            message: `Swarm Pulse Initiated. Context depth: ${contextNodeIds.length} nodes.`,
-            type: 'info'
+        KernelBridge.emit({
+            type: 'RLM_THOUGHT',
+            payload: {
+                message: `Swarm Pulse Initiated. Context depth: ${contextNodeIds.length} nodes.`,
+                type: 'info'
+            }
         });
 
         // [Cognitive Latency Fix] Run agents in background 
@@ -46,15 +48,19 @@ export class SwarmOrchestrator {
     }
 
     private static async runAgentCycle(agent: SwarmAgent, contextNodeIds: string[]) {
-        const { addRLMThought, setAgentStatus, nodes, edges } = useGraphStore.getState();
+        const { nodes, edges } = KernelBridge.getState();
 
         // Stage 1: Recognition & Contextualization
-        setAgentStatus(agent.id, 'THINKING');
-        addRLMThought({
-            message: `[RECOGNITION] Ingesting semantic context for ${agent.personality} reasoning...`,
-            type: 'reasoning',
-            agentId: agent.id,
-            agentName: agent.name
+        KernelBridge.emit({ type: 'AGENT_STATUS', payload: { agentId: agent.id, status: 'THINKING' } });
+
+        KernelBridge.emit({
+            type: 'RLM_THOUGHT',
+            payload: {
+                message: `[RECOGNITION] Ingesting semantic context for ${agent.personality} reasoning...`,
+                type: 'reasoning',
+                agentId: agent.id,
+                agentName: agent.name
+            }
         });
 
         // Phase 2.7: Semantic retrieval for agent persona
@@ -92,36 +98,46 @@ Rules: Be concise, technical, and use tools if needed to expand the graph or fet
 
             const { content, toolCalls } = await (this.mediator as any).performInferenceWithTools(prompt, TaskComplexity.MEDIUM, tools, images);
 
-            setAgentStatus(agent.id, 'WORKING');
 
-            addRLMThought({
-                message: content || `[ACTION] Executing ${toolCalls?.length} tools...`,
-                type: agent.personality === 'critic' ? 'warn' : 'success',
-                agentId: agent.id,
-                agentName: agent.name
+            KernelBridge.emit({ type: 'AGENT_STATUS', payload: { agentId: agent.id, status: 'WORKING' } });
+
+            KernelBridge.emit({
+                type: 'RLM_THOUGHT',
+                payload: {
+                    message: content || `[ACTION] Executing ${toolCalls?.length} tools...`,
+                    type: agent.personality === 'critic' ? 'warn' : 'success',
+                    agentId: agent.id,
+                    agentName: agent.name
+                }
             });
 
             // Stage 3: Autonomous Action (Agency Execution)
             if (toolCalls && toolCalls.length > 0) {
                 for (const call of toolCalls) {
                     const result = await ToolRegistry.call(call.function.name, JSON.parse(call.function.arguments));
-                    addRLMThought({
-                        message: `Tool ${call.function.name} executed: ${JSON.stringify(result)}`,
-                        type: 'info',
-                        agentId: agent.id,
-                        agentName: agent.name
+                    KernelBridge.emit({
+                        type: 'RLM_THOUGHT',
+                        payload: {
+                            message: `Tool ${call.function.name} executed: ${JSON.stringify(result)}`,
+                            type: 'info',
+                            agentId: agent.id,
+                            agentName: agent.name
+                        }
                     });
                 }
             }
         } catch (error) {
-            addRLMThought({
-                message: `Neural failure in agent ${agent.name}: ${error}`,
-                type: 'error',
-                agentId: agent.id,
-                agentName: agent.name
+            KernelBridge.emit({
+                type: 'RLM_THOUGHT',
+                payload: {
+                    message: `Neural failure in agent ${agent.name}: ${error}`,
+                    type: 'error',
+                    agentId: agent.id,
+                    agentName: agent.name
+                }
             });
         } finally {
-            setAgentStatus(agent.id, 'IDLE');
+            KernelBridge.emit({ type: 'AGENT_STATUS', payload: { agentId: agent.id, status: 'IDLE' } });
         }
     }
 }
