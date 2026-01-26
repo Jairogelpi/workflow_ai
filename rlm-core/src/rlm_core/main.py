@@ -64,7 +64,20 @@ DEFAULT_LOCAL_MODEL = os.getenv("DEFAULT_LOCAL_MODEL", "phi3:mini")
 MODEL_PATH = os.getenv("MODEL_PATH", "models/phi-3-mini-4k-instruct-q4.gguf")
 
 # --- Neuro-Symbolic Hypervisor ---
-hypervisor = logic_engine.TruthHypervisor()
+# --- Neuro-Symbolic Hypervisor (with Cloud Fallback) ---
+try:
+    from rlm_core import neuro_hypervisor as logic_engine
+    hypervisor = logic_engine.TruthHypervisor()
+    print("[Hypervisor] 🦀 Rust Engine Loaded Successfully.")
+except ImportError:
+    print("[Hypervisor] ⚠️ Rust Extension missing. Activating Cloud-Only Fallback.")
+    
+    class MockHypervisor:
+        def calculate_logit_bias(self, text, map): return {}
+        def sync_axioms(self, axioms): pass
+    
+    hypervisor = MockHypervisor()
+
 GLOBAL_TOKEN_MAP = {}
 
 class RustTruthEnforcer:
