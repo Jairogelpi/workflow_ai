@@ -3,7 +3,7 @@ import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { ProjectManifest } from '@/components/collaboration/ProjectManifest';
-import { Plus, FolderOpen, Clock, ChevronRight, LogOut, Grid, List } from 'lucide-react';
+import { Plus, FolderOpen, Clock, ChevronRight, LogOut, Grid, List, Trash } from 'lucide-react';
 import { syncService } from '@/lib/sync';
 
 interface Project {
@@ -184,6 +184,24 @@ export default function ProjectsPage() {
                                     <span className="opacity-0 group-hover:opacity-100 transition-opacity text-blue-500">Entrar</span>
                                 </div>
                             )}
+
+                            {/* [Admin] Delete Action */}
+                            <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <button
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        if (window.confirm('¿Seguro que quieres eliminar este proyecto? Esta acción es irreversible.')) {
+                                            syncService.deleteProject(project.id).then(() => {
+                                                setProjects(prev => prev.filter(p => p.id !== project.id));
+                                            });
+                                        }
+                                    }}
+                                    className="p-2 bg-white/90 rounded-full text-slate-400 hover:text-red-500 hover:bg-red-50 shadow-sm border border-slate-100"
+                                    title="Eliminar Proyecto"
+                                >
+                                    <Trash size={14} />
+                                </button>
+                            </div>
                         </div>
                     ))}
                 </div>

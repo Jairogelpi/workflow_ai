@@ -14,6 +14,7 @@ import { supabase } from '@/lib/supabase';
 import { BootSequence } from '@/components/ui/BootSequence';
 import { TrafficLightHUD } from '@/components/workflow/TrafficLightHUD';
 import { CircuitBreakerOverlay } from '@/components/ui/CircuitBreaker';
+import { GlobalLoader } from '@/components/ui/GlobalLoader';
 
 // Dynamic import for heavy client-only components (WASM/WebGL)
 const GraphCanvas = dynamic(() => import('@/components/graph/GraphCanvas'), {
@@ -55,7 +56,7 @@ export default function ProjectWorkspace() {
         setHasBooted(true);
     };
 
-    if (loading) return <div className="bg-white text-slate-400 flex items-center justify-center h-screen">Loading Workspace...</div>;
+    if (loading) return <GlobalLoader message="Loading Workspace..." />;
 
     if (!hasBooted) {
         return <BootSequence onComplete={handleBootComplete} />;

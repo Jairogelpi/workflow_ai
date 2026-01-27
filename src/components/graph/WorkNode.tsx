@@ -1,6 +1,6 @@
 'use client';
 import React, { useMemo } from 'react';
-import { Handle, Position, NodeProps, NodeToolbar } from 'reactflow';
+import { Handle, Position, NodeProps, NodeToolbar, NodeResizer } from 'reactflow';
 import { WorkNode as WorkNodeIR } from '../../canon/schema/ir';
 import { useGraphStore } from '../../store/useGraphStore';
 import {
@@ -182,18 +182,30 @@ export const WorkNodeComponent = React.memo((props: any) => {
                 })}
             </NodeToolbar>
 
+            {/* Resizing Interaction (Hito 21.x) */}
+            <NodeResizer
+                color="#3b82f6"
+                isVisible={selected}
+                minWidth={100}
+                minHeight={100}
+                handleStyle={{ width: 10, height: 10, borderRadius: 5 }}
+                lineStyle={{ border: '1px solid #3b82f6', opacity: 0.5 }}
+            />
+
             {/* --- NEW SPHERICAL DESIGN --- */}
             <div
                 className={`
                     group relative flex items-center justify-center
-                    w-24 h-24 rounded-full 
-                    transition-all duration-500 ease-out
+                    rounded-full 
+                    transition-all duration-300 ease-out
                     bg-gradient-to-br ${config.gradient}
-                    ${selected ? 'scale-125 z-50' : 'scale-100 hover:scale-110 z-0'}
+                    ${selected ? 'z-50' : 'z-0 hover:scale-105'}
                     ${isGhost ? 'opacity-40 grayscale blur-[1px]' : 'opacity-100 shadow-2xl'}
                     ${hasHiddenConflict ? 'animate-pulse' : ''}
                 `}
                 style={{
+                    width: props.width ?? 96,
+                    height: props.height ?? 96,
                     boxShadow: selected
                         ? `0 0 50px ${config.glow}, inset 0 0 20px rgba(255,255,255,0.4)`
                         : `0 10px 30px -10px ${config.glow}, inset 0 0 10px rgba(255,255,255,0.2)`,

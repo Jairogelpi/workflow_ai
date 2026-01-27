@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useGraphStore } from '../../store/useGraphStore';
 import { Shield, ChevronRight, Plus, X, Globe } from 'lucide-react';
 import { UserRole } from '../../canon/schema/ir';
+import { GlobalLoader } from '../ui/GlobalLoader';
 
 /**
  * ProjectManifest (Redesign v2)
@@ -69,22 +70,7 @@ export const ProjectManifest: React.FC<{ onClose: () => void }> = ({ onClose }) 
     };
 
     if (isCreating) {
-        return (
-            <div className="fixed inset-0 z-[200] bg-white flex flex-col items-center justify-center animate-in fade-in duration-500">
-                <video
-                    autoPlay
-                    muted
-                    loop
-                    playsInline
-                    className="w-64 md:w-80 lg:w-[450px] h-auto object-contain"
-                >
-                    <source src="/axiom_animation.mp4" type="video/mp4" />
-                </video>
-                <div className="mt-8 text-slate-400 text-[10px] font-bold uppercase tracking-[0.4em] animate-pulse">
-                    Materializando Espacio...
-                </div>
-            </div>
-        );
+        return <GlobalLoader message="Materializando Espacio..." />;
     }
 
     return (
