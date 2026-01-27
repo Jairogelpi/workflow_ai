@@ -25,32 +25,32 @@ export function ForensicAuditView() {
         : 100;
 
     return (
-        <div className="fixed bottom-4 right-4 w-96 max-h-[50vh] bg-slate-950/95 border border-cyan-500/30 rounded-3xl backdrop-blur-2xl shadow-[0_0_40px_rgba(6,182,212,0.15)] z-[100] flex flex-col overflow-hidden animate-in slide-in-from-right-4 duration-500">
+        <div className="fixed bottom-4 right-4 w-96 max-h-[50vh] bg-white/80 border border-slate-200/60 rounded-3xl backdrop-blur-xl shadow-[0_20px_50px_-12px_rgba(0,0,0,0.1)] z-[100] flex flex-col overflow-hidden animate-in slide-in-from-right-4 duration-500">
             {/* Header */}
-            <div className="p-4 border-b border-cyan-500/10 bg-cyan-500/5">
+            <div className="p-4 border-b border-slate-100 bg-white/50">
                 <div className="flex items-center gap-3 mb-3">
-                    <div className="p-2 bg-cyan-500/10 rounded-xl">
-                        <Cpu className="w-4 h-4 text-cyan-400" />
+                    <div className="p-2 bg-blue-50 rounded-xl border border-blue-100">
+                        <Cpu className="w-4 h-4 text-blue-600" />
                     </div>
                     <div>
-                        <h3 className="text-sm font-black text-white uppercase tracking-widest font-mono">FORENSIC_AUDIT</h3>
-                        <p className="text-[9px] text-cyan-500/60 uppercase tracking-[0.2em]">X-Ray Mode Active</p>
+                        <h3 className="text-sm font-black text-slate-800 uppercase tracking-widest font-sans">FORENSIC_AUDIT</h3>
+                        <p className="text-[9px] text-slate-400 uppercase tracking-[0.2em]">X-Ray Mode Active</p>
                     </div>
                 </div>
 
                 {/* Metrics Bar */}
                 <div className="grid grid-cols-3 gap-2 text-[9px] font-mono">
-                    <div className="flex items-center gap-1.5 p-2 bg-slate-900/50 rounded-lg">
-                        <DollarSign className="w-3 h-3 text-emerald-400" />
-                        <span className="text-emerald-400">${sessionSpend.toFixed(4)}</span>
+                    <div className="flex items-center gap-1.5 p-2 bg-white border border-slate-100 rounded-lg shadow-sm">
+                        <DollarSign className="w-3 h-3 text-emerald-500" />
+                        <span className="text-emerald-600 font-bold">${sessionSpend.toFixed(4)}</span>
                     </div>
-                    <div className="flex items-center gap-1.5 p-2 bg-slate-900/50 rounded-lg">
-                        <Clock className="w-3 h-3 text-amber-400" />
-                        <span className="text-amber-400">${burnRate}/hr</span>
+                    <div className="flex items-center gap-1.5 p-2 bg-white border border-slate-100 rounded-lg shadow-sm">
+                        <Clock className="w-3 h-3 text-amber-500" />
+                        <span className="text-amber-600 font-bold">${burnRate}/hr</span>
                     </div>
-                    <div className="flex items-center gap-1.5 p-2 bg-slate-900/50 rounded-lg">
-                        <ShieldCheck className="w-3 h-3 text-cyan-400" />
-                        <span className="text-cyan-400">{integrityScore}%</span>
+                    <div className="flex items-center gap-1.5 p-2 bg-white border border-slate-100 rounded-lg shadow-sm">
+                        <ShieldCheck className="w-3 h-3 text-blue-500" />
+                        <span className="text-blue-600 font-bold">{integrityScore}%</span>
                     </div>
                 </div>
             </div>
@@ -60,37 +60,37 @@ export function ForensicAuditView() {
                 {rlmThoughts.slice(-10).reverse().map((thought) => (
                     <div
                         key={thought.id}
-                        className="p-3 bg-slate-900/50 border border-white/5 rounded-xl hover:border-cyan-500/30 transition-colors group"
+                        className="p-3 bg-white border border-slate-100 rounded-xl hover:border-blue-200 hover:shadow-md transition-all group"
                     >
                         <div className="flex justify-between items-start mb-1">
-                            <span className={`text-[8px] font-black uppercase tracking-tighter px-1.5 py-0.5 rounded ${thought.type === 'success' ? 'bg-emerald-500/10 text-emerald-400' :
-                                thought.type === 'error' ? 'bg-red-500/10 text-red-400' :
-                                    thought.type === 'reasoning' ? 'bg-cyan-500/10 text-cyan-400' :
-                                        'bg-slate-500/10 text-slate-400'
+                            <span className={`text-[8px] font-black uppercase tracking-tighter px-1.5 py-0.5 rounded ${thought.type === 'success' ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' :
+                                thought.type === 'error' ? 'bg-red-50 text-red-600 border border-red-100' :
+                                    thought.type === 'reasoning' ? 'bg-blue-50 text-blue-600 border border-blue-100' :
+                                        'bg-slate-50 text-slate-500 border border-slate-100'
                                 }`}>
                                 {thought.type}
                             </span>
-                            <span className="text-[8px] text-slate-600 font-mono">
+                            <span className="text-[8px] text-slate-400 font-mono">
                                 {thought.timestamp.split('T')[1]?.split('.')[0]}
                             </span>
                         </div>
-                        <p className="text-[11px] text-slate-300 leading-relaxed font-mono">
+                        <p className="text-[11px] text-slate-600 leading-relaxed font-mono">
                             {thought.message}
                         </p>
                     </div>
                 ))}
 
                 {rlmThoughts.length === 0 && (
-                    <div className="text-center py-8 text-slate-600">
-                        <Zap className="w-6 h-6 mx-auto mb-2 opacity-30" />
+                    <div className="text-center py-8 text-slate-400">
+                        <Zap className="w-6 h-6 mx-auto mb-2 opacity-20" />
                         <p className="text-[10px] font-mono">No reasoning activity yet</p>
                     </div>
                 )}
             </div>
 
             {/* Circuit Breaker */}
-            <div className="p-3 border-t border-cyan-500/10 bg-slate-900/50">
-                <button className="w-full py-2 px-4 bg-red-500/10 border border-red-500/20 rounded-xl text-red-400 text-[10px] font-black uppercase tracking-widest hover:bg-red-500/20 transition-colors flex items-center justify-center gap-2">
+            <div className="p-3 border-t border-slate-100 bg-white/50">
+                <button className="w-full py-2 px-4 bg-red-50 border border-red-100 rounded-xl text-red-600 text-[10px] font-black uppercase tracking-widest hover:bg-red-100 transition-colors flex items-center justify-center gap-2">
                     <AlertTriangle className="w-3 h-3" />
                     CIRCUIT_BREAKER
                 </button>

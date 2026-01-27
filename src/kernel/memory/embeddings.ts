@@ -21,27 +21,52 @@ export class EmbeddingService {
 
         if (isProduction || (modelConfig.efficiencyModel.provider as string) === 'openai' || (modelConfig.efficiencyModel.provider as string) === 'openrouter') {
             try {
-                // Use the RLM-Core /embed endpoint which handles Cloud/Local routing
-                const response = await fetch(`${backendUrl}/embed`, {
+                // [Fix] Dynamic Auth & Routing
+                let token = '';
+                try {
+                    const { supabase } = await import('../../lib/supabase');
+                    const { data } = await supabase.auth.getSession();
+                    token = data.session?.access_token || '';
+                } catch (e) { console.warn('[EmbeddingService] Failed to get session:', e); }
+
+                // Detect Schema: Cloud API (OpenAI style) vs Local RLM (Custom RPC)
+                const isCloud = backendUrl.includes('api.getagentshield.com') || backendUrl.includes('/v1');
+                const endpoint = isCloud ? `${backendUrl}/v1/embeddings` : `${backendUrl}/embed`;
+
+                // AgentShield API requires Authorization header
+                const headers: Record<string, string> = {
+                    'Content-Type': 'application/json',
+                };
+                if (token) headers['Authorization'] = `Bearer ${token}`;
+
+                // Select Payload Format
+                const payload = isCloud
+                    ? { input: text, model: 'text-embedding-3-small' }
+                    : { texts: [text], model: 'nomic-embed-text' };
+
+                const response = await fetch(endpoint, {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        // Optional: Add Auth header if needed, but RLM might be public or use a shared secret
-                    },
-                    body: JSON.stringify({
-                        texts: [text],
-                        model: 'nomic-embed-text' // RLM handles the actual model mapping
-                    })
+                    headers,
+                    body: JSON.stringify(payload)
                 });
 
                 if (!response.ok) {
-                    // Fallback to local if backend fails (e.g. invalid URL)
-                    console.warn(`[EmbeddingService] Backend failed (${response.status}), trying fallback...`);
-                    throw new Error(response.statusText);
+                    console.warn(`[EmbeddingService] Backend failed (${response.status}) at ${endpoint}`);
+                    // If Cloud failed, maybe we are local but misconfigured? 
+                    // We throw to trigger the outer catch (which might fallback to Ollama if configured)
+                    throw new Error(`Backend Error: ${response.status}`);
                 }
 
                 const data = await response.json();
-                return data.embeddings[0]; // RLM returns { embeddings: [[...]] }
+
+                // Normalize Response
+                if (isCloud && data.data && data.data[0]) {
+                    return data.data[0].embedding;
+                } else if (data.embeddings) {
+                    return data.embeddings[0];
+                }
+
+                return data; // Fallback return
 
             } catch (error) {
                 console.error('[EmbeddingService] Backend Error:', error);

@@ -111,6 +111,8 @@ export const syncService = {
 
                 updated_at: new Date().toISOString(),
                 deleted_at: null
+            }, {
+                onConflict: 'source_node_id, target_node_id, relation'
             });
 
         if (error) throw error;
@@ -172,6 +174,11 @@ export const syncService = {
                 metadata: edge.metadata,
                 created_at: new Date().toISOString(),
                 deleted_at: null
+            }, {
+                // [Fix] Resolve 409 Conflicts on Duplicate Edges
+                // If edge already exists (same source/target/relation), we update it 
+                // effectively merging the ID or keeping it consistent.
+                onConflict: 'source_node_id, target_node_id, relation'
             });
 
         if (error) throw error;

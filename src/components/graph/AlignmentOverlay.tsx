@@ -15,10 +15,10 @@ export const AlignmentOverlay: React.FC = () => {
     if (isAlignmentComputing) {
         return (
             <div className="absolute top-6 right-6 w-80 animate-pulse">
-                <div className="bg-slate-900/80 backdrop-blur-2xl border border-cyan-500/30 rounded-3xl p-6 shadow-2xl">
+                <div className="bg-white/90 backdrop-blur-2xl border border-blue-100 rounded-3xl p-6 shadow-[0_10px_40px_-10px_rgba(59,130,246,0.15)]">
                     <div className="flex items-center gap-3 mb-4">
-                        <div className="w-2 h-2 rounded-full bg-cyan-500 animate-ping" />
-                        <span className="text-[10px] font-black text-cyan-400 uppercase tracking-widest">Neural Swarm Audit...</span>
+                        <div className="w-2 h-2 rounded-full bg-blue-500 animate-ping" />
+                        <span className="text-[10px] font-black text-blue-600 uppercase tracking-widest">Neural Swarm Audit...</span>
                     </div>
                 </div>
             </div>
@@ -36,23 +36,23 @@ export const AlignmentOverlay: React.FC = () => {
 
     return (
         <div className="absolute top-6 right-6 w-80 animate-in fade-in slide-in-from-right-4 duration-500 pointer-events-auto">
-            <div className={`bg-slate-900/80 backdrop-blur-2xl border ${isHardLogicBreach ? 'border-red-500/50' : 'border-cyan-500/30'} rounded-3xl p-6 shadow-2xl relative overflow-hidden group`}>
+            <div className={`bg-white/90 backdrop-blur-xl border ${isHardLogicBreach ? 'border-red-200' : 'border-slate-200/60'} rounded-3xl p-6 shadow-[0_20px_50px_-12px_rgba(0,0,0,0.1)] relative overflow-hidden group`}>
                 {/* Background Glow */}
-                <div className={`absolute -top-12 -right-12 w-24 h-24 ${isHardLogicBreach ? 'bg-red-500/10' : 'bg-cyan-500/10'} blur-3xl group-hover:bg-cyan-500/20 transition-all duration-700`} />
+                <div className={`absolute -top-12 -right-12 w-24 h-24 ${isHardLogicBreach ? 'bg-red-500/5' : 'bg-blue-500/5'} blur-3xl group-hover:bg-blue-500/10 transition-all duration-700`} />
 
                 <div className="flex items-center justify-between mb-6">
                     <div>
                         <div className="flex items-center gap-2 mb-1">
-                            <Zap className={`w-3 h-3 ${isHardLogicBreach ? 'text-red-400' : 'text-cyan-400'} fill-current/20`} />
-                            <span className={`text-[10px] font-black ${isHardLogicBreach ? 'text-red-400' : 'text-cyan-400'} uppercase tracking-widest`}>
+                            <Zap className={`w-3 h-3 ${isHardLogicBreach ? 'text-red-500' : 'text-blue-500'} fill-current/20`} />
+                            <span className={`text-[10px] font-black ${isHardLogicBreach ? 'text-red-600' : 'text-blue-600'} uppercase tracking-widest`}>
                                 {isHardLogicBreach ? 'Logic Blockade' : 'Semantic Balance'}
                             </span>
                         </div>
-                        <h3 className="text-3xl font-black text-white tracking-tighter">
-                            {score}<span className={isHardLogicBreach ? 'text-red-500' : 'text-cyan-500'}>%</span>
+                        <h3 className="text-3xl font-black text-slate-800 tracking-tighter">
+                            {score}<span className={isHardLogicBreach ? 'text-red-500' : 'text-blue-500'}>%</span>
                         </h3>
                     </div>
-                    <div className={`p-3 rounded-2xl ${score > 90 ? 'bg-cyan-500/20 text-cyan-400' : isHardLogicBreach ? 'bg-red-500/20 text-red-400' : 'bg-amber-500/20 text-amber-400'}`}>
+                    <div className={`p-3 rounded-2xl ${score > 90 ? 'bg-blue-50 text-blue-600' : isHardLogicBreach ? 'bg-red-50 text-red-600' : 'bg-amber-50 text-amber-600'}`}>
                         {score > 90 ? <ShieldCheck size={24} /> : isHardLogicBreach ? <AlertCircle size={24} /> : <AlertCircle size={24} />}
                     </div>
                 </div>
@@ -63,25 +63,25 @@ export const AlignmentOverlay: React.FC = () => {
                     </p>
 
                     {gaps.length === 0 ? (
-                        <div className="p-4 rounded-2xl bg-cyan-500/5 border border-cyan-500/10 text-center">
-                            <p className="text-xs text-cyan-400 italic">Total Alignment Achieved.</p>
+                        <div className="p-4 rounded-2xl bg-blue-50/50 border border-blue-100 text-center">
+                            <p className="text-xs text-blue-600 italic">Total Alignment Achieved.</p>
                         </div>
                     ) : (
                         gaps.map((gap: any, idx: number) => (
                             <div
                                 key={idx}
-                                className={`group/item relative p-4 rounded-2xl bg-white/5 border border-white/5 ${isHardLogicBreach ? 'hover:border-red-500/30' : 'hover:border-cyan-500/30'} transition-all cursor-default`}
+                                className={`group/item relative p-4 rounded-2xl bg-white border border-slate-100 ${isHardLogicBreach ? 'hover:border-red-200' : 'hover:border-blue-200'} transition-all cursor-default shadow-sm`}
                             >
                                 <div className="flex items-start gap-3">
                                     <div className="mt-1">
-                                        <div className={`w-1.5 h-1.5 rounded-full ${isHardLogicBreach ? 'bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.5)]' : 'bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.5)]'}`} />
+                                        <div className={`w-1.5 h-1.5 rounded-full ${isHardLogicBreach ? 'bg-red-500 shadow-sm' : 'bg-amber-400 shadow-sm'}`} />
                                     </div>
                                     <div className="flex-1">
-                                        <p className="text-xs text-slate-200 font-bold leading-snug mb-2">{gap.missingConcept}</p>
+                                        <p className="text-xs text-slate-700 font-bold leading-snug mb-2">{gap.missingConcept}</p>
                                         {!isHardLogicBreach && (
                                             <button
                                                 onClick={() => handleAutoFill(gap)}
-                                                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-cyan-500/10 text-cyan-400 text-[10px] font-black uppercase tracking-widest hover:bg-cyan-500 hover:text-white transition-all shadow-lg shadow-cyan-500/5 active:scale-95"
+                                                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-50 text-blue-600 text-[10px] font-black uppercase tracking-widest hover:bg-blue-500 hover:text-white transition-all shadow-sm active:scale-95"
                                             >
                                                 <PlusCircle size={12} />
                                                 Materialize
@@ -94,11 +94,11 @@ export const AlignmentOverlay: React.FC = () => {
                     )}
                 </div>
 
-                <div className="mt-6 pt-4 border-t border-white/5 flex items-center justify-between">
-                    <p className="text-[9px] text-slate-500 italic leading-relaxed max-w-[140px]">
+                <div className="mt-6 pt-4 border-t border-slate-100 flex items-center justify-between">
+                    <p className="text-[9px] text-slate-400 italic leading-relaxed max-w-[140px]">
                         {isHardLogicBreach ? 'Logical inconsistencies detected by Rust logic-engine.' : 'Zero-friction alignment: Materialize to close strategy gaps.'}
                     </p>
-                    <div className="flex items-center gap-1 px-2 py-1 bg-white/5 rounded-md border border-white/5">
+                    <div className="flex items-center gap-1 px-2 py-1 bg-slate-50 rounded-md border border-slate-100">
                         <span className="text-[8px] font-black text-slate-400">OS V7.5</span>
                     </div>
                 </div>
