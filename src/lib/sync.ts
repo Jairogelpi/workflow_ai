@@ -131,18 +131,22 @@ export const syncService = {
 
             const embedding = await EmbeddingService.embed(textToEmbed);
 
-            // Upsert into node_embeddings
-            const { error: vectorError } = await supabase
-                .from('node_embeddings' as any)
-                .upsert({
-                    id: id,
-                    project_id: projectId,
-                    content: textToEmbed,
-                    embedding: embedding, // pgvector handles the array
-                    updated_at: new Date().toISOString()
-                });
+            if (embedding) {
+                // Upsert into node_embeddings
+                const { error: vectorError } = await supabase
+                    .from('node_embeddings' as any)
+                    .upsert({
+                        id: id,
+                        project_id: projectId,
+                        content: textToEmbed,
+                        embedding: embedding, // pgvector handles the array
+                        updated_at: new Date().toISOString()
+                    });
 
-            if (vectorError) console.error('[SyncService] Vector upsert failed:', vectorError);
+                if (vectorError) console.error('[SyncService] Vector upsert failed:', vectorError);
+            } else {
+                // Graceful degradation: No embedding means no vector search, but graph still works.
+            }
 
         } catch (embedError) {
             // Non-blocking failure: If embedding fails (e.g. no key), we still saved the node.

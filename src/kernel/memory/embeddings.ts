@@ -9,10 +9,10 @@ import { Vault } from '../../lib/security/vault';
 export class EmbeddingService {
 
     /**
-     * Generates a vector embedding for a given text.
+      * Generates a vector embedding for a given text.
      * Dimensions: 768 (nomic-embed-text)
      */
-    static async embed(text: string): Promise<number[]> {
+    static async embed(text: string): Promise<number[] | null> {
         const { modelConfig, masterSecret } = useSettingsStore.getState();
 
         // [PRODUCTION] Route to RLM Core (Backend) if configured
@@ -83,7 +83,7 @@ export class EmbeddingService {
         // Prevent production from trying to hit localhost blindly
         if (process.env.NODE_ENV === 'production' && baseUrl.includes('localhost')) {
             console.warn('[EmbeddingService] Skipped: Cannot reach localhost in production.');
-            return new Array(768).fill(0); // Return zero-vector or null
+            return null; // Graceful skip
         }
 
         try {
@@ -105,7 +105,8 @@ export class EmbeddingService {
 
         } catch (error) {
             console.error('[EmbeddingService] Local Failed:', error);
-            throw error;
+            // Return null instead of throwing to prevent app crashes
+            return null;
         }
     }
 }

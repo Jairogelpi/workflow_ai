@@ -20,11 +20,16 @@ export async function retrieveContext(plan: Plan, graph: WorkGraph, projectId: s
     const query = plan.steps.map(s => s.description).join(' ');
 
     // 2. Generate Query Embedding
-    let queryEmbedding: number[] = [];
+    let queryEmbedding: number[] | null = null;
     try {
         queryEmbedding = await EmbeddingService.embed(query);
     } catch (e) {
         console.warn('[RETRIEVER] Embedding failed, returning empty context (Safety Veto):', e);
+        return [];
+    }
+
+    if (!queryEmbedding) {
+        console.warn('[RETRIEVER] No embedding generated (Production Guardrail), skipping vector search.');
         return [];
     }
 
