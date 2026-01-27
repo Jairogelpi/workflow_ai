@@ -19,7 +19,7 @@ export class EmbeddingService {
         const backendUrl = process.env.NEXT_PUBLIC_API_URL || 'https://api.getagentshield.com'; // Default to prod if env missing
         const isProduction = process.env.NODE_ENV === 'production';
 
-        if (isProduction || modelConfig.provider === 'openai' || modelConfig.provider === 'openrouter') {
+        if (isProduction || (modelConfig.efficiencyModel.provider as string) === 'openai' || (modelConfig.efficiencyModel.provider as string) === 'openrouter') {
             try {
                 // Use the RLM-Core /embed endpoint which handles Cloud/Local routing
                 const response = await fetch(`${backendUrl}/embed`, {
