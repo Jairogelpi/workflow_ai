@@ -257,7 +257,7 @@ export const useGraphStore = create<GraphState>()(
             healProposals: [],
 
             // Antigravity Initial State (Fricción Cero: On by default)
-            isAntigravityActive: true,
+            isAntigravityActive: false,
             physicsStats: {
                 latency_ms: 0,
                 cost_usd: 0,

@@ -53,6 +53,7 @@ export function useAntigravityEngine() {
 
                     setNodesFlow((currentFlowNodes) => {
                         return currentFlowNodes.map(n => {
+                            if (n.dragging || n.selected) return n;
                             const up = finalUpdates.get(n.id || '');
                             return up ? { ...n, position: up } : n;
                         });
@@ -100,6 +101,9 @@ export function useAntigravityEngine() {
 
                 setNodesFlow((currentFlowNodes) => {
                     return currentFlowNodes.map(n => {
+                        // [Fix] Respect user interaction: Do not update if dragging or selected
+                        if (n.dragging || n.selected) return n;
+
                         const up = updates.get(n.id || '');
                         if (up) {
                             return {
