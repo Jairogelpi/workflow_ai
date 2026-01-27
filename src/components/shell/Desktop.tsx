@@ -56,10 +56,11 @@ export function Desktop({ children }: DesktopProps) {
                 </div>
             </div>
 
-            {/* Background Atmosphere - Clean White Space */}
+            {/* Background Atmosphere - Clean White Space with Dot Grid */}
             <div className="absolute inset-0 z-[-1] pointer-events-none bg-white">
-                <div className="absolute top-0 right-0 w-[50%] h-[50%] bg-blue-50/20 blur-[150px] rounded-full" />
-                <div className="absolute bottom-0 left-0 w-[50%] h-[50%] bg-yellow-50/20 blur-[150px] rounded-full" />
+                <div className="absolute inset-0 dot-grid opacity-50" />
+                <div className="absolute top-0 right-0 w-[40%] h-[40%] bg-blue-100/10 blur-[120px] rounded-full" />
+                <div className="absolute bottom-0 left-0 w-[40%] h-[40%] bg-yellow-100/10 blur-[120px] rounded-full" />
             </div>
         </div>
     );
