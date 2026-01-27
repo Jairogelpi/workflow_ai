@@ -29,7 +29,7 @@ export function ForensicHUD({ forensicId, evidenceIds, signedNodeIds, onClose }:
         .map(n => n.data);
 
     return (
-        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-6 bg-slate-950/40 backdrop-blur-sm animate-in fade-in duration-300">
+        <div className="fixed top-6 left-6 w-96 max-h-[50vh] bg-slate-950/95 border border-cyan-500/30 rounded-3xl backdrop-blur-2xl shadow-[0_0_40px_rgba(6,182,212,0.15)] z-[100] flex flex-col overflow-hidden animate-in slide-in-from-left-4 duration-500 pointer-events-auto">
             <div className="w-full max-w-4xl h-[600px] bg-slate-900 border border-cyan-500/30 rounded-3xl shadow-2xl flex flex-col overflow-hidden animate-in zoom-in-95 duration-300">
 
                 {/* Header */}

@@ -35,7 +35,7 @@ export const AlignmentOverlay: React.FC = () => {
     const isHardLogicBreach = score === 0 && gaps.some((g: any) => g.sourceNodeId === 'SAT_VIOLATION');
 
     return (
-        <div className="absolute top-6 right-6 w-80 animate-in fade-in slide-in-from-right-4 duration-500">
+        <div className="absolute top-6 right-6 w-80 animate-in fade-in slide-in-from-right-4 duration-500 pointer-events-auto">
             <div className={`bg-slate-900/80 backdrop-blur-2xl border ${isHardLogicBreach ? 'border-red-500/50' : 'border-cyan-500/30'} rounded-3xl p-6 shadow-2xl relative overflow-hidden group`}>
                 {/* Background Glow */}
                 <div className={`absolute -top-12 -right-12 w-24 h-24 ${isHardLogicBreach ? 'bg-red-500/10' : 'bg-cyan-500/10'} blur-3xl group-hover:bg-cyan-500/20 transition-all duration-700`} />

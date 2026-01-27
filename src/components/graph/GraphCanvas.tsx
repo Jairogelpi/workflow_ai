@@ -93,7 +93,7 @@ function GraphContent() {
                     return {
                         ...zNode,
                         position: localNode.position, // Keep local position
-                        positionAbsolute: localNode.positionAbsolute,
+                        positionAbsolute: localNode.positionAbsolute || zNode.positionAbsolute,
                         selected: localNode.selected ?? false,
                         dragging: localNode.dragging ?? false
                     };
