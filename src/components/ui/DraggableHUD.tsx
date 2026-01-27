@@ -33,18 +33,18 @@ export function DraggableHUD({ children, defaultPosition, defaultSize, id, title
                 if (pos) setPosition(pos);
                 if (sz) setSize(sz);
             } catch (e) { }
+        } else {
+            // Respect defaults if no saved state
+            if (defaultPosition) setPosition(defaultPosition);
+            if (defaultSize) setSize(defaultSize);
         }
-    }, [storageKey]);
+    }, [storageKey, defaultPosition, defaultSize]);
 
     const saveState = (pos: any, sz: any) => {
         localStorage.setItem(storageKey, JSON.stringify({ pos, sz }));
     };
 
     const handleDragEnd = (event: any, info: any) => {
-        // Framer motion uses absolute points for dragEnd info
-        // We calculate the delta or just save the final transform if needed,
-        // but since we use 'initial' for positioning, we need to be careful.
-        // For v1, we focus on session persistence during drag, and save on end.
         const newPos = { x: position.x + info.offset.x, y: position.y + info.offset.y };
         setPosition(newPos);
         saveState(newPos, size);
@@ -57,11 +57,13 @@ export function DraggableHUD({ children, defaultPosition, defaultSize, id, title
             dragControls={dragControls}
             dragListener={false}
             onDragEnd={handleDragEnd}
-            initial={false} // Don't snap to initial on every render
+            initial={false}
             animate={{ x: position.x, y: position.y }}
             style={{
                 width: size.width,
                 height: size.height,
+                minWidth: 'fit-content',
+                minHeight: 'fit-content',
                 position: 'fixed',
                 top: 0,
                 left: 0,
@@ -79,7 +81,7 @@ export function DraggableHUD({ children, defaultPosition, defaultSize, id, title
             </div>
 
             {/* Content Wrapper */}
-            <div className="relative h-full w-full">
+            <div className={`relative h-full w-full ${isResizing ? 'pointer-events-none' : ''}`}>
                 {children}
 
                 {/* Resize Handle */}
@@ -90,13 +92,13 @@ export function DraggableHUD({ children, defaultPosition, defaultSize, id, title
                         setIsResizing(true);
                         const startX = e.clientX;
                         const startY = e.clientY;
-                        const startWidth = typeof size.width === 'number' ? size.width : 240;
-                        const startHeight = typeof size.height === 'number' ? size.height : 100;
+                        const startWidth = (e.currentTarget.parentElement?.clientWidth || 0);
+                        const startHeight = (e.currentTarget.parentElement?.clientHeight || 0);
 
                         const onMouseMove = (moveEvent: MouseEvent) => {
                             const newSize = {
-                                width: Math.max(150, startWidth + (moveEvent.clientX - startX)),
-                                height: 'auto'
+                                width: Math.max(100, startWidth + (moveEvent.clientX - startX)),
+                                height: Math.max(40, startHeight + (moveEvent.clientY - startY))
                             };
                             setSize(newSize);
                         };
@@ -104,8 +106,8 @@ export function DraggableHUD({ children, defaultPosition, defaultSize, id, title
                         const onMouseUp = (upEvent: MouseEvent) => {
                             setIsResizing(false);
                             const finalSize = {
-                                width: Math.max(150, startWidth + (upEvent.clientX - startX)),
-                                height: 'auto'
+                                width: Math.max(100, startWidth + (upEvent.clientX - startX)),
+                                height: Math.max(40, startHeight + (upEvent.clientY - startY))
                             };
                             saveState(position, finalSize);
                             document.removeEventListener('mousemove', onMouseMove);

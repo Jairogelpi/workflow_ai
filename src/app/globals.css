@@ -177,12 +177,12 @@ textarea,
 
 /* Dot Grid Pattern for Canvas */
 .dot-grid {
-  background-image: radial-gradient(circle, rgb(var(--outline-variant) / 0.4) 1px, transparent 1px);
-  background-size: 24px 24px;
+  background-image: radial-gradient(circle, rgb(var(--outline) / 0.6) 1.5px, transparent 1.5px);
+  background-size: 32px 32px;
 }
 
 .dark .dot-grid {
-  background-image: radial-gradient(circle, rgb(255 255 255 / 0.08) 1px, transparent 1px);
+  background-image: radial-gradient(circle, rgb(255 255 255 / 0.15) 1.5px, transparent 1.5px);
 }
 
 /* native View Transitions */

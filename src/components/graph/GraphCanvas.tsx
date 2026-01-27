@@ -27,6 +27,7 @@ import { IngestionHUD } from '../ui/IngestionHUD';
 import { SensoryRipple } from './SensoryRipple';
 import { BootSequence } from './BootSequence';
 import { ForensicAuditView } from './ForensicAuditView';
+import { DraggableHUD } from '../ui/DraggableHUD';
 
 const nodeTypes = {
     note: WorkNodeComponent,
@@ -285,38 +286,39 @@ function GraphContent() {
             fitViewOptions={{ padding: 0.4, maxZoom: 0.75 }}
             className="transition-all duration-500 bg-transparent"
         >
-            {/* Super subtle background - integrated with Desktop grid */}
-            <Background color="transparent" variant={"dots" as any} gap={40} size={1} />
+            {/* Integrated with Desktop grid via transparency */}
 
             {/* Simple Navigation Island */}
             <Panel position="bottom-center" className="!mb-10">
-                <div className="flex items-center gap-4 px-6 py-3 bg-white border border-slate-200 rounded-full shadow-[0_20px_50px_rgba(0,0,0,0.1)] pointer-events-auto">
-                    <button
-                        onClick={() => addNode('note')}
-                        className="flex items-center gap-2 px-6 py-2.5 rounded-full bg-blue-500 text-white font-bold text-sm transition-all hover:bg-blue-600 hover:scale-105 active:scale-95 shadow-lg shadow-blue-500/20"
-                    >
-                        <Plus size={20} />
-                        <span>Nueva Idea</span>
-                    </button>
+                <DraggableHUD id="action-bar" title="Acciones" defaultPosition={{ x: (typeof window !== 'undefined' ? window.innerWidth / 2 - 200 : 400), y: (typeof window !== 'undefined' ? window.innerHeight - 180 : 700) }}>
+                    <div className="flex items-center gap-4 px-6 py-3 bg-white border border-slate-200 rounded-full shadow-[0_20px_50px_rgba(0,0,0,0.1)]">
+                        <button
+                            onClick={() => addNode('note')}
+                            className="flex items-center gap-2 px-6 py-2.5 rounded-full bg-blue-500 text-white font-bold text-sm transition-all hover:bg-blue-600 hover:scale-105 active:scale-95 shadow-lg shadow-blue-500/20"
+                        >
+                            <Plus size={20} />
+                            <span>Nueva Idea</span>
+                        </button>
 
-                    <div className="w-px h-8 bg-slate-100 mx-2" />
+                        <div className="w-px h-8 bg-slate-100 mx-2" />
 
-                    <button
-                        onClick={toggleAntigravity}
-                        className={`p-3 rounded-full transition-all duration-300 ${isAntigravityActive ? 'bg-blue-50 text-blue-500' : 'hover:bg-slate-50 text-slate-400'}`}
-                        title="Fuerza Gravitacional"
-                    >
-                        <Wind size={22} className={isAntigravityActive ? 'animate-pulse' : ''} />
-                    </button>
+                        <button
+                            onClick={toggleAntigravity}
+                            className={`p-3 rounded-full transition-all duration-300 ${isAntigravityActive ? 'bg-blue-50 text-blue-500' : 'hover:bg-slate-50 text-slate-400'}`}
+                            title="Fuerza Gravitacional"
+                        >
+                            <Wind size={22} className={isAntigravityActive ? 'animate-pulse' : ''} />
+                        </button>
 
-                    <button
-                        onClick={() => useXRayMode.getState().toggleXRay()}
-                        className={`p-3 rounded-full transition-all ${useXRayMode.getState().isXRayActive ? 'bg-blue-50 text-blue-500' : 'hover:bg-slate-50 text-slate-400'}`}
-                        title="Ver Detalles"
-                    >
-                        <Eye size={22} />
-                    </button>
-                </div>
+                        <button
+                            onClick={() => useXRayMode.getState().toggleXRay()}
+                            className={`p-3 rounded-full transition-all ${useXRayMode.getState().isXRayActive ? 'bg-blue-50 text-blue-500' : 'hover:bg-slate-50 text-slate-400'}`}
+                            title="Ver Detalles"
+                        >
+                            <Eye size={22} />
+                        </button>
+                    </div>
+                </DraggableHUD>
             </Panel>
 
             <div className="pointer-events-none fixed inset-0 z-40">

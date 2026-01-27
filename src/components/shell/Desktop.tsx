@@ -12,6 +12,7 @@ import {
     Clock
 } from 'lucide-react';
 import { useGraphStore } from '../../store/useGraphStore';
+import { DraggableHUD } from '../ui/DraggableHUD';
 
 interface DesktopProps {
     children: React.ReactNode;
@@ -48,17 +49,17 @@ export function Desktop({ children }: DesktopProps) {
             </div>
 
             {/* Simple Navigation Dock - Floating like a Google Search Bar */}
-            <div className="absolute bottom-10 inset-x-0 flex justify-center z-[1001] pointer-events-none">
-                <div className="flex items-center gap-4 p-3 bg-white border border-slate-200 rounded-full shadow-[0_20px_50px_rgba(0,0,0,0.1)] pointer-events-auto">
+            <DraggableHUD id="nav-dock" title="Navegación" defaultPosition={{ x: (typeof window !== 'undefined' ? window.innerWidth / 2 - 140 : 200), y: (typeof window !== 'undefined' ? window.innerHeight - 100 : 800) }}>
+                <div className="flex items-center gap-4 p-3 bg-white border border-slate-200 rounded-full shadow-[0_20px_50px_rgba(0,0,0,0.1)]">
                     <DockIcon icon={<LayoutGrid size={24} />} label="Tus Ideas" active />
                     <DockIcon icon={<Share2 size={24} />} label="Red" />
                     <DockIcon icon={<Search size={24} />} label="Buscar" highlight />
                 </div>
-            </div>
+            </DraggableHUD>
 
             {/* Background Atmosphere - Clean White Space with Dot Grid */}
             <div className="absolute inset-0 z-[-1] pointer-events-none bg-white">
-                <div className="absolute inset-0 dot-grid opacity-50" />
+                <div className="absolute inset-0 dot-grid" />
                 <div className="absolute top-0 right-0 w-[40%] h-[40%] bg-blue-100/10 blur-[120px] rounded-full" />
                 <div className="absolute bottom-0 left-0 w-[40%] h-[40%] bg-yellow-100/10 blur-[120px] rounded-full" />
             </div>
