@@ -112,7 +112,7 @@ export const syncService = {
                 updated_at: new Date().toISOString(),
                 deleted_at: null
             }, {
-                onConflict: 'source_node_id, target_node_id, relation'
+                onConflict: 'id'
             });
 
         if (error) throw error;
@@ -284,8 +284,8 @@ export const syncService = {
 
         // 2. Execute Parallel Bulk Requests
         const [nodeRes, edgeRes] = await Promise.all([
-            nodesPayload.length > 0 ? supabase.from('work_nodes').upsert(nodesPayload) : { error: null },
-            edgesPayload.length > 0 ? supabase.from('work_edges').upsert(edgesPayload) : { error: null }
+            nodesPayload.length > 0 ? supabase.from('work_nodes').upsert(nodesPayload, { onConflict: 'id' }) : { error: null },
+            edgesPayload.length > 0 ? supabase.from('work_edges').upsert(edgesPayload, { onConflict: 'source_node_id, target_node_id, relation' }) : { error: null }
         ]);
 
         if (nodeRes.error) throw nodeRes.error;
