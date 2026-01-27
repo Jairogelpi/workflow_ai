@@ -81,37 +81,58 @@ class WasmEngine implements PhysicsEngine {
         if (!this.isRunning) return;
         if (!this.wasmModule) return;
 
+
         try {
             // [Rust Core] Call the Antigravity Engine
             // Expects: apply_forces(nodes, edges) -> updated_nodes
-            if (this.wasmModule.apply_forces) {
-                const result = this.wasmModule.apply_forces(this.nodes, this.edges);
+            if (this.wasmModule && this.wasmModule.apply_forces) {
+                // Map to Rust struct: { id, x, y, is_pin }
+                // Rust expects snake_case 'is_pin' and required floats.
+                const safeNodes = this.nodes.map(n => ({
+                    id: n.id,
+                    x: n.x || 0.0,
+                    y: n.y || 0.0,
+                    is_pin: !!n.isPinned
+                }));
 
-                if (result) {
+                const result = this.wasmModule.apply_forces(safeNodes, this.edges);
+
+                if (result && Array.isArray(result)) {
                     const len = result.length;
+                    // ... rest of logic
                     const positions = new Float32Array(len * 2);
-
                     let totalDisplacement = 0;
 
-                    // Optimization: Use simple loop assuming order preservation from WASM
                     for (let i = 0; i < len; i++) {
-                        const oldNode = this.nodes[i];
+                        // ... map back result
                         const newNode = result[i];
+                        // Map Rust result back to our NodeData if needed, 
+                        // but here we just need positions.
+                        // Assuming Rust returns similar struct.
+                        const cx = newNode.x;
+                        const cy = newNode.y;
 
-                        // Safety check for ID stability (Critical for Zero-Copy map)
-                        if (oldNode && newNode && oldNode.id === newNode.id) {
-                            const dx = (newNode.x || 0) - (oldNode.x || 0);
-                            const dy = (newNode.y || 0) - (oldNode.y || 0);
+                        // We need to correlate with this.nodes[i] assuming preserved order
+                        const oldNode = this.nodes[i];
+
+                        if (oldNode && oldNode.id === newNode.id) {
+                            const dx = cx - (oldNode.x || 0);
+                            const dy = cy - (oldNode.y || 0);
                             totalDisplacement += Math.abs(dx) + Math.abs(dy);
                         }
 
-                        // Fill Zero-Copy Buffer [x, y, x, y...]
-                        positions[i * 2] = newNode.x || 0;
-                        positions[i * 2 + 1] = newNode.y || 0;
+                        positions[i * 2] = cx;
+                        positions[i * 2 + 1] = cy;
                     }
 
-                    // Update local state
-                    this.nodes = result;
+                    // Update local state with new positions
+                    // We must be careful not to overwrite other properties if result is just strict Node struct
+                    for (let i = 0; i < len; i++) {
+                        if (this.nodes[i]) {
+                            this.nodes[i].x = result[i].x;
+                            this.nodes[i].y = result[i].y;
+                        }
+                    }
 
                     // Threshold: 0.5 total pixel movement across all nodes
                     if (totalDisplacement < 0.5) {
