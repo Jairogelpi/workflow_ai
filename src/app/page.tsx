@@ -10,11 +10,11 @@ export default function Home() {
     const [splashFinished, setSplashFinished] = React.useState(false);
     const [session, setSession] = React.useState<any>(null);
 
-    // Forces Splash Screen for 10s (Brand presence) then yields to App
+    // Forces Splash Screen for 6s (Match animation loop) then yields to App
     useEffect(() => {
         const timer = setTimeout(() => {
             setSplashFinished(true);
-        }, 10000); // Extended duration
+        }, 6000); // Optimized duration
         return () => clearTimeout(timer);
     }, []);
 
@@ -57,7 +57,7 @@ export default function Home() {
                     muted
                     loop
                     playsInline
-                    className="w-32 md:w-56 lg:w-64 h-auto object-contain animate-in fade-in duration-1000"
+                    className="w-64 md:w-80 lg:w-[450px] h-auto object-contain animate-in fade-in duration-500"
                 >
                     <source src="/axiom_animation.mp4" type="video/mp4" />
                     {/* Fallback for really old browsers */}

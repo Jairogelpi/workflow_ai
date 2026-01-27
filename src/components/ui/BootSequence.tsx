@@ -15,65 +15,64 @@ export function BootSequence({ onComplete }: { onComplete: () => void }) {
 
     useEffect(() => {
         let currentStep = 0;
+        // 6000ms / 5 steps = 1200ms per step for perfect sync with video
         const interval = setInterval(() => {
-            console.log(`[BootSequence] Tick: Step ${currentStep}/${steps.length}, Progress ${progress}%`);
             if (currentStep < steps.length) {
                 const nextStatus = steps[currentStep];
                 if (nextStatus) setStatus(nextStatus);
-                setProgress((prev) => Math.min(prev + 25, 100));
+                setProgress((prev) => Math.min(prev + 20, 100)); // 5 cycles of 20 = 100%
                 currentStep++;
             } else {
-                console.log('[BootSequence] Boot sequence finished. Triggering onComplete in 800ms...');
                 clearInterval(interval);
                 setTimeout(() => {
-                    console.log('[BootSequence] Calling onComplete()');
                     onComplete();
-                }, 800);
+                }, 1000); // Final pause
             }
-        }, 700);
+        }, 1200);
         return () => clearInterval(interval);
     }, [onComplete]);
 
     return (
-        <div className="fixed inset-0 z-[10000] bg-white overflow-hidden">
+        <div className="fixed inset-0 z-[10000] bg-white overflow-hidden flex flex-col items-center justify-center">
             {/* Soft background aura - Cinematic Bloom */}
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[1200px] h-[1200px] bg-gradient-to-tr from-blue-50/30 via-white to-yellow-50/30 rounded-full blur-[150px] pointer-events-none opacity-80 animate-pulse-slow" />
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[1000px] h-[1000px] bg-gradient-to-tr from-blue-50/20 via-white to-yellow-50/20 rounded-full blur-[120px] pointer-events-none opacity-80 animate-pulse-slow" />
 
-            {/* Axiom Logo - The Protagonist */}
-            <div className="relative z-10 flex flex-col items-center justify-start min-h-screen pt-40 md:pt-60">
-                <div className="relative"
+            {/* Axiom Video - The Protagonist */}
+            <div className="relative z-10 flex flex-col items-center w-full max-w-4xl">
+                <div className="relative flex justify-center"
                     style={{
-                        animation: 'axiom-epic-reveal 3.5s cubic-bezier(0.16, 1, 0.3, 1) forwards',
-                        opacity: 0,
+                        animation: 'axiom-epic-reveal 1s cubic-bezier(0.16, 1, 0.3, 1) forwards',
                     }}>
-                    <div className="w-[600px] md:w-[800px] lg:w-[950px] h-auto">
-                        <img src="/logo.png" alt="Axiom Logo" className="w-full h-auto drop-shadow-[0_40px_100px_rgba(0,0,0,0.12)]" />
-                    </div>
-
-                    {/* Fluid Gloss Sweep */}
-                    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/60 to-transparent -translate-x-[100%] animate-[shimmer_4s_infinite_ease-in-out] pointer-events-none mix-blend-overlay" />
+                    <video
+                        autoPlay
+                        muted
+                        loop
+                        playsInline
+                        className="w-64 md:w-80 lg:w-[450px] h-auto object-contain drop-shadow-[0_40px_100px_rgba(0,0,0,0.08)]"
+                    >
+                        <source src="/axiom_animation.mp4" type="video/mp4" />
+                    </video>
                 </div>
 
                 {/* Subtle Progress HUD - Positioned Lower */}
-                <div className="mt-20 w-64 space-y-6 animate-fade-in" style={{ animationDelay: '1.5s', opacity: 0, animationFillMode: 'forwards' }}>
+                <div className="mt-12 w-64 space-y-4 animate-fade-in" style={{ animationDelay: '0.5s', opacity: 0, animationFillMode: 'forwards' }}>
                     <div className="space-y-4 text-center">
-                        <h1 className="text-[10px] tracking-[0.6em] font-extrabold opacity-30 uppercase leading-none text-slate-400">
+                        <h1 className="text-[10px] tracking-[0.5em] font-bold opacity-40 uppercase leading-none text-slate-500">
                             {status}
                         </h1>
 
-                        <div className="w-full h-[1.5px] bg-slate-100 rounded-full overflow-hidden relative">
+                        <div className="w-full h-[1px] bg-slate-100 rounded-full overflow-hidden relative">
                             <div
-                                className="absolute inset-y-0 left-0 bg-blue-500 transition-all duration-1000 ease-[cubic-bezier(0.34,1.56,0.64,1)] rounded-full shadow-[0_0_15px_rgba(59,130,246,0.5)]"
+                                className="absolute inset-y-0 left-0 bg-blue-500/80 transition-all duration-1000 ease-out"
                                 style={{ width: `${progress}%` }}
                             />
                         </div>
                     </div>
 
-                    <div className="flex justify-center gap-6 opacity-30">
-                        <div className="w-1 h-1 rounded-full bg-blue-500 animate-bounce" style={{ animationDelay: '0s' }} />
-                        <div className="w-1 h-1 rounded-full bg-red-500 animate-bounce" style={{ animationDelay: '0.1s' }} />
-                        <div className="w-1 h-1 rounded-full bg-yellow-400 animate-bounce" style={{ animationDelay: '0.2s' }} />
-                        <div className="w-1 h-1 rounded-full bg-green-500 animate-bounce" style={{ animationDelay: '0.3s' }} />
+                    <div className="flex justify-center gap-4 opacity-20">
+                        <div className="w-1 h-1 rounded-full bg-blue-400 animate-bounce" style={{ animationDelay: '0s' }} />
+                        <div className="w-1 h-1 rounded-full bg-slate-300 animate-bounce" style={{ animationDelay: '0.1s' }} />
+                        <div className="w-1 h-1 rounded-full bg-slate-300 animate-bounce" style={{ animationDelay: '0.2s' }} />
                     </div>
                 </div>
             </div>
