@@ -46,7 +46,8 @@ export function useAntigravityEngine() {
                     if (positions) {
                         for (let i = 0; i < nodeOrder.length; i++) {
                             if (i * 2 + 1 < positions.length) {
-                                finalUpdates.set(nodeOrder[i], { x: positions[i * 2], y: positions[i * 2 + 1] });
+                                const id = nodeOrder[i];
+                                if (id) finalUpdates.set(id, { x: positions[i * 2], y: positions[i * 2 + 1] });
                             }
                         }
                     }
@@ -95,7 +96,8 @@ export function useAntigravityEngine() {
                 // Fast Map: O(N) instead of O(N^2)
                 for (let i = 0; i < nodeOrder.length; i++) {
                     if (i * 2 + 1 < positions.length) {
-                        updates.set(nodeOrder[i], { x: positions[i * 2], y: positions[i * 2 + 1] });
+                        const id = nodeOrder[i];
+                        if (id) updates.set(id, { x: positions[i * 2], y: positions[i * 2 + 1] });
                     }
                 }
 
