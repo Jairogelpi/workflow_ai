@@ -11,7 +11,7 @@ import { WindowManager } from '@/components/ui/WindowManager';
 import { Desktop } from '@/components/shell/Desktop';
 import { useGraphStore } from '@/store/useGraphStore';
 import { supabase } from '@/lib/supabase';
-import { BootSequence } from '@/components/ui/BootSequence';
+// import { BootSequence } from '@/components/ui/BootSequence';
 import { TrafficLightHUD } from '@/components/workflow/TrafficLightHUD';
 import { CircuitBreakerOverlay } from '@/components/ui/CircuitBreaker';
 import { GlobalLoader } from '@/components/ui/GlobalLoader';
@@ -52,15 +52,10 @@ export default function ProjectWorkspace() {
         checkSession();
     }, [projectId, router, loadProject]);
 
-    const handleBootComplete = () => {
-        setHasBooted(true);
-    };
-
     if (loading) return <GlobalLoader message="Loading Workspace..." />;
 
-    if (!hasBooted) {
-        return <BootSequence onComplete={handleBootComplete} />;
-    }
+    // Note: Legacy BootSequence removed to unified loading experience.
+
 
     return (
         <Desktop>

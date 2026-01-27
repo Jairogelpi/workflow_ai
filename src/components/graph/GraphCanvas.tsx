@@ -25,7 +25,7 @@ import { AlignmentTunnels } from './AlignmentTunnels';
 import { WindowManager } from '../ui/WindowManager';
 import { IngestionHUD } from '../ui/IngestionHUD';
 import { SensoryRipple } from './SensoryRipple';
-import { BootSequence } from './BootSequence';
+// import { BootSequence } from './BootSequence';
 import { ForensicAuditView } from './ForensicAuditView';
 import { DraggableHUD } from '../ui/DraggableHUD';
 
@@ -328,7 +328,9 @@ function GraphContent() {
             </div>
 
             <AlignmentTunnels />
-            <BootSequence />
+            <AlignmentTunnels />
+            {/* <BootSequence /> Legacy removed */}
+            <SensoryRipple />
             <SensoryRipple />
             <WindowManager />
         </ReactFlow>
