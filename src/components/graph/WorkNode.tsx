@@ -24,8 +24,8 @@ import { AppNode, AppEdge } from '../../store/useGraphStore';
 const NODE_TYPE_CONFIG: Record<string, {
     label: string;
     icon: any;
-    gradient: string; // New Gradient prop
-    glow: string;     // New Glow color
+    gradient: string;
+    glow: string;
     border: string;
 }> = {
     note: {
@@ -38,28 +38,28 @@ const NODE_TYPE_CONFIG: Record<string, {
     claim: {
         label: 'Afirmación',
         icon: ShieldAlert,
-        gradient: 'from-blue-600 to-cyan-400', // Vibrant Blue/Cyan Sphere
+        gradient: 'from-blue-600 to-cyan-400',
         glow: 'rgba(56, 189, 248, 0.6)',
         border: '#38bdf8'
     },
     evidence: {
         label: 'Evidencia',
         icon: CheckCircle2,
-        gradient: 'from-emerald-600 to-green-400', // Vibrant Green Sphere
+        gradient: 'from-emerald-600 to-green-400',
         glow: 'rgba(74, 222, 128, 0.6)',
         border: '#4ade80'
     },
     decision: {
         label: 'Decisión',
         icon: Brain,
-        gradient: 'from-amber-600 to-yellow-400', // Vibrant Gold Sphere
+        gradient: 'from-amber-600 to-yellow-400',
         glow: 'rgba(251, 191, 36, 0.6)',
         border: '#f59e0b'
     },
     idea: {
         label: 'Idea',
         icon: Lightbulb,
-        gradient: 'from-violet-600 to-purple-400', // Vibrant Purple Sphere
+        gradient: 'from-violet-600 to-purple-400',
         glow: 'rgba(167, 139, 250, 0.6)',
         border: '#a78bfa'
     },
@@ -100,16 +100,15 @@ const NODE_TYPE_CONFIG: Record<string, {
     },
 };
 
-
 export const WorkNodeComponent = React.memo((props: any) => {
     const { data, selected, id, className } = props;
 
-    // Selectors optimized for performance (Primitive return values avoid re-renders)
+    // Selectors optimized for performance
     const mutateNodeType = useGraphStore(state => state.mutateNodeType);
     const isAntigravityActive = useGraphStore(state => state.isAntigravityActive);
     const isXRayActive = useGraphStore(state => state.isXRayActive);
 
-    // Combined Tension Selector: Only triggers re-render if the numeric value changes
+    // Combined Tension Selector
     const audit = data.metadata?.audit;
     const hasHiddenConflict = (audit?.sycophancy_score || 0) > 0.5;
 
@@ -123,11 +122,9 @@ export const WorkNodeComponent = React.memo((props: any) => {
         return physicalTension + (logicalTensionValue * 5) + auditWeight;
     });
 
-    // [Phase 12] Ghost Node Detection
+    // Ghost/Signatures
     const isGhost = className?.includes('ghost-predicted');
     const isSigned = !!data?.metadata?.human_signature;
-
-    // Antigravity Semantic Physics Logic: Calculate Depth (Z-Axis)
 
     // Antigravity Semantic Physics Logic: Calculate Depth (Z-Axis)
     const zDepth = useMemo(() => {
@@ -138,8 +135,6 @@ export const WorkNodeComponent = React.memo((props: any) => {
 
     const config = NODE_TYPE_CONFIG[data.type] ?? NODE_TYPE_CONFIG.note!;
     const Icon = config!.icon;
-    const isDark = typeof document !== 'undefined' && document.documentElement.classList.contains('dark');
-    const colors = isDark ? config.dark : config.light;
 
     const rawContent = (data as any).content || (data as any).statement || (data as any).rationale || (data as any).summary || (data as any).description || (data as any).name || (data as any).rule || '';
     const content = typeof rawContent === 'object' ? (rawContent.name || rawContent.content || JSON.stringify(rawContent)) : String(rawContent);
@@ -167,7 +162,6 @@ export const WorkNodeComponent = React.memo((props: any) => {
                 {Object.entries(NODE_TYPE_CONFIG).slice(0, 6).map(([type, cfg]) => {
                     const TypeIcon = cfg.icon;
                     const isActive = data.type === type;
-                    const typeColors = isDark ? cfg.dark : cfg.light;
                     return (
                         <button
                             key={type}
@@ -177,8 +171,8 @@ export const WorkNodeComponent = React.memo((props: any) => {
                             }}
                             className="p-2 rounded-xl transition-all duration-200 hover:scale-110 active:scale-95"
                             style={{
-                                backgroundColor: isActive ? typeColors.bg : 'transparent',
-                                color: isActive ? typeColors.text : (isDark ? '#CAC4D0' : '#79747E'),
+                                backgroundColor: isActive ? '#ffffff' : 'transparent',
+                                color: isActive ? '#000000' : '#79747E',
                             }}
                             title={`Convert to ${cfg.label}`}
                         >
@@ -188,118 +182,61 @@ export const WorkNodeComponent = React.memo((props: any) => {
                 })}
             </NodeToolbar>
 
+            {/* --- NEW SPHERICAL DESIGN --- */}
             <div
                 className={`
-                    min-w-[200px] max-w-[280px] rounded-[32px] 
-                    transition-all duration-300 ease-out
-                    ${isGhost ? 'opacity-40 grayscale' : ''}
-                    ${selected ? 'scale-[1.03] shadow-elevation-5' : 'shadow-elevation-1'}
-                    ${data.metadata.origin === 'ai' && !isGhost ? 'opacity-90 border-dashed' : ''}
-                    ${hasHiddenConflict && !isXRayActive ? 'animate-pulse ring-2 ring-amber-500/30' : ''}
-                    ${hasHiddenConflict && isXRayActive ? 'ring-4 ring-red-600 shadow-[0_0_40px_rgba(220,38,38,0.4)]' : ''}
-                    ${isUncertain ? 'ring-2 ring-yellow-400/20 glass-morphism' : ''}
-                    ${isCorrected ? 'ring-2 ring-emerald-400/20 glass-morphism-green' : ''}
-                    ${isInterrupted ? 'ring-4 ring-red-600 animate-vibration' : ''}
+                    group relative flex items-center justify-center
+                    w-24 h-24 rounded-full 
+                    transition-all duration-500 ease-out
+                    bg-gradient-to-br ${config.gradient}
+                    ${selected ? 'scale-125 z-50' : 'scale-100 hover:scale-110 z-0'}
+                    ${isGhost ? 'opacity-40 grayscale blur-[1px]' : 'opacity-100 shadow-2xl'}
+                    ${hasHiddenConflict ? 'animate-pulse' : ''}
                 `}
                 style={{
-                    backgroundColor: colors.bg,
-                    border: `1.5px solid ${selected ? colors.text : colors.border}`,
+                    boxShadow: selected
+                        ? `0 0 50px ${config.glow}, inset 0 0 20px rgba(255,255,255,0.4)`
+                        : `0 10px 30px -10px ${config.glow}, inset 0 0 10px rgba(255,255,255,0.2)`,
+                    border: `2px solid ${selected ? '#ffffff' : 'rgba(255,255,255,0.1)'}`,
                     transform: isAntigravityActive ? `scale(${zDepth})` : undefined,
                 }}
             >
-                <style jsx>{`
-                    @keyframes vibration {
-                        0% { transform: translate(0,0) rotate(0); }
-                        25% { transform: translate(1px, 1px) rotate(0.5deg); }
-                        50% { transform: translate(-1px, 2px) rotate(-0.5deg); }
-                        75% { transform: translate(-2px, -1px) rotate(0.5deg); }
-                        100% { transform: translate(1px, -2px) rotate(-0.5deg); }
-                    }
-                    @keyframes heartbeat {
-                        0% { transform: scale(1); box-shadow: 0 0 15px rgba(245, 158, 11, 0.15); }
-                        14% { transform: scale(1.02); box-shadow: 0 0 25px rgba(245, 158, 11, 0.35); }
-                        28% { transform: scale(1); box-shadow: 0 0 15px rgba(245, 158, 11, 0.15); }
-                        42% { transform: scale(1.02); box-shadow: 0 0 20px rgba(245, 158, 11, 0.25); }
-                        70% { transform: scale(1); box-shadow: 0 0 15px rgba(245, 158, 11, 0.15); }
-                    }
-                    @keyframes ripple {
-                        0% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.4); border-color: rgba(245, 158, 11, 0.4); }
-                        50% { box-shadow: 0 0 20px 10px rgba(245, 158, 11, 0); border-color: rgba(245, 158, 11, 1); }
-                        100% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0); border-color: rgba(245, 158, 11, 0.4); }
-                    }
-                    .glass-morphism {
-                        background: rgba(251, 191, 36, 0.03) !important;
-                        backdrop-filter: blur(8px);
-                        box-shadow: inset 0 0 20px rgba(251, 191, 36, 0.05);
-                    }
-                    .glass-morphism-green {
-                        background: rgba(16, 185, 129, 0.03) !important;
-                        backdrop-filter: blur(8px);
-                        box-shadow: inset 0 0 20px rgba(16, 185, 129, 0.05);
-                    }
-                    @keyframes truth-ripple {
-                        0% { outline: 0px solid rgba(16, 185, 129, 0.5); outline-offset: 0px; }
-                        100% { outline: 15px solid rgba(16, 185, 129, 0); outline-offset: 10px; }
-                    }
-                    .animate-truth-ripple {
-                        animation: truth-ripple 1.5s cubic-bezier(0, 0.2, 0.8, 1) infinite;
-                    }
-                `}</style>
+                {/* 3D Highlight (Top shine) */}
+                <div className="absolute top-0 left-0 w-full h-full rounded-full bg-gradient-to-b from-white/30 to-transparent pointer-events-none" />
+
+                {/* Main Icon - Centered & Large */}
+                <div className="relative z-10 text-white drop-shadow-md transition-transform duration-300 group-hover:scale-110">
+                    <Icon size={32} strokeWidth={2.5} />
+                </div>
+
+                {/* Floating Badge (Type Indicator) if selected */}
+                {selected && (
+                    <div className="absolute -top-4 bg-black/80 backdrop-blur-md text-white text-[9px] font-bold px-2 py-0.5 rounded-full border border-white/20 whitespace-nowrap">
+                        {config.label.toUpperCase()}
+                    </div>
+                )}
+
+                {/* Status Indicators (Satellites) */}
                 {tensionLevel > 0 && (
-                    <div className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 shadow-lg z-10">
+                    <div className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full p-1 shadow-lg z-20 animate-bounce">
                         <Zap size={12} fill="currentColor" />
                     </div>
                 )}
 
-                {/* Simplified Tension Overlay */}
-                {tensionLevel > 0 && (
-                    <div className="absolute -top-2 -right-2 bg-red-400 text-white rounded-full p-1.5 shadow-md z-10 animate-bounce">
-                        <Zap size={10} fill="currentColor" />
-                    </div>
-                )}
-
-                {isUncertain && (
-                    <div className="absolute -top-3 left-4 px-2.5 py-1 glass-panel text-black text-[8px] font-black uppercase tracking-widest rounded-full flex items-center gap-1.5 shadow-xl border border-yellow-500/30">
-                        <AlertTriangle size={10} className="text-yellow-600 animate-pulse" />
-                        <span className="bg-gradient-to-r from-yellow-700 to-yellow-900 bg-clip-text text-transparent">Especulando Verdad</span>
-                    </div>
-                )}
-
-                {isCorrected && (
-                    <div className="absolute -top-3 left-4 px-2.5 py-1 glass-panel-green text-white text-[8px] font-black uppercase tracking-widest rounded-full flex items-center gap-1.5 shadow-xl border border-emerald-500/30 animate-truth-ripple">
-                        <ShieldCheck size={10} className="text-emerald-400" />
-                        <span className="bg-gradient-to-r from-emerald-400 to-emerald-100 bg-clip-text text-transparent">Soberanía Aplicada</span>
-                    </div>
-                )}
-
-                {isInterrupted && (
-                    <div className="absolute -top-3 left-4 px-2 py-0.5 bg-red-600 text-white text-[9px] font-black uppercase tracking-tighter rounded-full flex items-center gap-1 shadow-lg ring-1 ring-red-400">
-                        <BrainCircuit size={10} className="animate-pulse" />
-                        <span>Intervención de Seguridad</span>
-                    </div>
-                )}
-                <div className="px-4 py-3 flex items-start gap-3">
-                    <div
-                        className="p-2 rounded-xl shrink-0"
-                        style={{
-                            backgroundColor: `${colors.text}15`,
-                        }}
-                    >
-                        <Icon size={18} style={{ color: colors.text }} />
-                    </div>
-
-                    <div className="flex-1 min-w-0 pt-0.5">
-                        <span
-                            className="text-[10px] font-bold uppercase tracking-widest opacity-70"
-                            style={{ color: colors.text }}
-                        >
+                {/* Content Label - Below the Sphere (Cinematic Style) */}
+                <div className={`
+                    absolute top-full mt-3 left-1/2 -translate-x-1/2 
+                    w-[200px] text-center
+                    pointer-events-none
+                    transition-all duration-300
+                    ${selected || isAntigravityActive ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-2 group-hover:opacity-100 group-hover:translate-y-0'}
+                 `}>
+                    <div className="flex flex-col items-center gap-1">
+                        <span className="text-[10px] font-black uppercase tracking-[0.2em] text-cyan-400 drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]">
                             {config.label}
                         </span>
-                        <p
-                            className="text-sm font-medium leading-snug mt-1 line-clamp-2"
-                            style={{ color: colors.text }}
-                        >
-                            {preview || <span className="opacity-50 italic">Empty {data.type}</span>}
+                        <p className="text-sm font-bold text-white leading-tight drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] line-clamp-2">
+                            {preview || "Untitled"}
                         </p>
                     </div>
                 </div>
@@ -307,26 +244,17 @@ export const WorkNodeComponent = React.memo((props: any) => {
                 <Handle
                     type="target"
                     position={Position.Top}
-                    className="!w-3 !h-3 !border-2 !rounded-full !-top-1.5"
-                    style={{
-                        backgroundColor: colors.bg,
-                        borderColor: colors.border,
-                    }}
+                    className="!w-3 !h-3 !border-2 !border-white/50 !rounded-full !bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity"
                 />
                 <Handle
                     type="source"
                     position={Position.Bottom}
-                    className="!w-3 !h-3 !border-2 !rounded-full !-bottom-1.5"
-                    style={{
-                        backgroundColor: colors.bg,
-                        borderColor: colors.border,
-                    }}
+                    className="!w-3 !h-3 !border-2 !border-white/50 !rounded-full !bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity"
                 />
 
-                {/* [AGREGAR] Capa de Revelación de Verdad (Solo en Rayos X) */}
                 {isXRayActive && hasHiddenConflict && audit && (
                     <div className="absolute top-full mt-4 left-0 w-[280px] z-50 animate-in fade-in slide-in-from-top-4">
-                        <div className="glass-panel p-4 border-l-4 border-red-500 bg-neutral-900/95 text-white shadow-2xl rounded-r-2xl overflow-hidden">
+                        <div className="glass-panel p-4 border-l-4 border-red-500 bg-neutral-900/95 text-white shadow-2xl rounded-r-2xl overflow-hidden text-left">
                             <div className="flex items-center gap-2 mb-2 text-red-400">
                                 <ShieldAlert size={14} className="animate-pulse" />
                                 <span className="text-[10px] font-black uppercase tracking-widest">Protocolo Abogado del Diablo</span>
