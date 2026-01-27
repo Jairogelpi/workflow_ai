@@ -47,7 +47,10 @@ export default function Home() {
     // If splash is running OR loading -> Show Intro Splash
     if (!splashFinished || isLoading) {
         return (
-            <div className="fixed inset-0 bg-black flex items-center justify-center p-4 z-[9999]">
+            <div
+                className="fixed inset-0 h-screen w-screen !bg-white !flex !items-center !justify-center p-4 !z-[9999]"
+                style={{ backgroundColor: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+            >
                 <video
                     ref={videoRef}
                     autoPlay
@@ -58,7 +61,7 @@ export default function Home() {
                 >
                     <source src="/axiom_animation.mp4" type="video/mp4" />
                     {/* Fallback for really old browsers */}
-                    <div className="text-white text-xs">Loading Axiom OS...</div>
+                    <div className="text-slate-400 text-xs">Loading Axiom OS...</div>
                 </video>
             </div>
         );
