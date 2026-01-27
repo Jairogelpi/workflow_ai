@@ -283,11 +283,10 @@ function GraphContent() {
             zoomOnDoubleClick={false}
             fitView
             fitViewOptions={{ padding: 0.4, maxZoom: 0.75 }}
-            className="transition-all duration-500 bg-white"
-            proOptions={{ hideAttribution: true }}
+            className="transition-all duration-500 bg-transparent"
         >
-            {/* Super subtle background - pure white feeling */}
-            <Background color="#f8fafc" variant={"dots" as any} gap={40} size={1} />
+            {/* Super subtle background - integrated with Desktop grid */}
+            <Background color="transparent" variant={"dots" as any} gap={40} size={1} />
 
             {/* Simple Navigation Island */}
             <Panel position="bottom-center" className="!mb-10">

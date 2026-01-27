@@ -26,8 +26,9 @@
 }
 
 body {
-  background-color: #000000;
-  color: #ffffff;
+  background-color: #ffffff;
+  color: #1e293b;
+  /* Slate 800 */
   /* Google secondary text color */
   font-family: 'Outfit', 'Google Sans', 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
   letter-spacing: 0.01em;

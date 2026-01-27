@@ -7,7 +7,6 @@
 import React from 'react';
 import { useGraphStore } from '../../store/useGraphStore';
 import { Brain, Zap, Activity, ShieldAlert, BookOpen } from 'lucide-react';
-
 import { DraggableHUD } from './DraggableHUD';
 
 export function SwarmDashboard() {
