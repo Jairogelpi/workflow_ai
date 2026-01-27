@@ -39,7 +39,7 @@ export const TrafficLightHUD = () => {
     const currentConfig = PHASE_CONFIG[projectPhase];
 
     return (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[50] flex flex-col items-center gap-2 animate-in slide-in-from-bottom-4 duration-500">
+        <div className="fixed bottom-32 left-1/2 -translate-x-1/2 z-[50] flex flex-col items-center gap-2 animate-in slide-in-from-bottom-4 duration-500">
 
             {/* Main HUD Capsule */}
             <div className={`flex items-center gap-4 px-4 py-2 bg-white rounded-full shadow-2xl border ${currentConfig.border} backdrop-blur-md`}>

@@ -35,18 +35,31 @@ export default function Home() {
         }
     }, [isLoading, session, splashFinished, router]);
 
+    const videoRef = React.useRef<HTMLVideoElement>(null);
+
+    // Force play on mount to bypass React hydration quirks
+    useEffect(() => {
+        if (videoRef.current) {
+            videoRef.current.play().catch(e => console.error("Autoplay failed:", e));
+        }
+    }, [isLoading]);
+
     // If splash is running OR loading -> Show Intro Splash
     if (!splashFinished || isLoading) {
         return (
             <div className="fixed inset-0 bg-black flex items-center justify-center p-4 z-[9999]">
                 <video
-                    src="/axiom_animation.mp4"
+                    ref={videoRef}
                     autoPlay
                     muted
                     loop
                     playsInline
                     className="w-32 md:w-56 lg:w-64 h-auto object-contain animate-in fade-in duration-1000"
-                />
+                >
+                    <source src="/axiom_animation.mp4" type="video/mp4" />
+                    {/* Fallback for really old browsers */}
+                    <div className="text-white text-xs">Loading Axiom OS...</div>
+                </video>
             </div>
         );
     }
