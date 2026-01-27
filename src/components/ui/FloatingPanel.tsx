@@ -55,17 +55,38 @@ export function FloatingPanel({
     };
   };
 
+  // Resizing state
+  const [size, setSize] = useState({ w: 480, h: 520 });
+  const [isResizing, setIsResizing] = useState(false);
+  const resizeRef = useRef<{ startX: number; startY: number; startW: number; startH: number } | null>(null);
+
+  // Dragging logic
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
-      if (!isDragging || !dragRef.current) return;
-      const dx = e.clientX - dragRef.current.startX;
-      const dy = e.clientY - dragRef.current.startY;
-      setPosition({ x: dragRef.current.initX + dx, y: dragRef.current.initY + dy });
+      // Handle Drag
+      if (isDragging && dragRef.current) {
+        const dx = e.clientX - dragRef.current.startX;
+        const dy = e.clientY - dragRef.current.startY;
+        setPosition({ x: dragRef.current.initX + dx, y: dragRef.current.initY + dy });
+      }
+
+      // Handle Resize
+      if (isResizing && resizeRef.current) {
+        const dx = e.clientX - resizeRef.current.startX;
+        const dy = e.clientY - resizeRef.current.startY;
+        setSize({
+          w: Math.max(300, resizeRef.current.startW + dx),
+          h: Math.max(200, resizeRef.current.startH + dy)
+        });
+      }
     };
 
-    const handleMouseUp = () => setIsDragging(false);
+    const handleMouseUp = () => {
+      setIsDragging(false);
+      setIsResizing(false);
+    };
 
-    if (isDragging) {
+    if (isDragging || isResizing) {
       window.addEventListener('mousemove', handleMouseMove);
       window.addEventListener('mouseup', handleMouseUp);
     }
@@ -73,7 +94,19 @@ export function FloatingPanel({
       window.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('mouseup', handleMouseUp);
     };
-  }, [isDragging]);
+  }, [isDragging, isResizing]);
+
+  const handleResizeStart = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
+    setIsResizing(true);
+    resizeRef.current = {
+      startX: e.clientX,
+      startY: e.clientY,
+      startW: size.w,
+      startH: size.h
+    };
+  };
 
   // Drag & Drop Handlers
   const handleDragOver = (e: React.DragEvent) => {
@@ -124,15 +157,17 @@ export function FloatingPanel({
 
   const panelStyle = isMaximized
     ? "fixed inset-4 z-50 w-[calc(100%-2rem)] h-[calc(100%-2rem)]"
-    : "fixed z-50 w-[480px] h-[520px]";
+    : "fixed z-50";
 
-  const dragStyle = isMaximized ? {} : { left: position.x, top: position.y };
+  const dynamicStyle = isMaximized
+    ? {}
+    : { left: position.x, top: position.y, width: size.w, height: size.h };
 
   return (
     <div
-      className={`${panelStyle} flex flex-col bg-white/95 backdrop-blur-xl border border-slate-200/60 shadow-[0_24px_48px_-12px_rgba(0,0,0,0.15)] rounded-[24px] overflow-hidden transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)] animate-scale-in ${dropState !== 'idle' ? 'ring-4 ring-blue-500/20 ring-offset-0' : ''
+      className={`${panelStyle} flex flex-col bg-white/95 backdrop-blur-xl border border-slate-200/60 shadow-[0_24px_48px_-12px_rgba(0,0,0,0.15)] rounded-[24px] overflow-hidden transition-shadow duration-300 animate-scale-in ${dropState !== 'idle' ? 'ring-4 ring-blue-500/20 ring-offset-0' : ''
         }`}
-      style={dragStyle}
+      style={dynamicStyle}
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
@@ -196,6 +231,16 @@ export function FloatingPanel({
         )}
         {children}
       </div>
+
+      {/* Resize Handle */}
+      {!isMaximized && (
+        <div
+          className="absolute bottom-0 right-0 w-6 h-6 cursor-nwse-resize z-50 hover:bg-slate-100 rounded-tl-xl flex items-center justify-center opacity-50 hover:opacity-100 transition-opacity"
+          onMouseDown={handleResizeStart}
+        >
+          <div className="w-1.5 h-1.5 bg-slate-300 rounded-full" />
+        </div>
+      )}
     </div>
   );
 }

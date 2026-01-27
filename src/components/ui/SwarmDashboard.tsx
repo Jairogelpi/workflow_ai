@@ -9,8 +9,11 @@ import { useGraphStore } from '../../store/useGraphStore';
 import { Brain, Zap, Activity, ShieldAlert, BookOpen } from 'lucide-react';
 import { DraggableHUD } from './DraggableHUD';
 
+import { useSystemPulse } from '../../hooks/useSystemPulse';
+
 export function SwarmDashboard() {
     const { activeAgents } = useGraphStore();
+    const { latency, isOnline } = useSystemPulse();
 
     const agentIcons: Record<string, any> = {
         'harvester': BookOpen,
@@ -63,15 +66,19 @@ export function SwarmDashboard() {
                     </div>
                 </div>
 
-                {/* Performance Footer */}
-                <div className="bg-slate-50/80 backdrop-blur-md border border-slate-200/40 rounded-2xl py-2 px-4 flex items-center justify-between shadow-sm">
+                {/* Performance Footer (Real Data) */}
+                <div className="bg-slate-50/80 backdrop-blur-md border border-slate-200/40 rounded-2xl py-2 px-4 flex items-center justify-between shadow-sm transition-all duration-500">
                     <div className="flex items-center gap-2">
-                        <div className="w-1.5 h-1.5 rounded-full bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.5)]" />
-                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">En Línea</span>
+                        <div className={`w-1.5 h-1.5 rounded-full shadow-[0_0_8px_rgba(59,130,246,0.5)] transition-colors duration-500 ${isOnline ? 'bg-emerald-500 shadow-emerald-500/50' : 'bg-red-500 shadow-red-500/50 animate-pulse'}`} />
+                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest transition-colors duration-500">
+                            {isOnline ? 'En Línea' : 'Desconectado'}
+                        </span>
                     </div>
                     <div className="flex items-center gap-1.5">
                         <span className="text-[9px] font-medium text-slate-400">PULSO</span>
-                        <span className="text-[10px] font-bold text-slate-900 tabular-nums">124ms</span>
+                        <span className={`text-[10px] font-bold tabular-nums transition-colors duration-300 ${latency > 200 ? 'text-amber-500' : 'text-slate-900'}`}>
+                            {latency}ms
+                        </span>
                     </div>
                 </div>
             </div>

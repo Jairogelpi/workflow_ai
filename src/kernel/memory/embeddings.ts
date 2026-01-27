@@ -16,10 +16,11 @@ export class EmbeddingService {
         const { modelConfig, masterSecret } = useSettingsStore.getState();
 
         // [PRODUCTION] Route to RLM Core (Backend) if configured
-        const backendUrl = process.env.NEXT_PUBLIC_API_URL || 'https://api.getagentshield.com'; // Default to prod if env missing
+        // [Fix] Do not default to the protected endpoint unless we are sure we have credentials or environment is set.
+        const backendUrl = process.env.NEXT_PUBLIC_API_URL || '';
         const isProduction = process.env.NODE_ENV === 'production';
 
-        if (isProduction || (modelConfig.efficiencyModel.provider as string) === 'openai' || (modelConfig.efficiencyModel.provider as string) === 'openrouter') {
+        if (backendUrl && (isProduction || (modelConfig.efficiencyModel.provider as string) === 'openai' || (modelConfig.efficiencyModel.provider as string) === 'openrouter')) {
             try {
                 // [Fix] Dynamic Auth & Routing
                 let token = '';
@@ -70,8 +71,9 @@ export class EmbeddingService {
 
             } catch (error) {
                 console.error('[EmbeddingService] Backend Error:', error);
-                // If strictly production, re-throw. If dev, fall through to localhost attempt.
-                if (isProduction) throw error;
+                // [Fix] Never block execution on Backend Error if we have a fallback strategy.
+                // Only re-throw if NO fallback is possible (i.e. if we really wanted the cloud result).
+                // For now, let's allow falling through to Local/Ollama.
             }
         }
 
