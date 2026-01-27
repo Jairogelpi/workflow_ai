@@ -24,68 +24,79 @@ import { AppNode, AppEdge } from '../../store/useGraphStore';
 const NODE_TYPE_CONFIG: Record<string, {
     label: string;
     icon: any;
-    light: { bg: string; text: string; border: string };
-    dark: { bg: string; text: string; border: string };
+    gradient: string; // New Gradient prop
+    glow: string;     // New Glow color
+    border: string;
 }> = {
     note: {
         label: 'Nota',
         icon: MessageSquare,
-        light: { bg: '#F8F9FA', text: '#3C4043', border: '#DADCE0' },
-        dark: { bg: '#4A4458', text: '#E8DEF8', border: '#938F99' }
+        gradient: 'from-slate-700 to-slate-500',
+        glow: 'rgba(148, 163, 184, 0.5)',
+        border: '#94a3b8'
     },
     claim: {
         label: 'Afirmación',
         icon: ShieldAlert,
-        light: { bg: '#E8F0FE', text: '#1967D2', border: '#4285F4' }, // Axiom Blue
-        dark: { bg: '#004A77', text: '#C2E7FF', border: '#0077B6' }
+        gradient: 'from-blue-600 to-cyan-400', // Vibrant Blue/Cyan Sphere
+        glow: 'rgba(56, 189, 248, 0.6)',
+        border: '#38bdf8'
     },
     evidence: {
         label: 'Evidencia',
         icon: CheckCircle2,
-        light: { bg: '#E6F4EA', text: '#137333', border: '#34A853' }, // Axiom Green
-        dark: { bg: '#0D5D2C', text: '#C4EED0', border: '#1B8A45' }
+        gradient: 'from-emerald-600 to-green-400', // Vibrant Green Sphere
+        glow: 'rgba(74, 222, 128, 0.6)',
+        border: '#4ade80'
     },
     decision: {
         label: 'Decisión',
         icon: Brain,
-        light: { bg: '#FEF7E0', text: '#B06000', border: '#FBBC04' }, // Axiom Yellow
-        dark: { bg: '#594F05', text: '#FEF7C3', border: '#8D7E0A' }
+        gradient: 'from-amber-600 to-yellow-400', // Vibrant Gold Sphere
+        glow: 'rgba(251, 191, 36, 0.6)',
+        border: '#f59e0b'
     },
     idea: {
         label: 'Idea',
         icon: Lightbulb,
-        light: { bg: '#E6F4EA', text: '#137333', border: '#34A853' },
-        dark: { bg: '#0D5D2C', text: '#E7F8ED', border: '#2E7D32' }
+        gradient: 'from-violet-600 to-purple-400', // Vibrant Purple Sphere
+        glow: 'rgba(167, 139, 250, 0.6)',
+        border: '#a78bfa'
     },
     task: {
         label: 'Tarea',
         icon: CheckSquare,
-        light: { bg: '#FAFAFA', text: '#3C4043', border: '#DADCE0' },
-        dark: { bg: '#4A4458', text: '#E8DEF8', border: '#7E57C2' }
+        gradient: 'from-indigo-600 to-blue-500',
+        glow: 'rgba(129, 140, 248, 0.6)',
+        border: '#818cf8'
     },
     artifact: {
         label: 'Entregable',
         icon: FileText,
-        light: { bg: '#FFF7E0', text: '#B06000', border: '#FBBC04' },
-        dark: { bg: '#5D4037', text: '#FFE0B2', border: '#8D6E63' }
+        gradient: 'from-orange-600 to-red-400',
+        glow: 'rgba(251, 146, 60, 0.6)',
+        border: '#fb923c'
     },
     assumption: {
         label: 'Supuesto',
         icon: HelpCircle,
-        light: { bg: '#FCE8E6', text: '#C5221F', border: '#EA4335' }, // Axiom Red
-        dark: { bg: '#880E4F', text: '#FCE4EC', border: '#AD1457' }
+        gradient: 'from-rose-600 to-pink-500',
+        glow: 'rgba(244, 63, 94, 0.6)',
+        border: '#f43f5e'
     },
     constraint: {
         label: 'Restricción',
         icon: Lock,
-        light: { bg: '#F1F3F4', text: '#3C4043', border: '#DADCE0' },
-        dark: { bg: '#4E342E', text: '#EFEBE9', border: '#795548' }
+        gradient: 'from-gray-700 to-gray-500',
+        glow: 'rgba(156, 163, 175, 0.5)',
+        border: '#9ca3af'
     },
     source: {
         label: 'Fuente',
         icon: Link,
-        light: { bg: '#E8F0FE', text: '#1967D2', border: '#4285F4' },
-        dark: { bg: '#0D47A1', text: '#E3F2FD', border: '#1976D2' }
+        gradient: 'from-sky-600 to-blue-400',
+        glow: 'rgba(56, 189, 248, 0.6)',
+        border: '#38bdf8'
     },
 };
 
