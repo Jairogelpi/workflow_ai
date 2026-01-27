@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
 export interface ModelConfig {
-    provider: 'openai' | 'gemini' | 'anthropic' | 'local';
+    provider: 'openai' | 'gemini' | 'anthropic' | 'local' | 'openrouter';
     modelId: string;
     apiKey: string;
     baseUrl?: string; // Optional for custom/local endpoints
@@ -14,6 +14,7 @@ export interface DualModelConfig {
     qualityMode: 'hybrid' | 'high-fidelity';
     maxCostPerTask: number; // USD threshold for circuit breaker
     ollamaBaseUrl?: string; // Standardized local endpoint
+    openRouterApiKey?: string; // Explicit key for OpenRouter
 }
 
 interface SettingsState {
@@ -38,7 +39,8 @@ export const useSettingsStore = create<SettingsState>()(
                 efficiencyModel: { provider: 'gemini', modelId: 'gemini-1.5-flash', apiKey: '' },
                 qualityMode: 'hybrid',
                 maxCostPerTask: 0.10,
-                ollamaBaseUrl: 'http://localhost:11434'
+                ollamaBaseUrl: 'http://localhost:11434',
+                openRouterApiKey: '' // Default empty
             },
             availableModels: [
                 { id: 'gpt-4o', name: 'GPT-4o (Omni)', provider: 'openai' },
