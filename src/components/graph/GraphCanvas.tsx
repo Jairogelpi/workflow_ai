@@ -282,6 +282,7 @@ function GraphContent() {
             }}
             zoomOnDoubleClick={false}
             fitView
+            fitViewOptions={{ padding: 0.4, maxZoom: 0.75 }}
             className="transition-all duration-500 bg-white"
             proOptions={{ hideAttribution: true }}
         >
@@ -319,12 +320,15 @@ function GraphContent() {
                 </div>
             </Panel>
 
-            <AlignmentOverlay />
+            <div className="pointer-events-none fixed inset-0 z-40">
+                <AlignmentOverlay />
+                <ForensicAuditView />
+                <IngestionHUD />
+            </div>
+
             <AlignmentTunnels />
             <BootSequence />
             <SensoryRipple />
-            <ForensicAuditView />
-            <IngestionHUD />
             <WindowManager />
         </ReactFlow>
     );

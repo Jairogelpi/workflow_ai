@@ -130,26 +130,21 @@ export function FloatingPanel({
 
   return (
     <div
-      className={`${panelStyle} flex flex-col bg-white border border-slate-100 shadow-[0_20px_60px_-15px_rgba(0,0,0,0.1)] rounded-[32px] overflow-hidden transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)] animate-scale-in ${dropState !== 'idle' ? 'ring-4 ring-primary/20 ring-offset-0' : ''
+      className={`${panelStyle} flex flex-col bg-white/95 backdrop-blur-xl border border-slate-200/60 shadow-[0_24px_48px_-12px_rgba(0,0,0,0.15)] rounded-[24px] overflow-hidden transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)] animate-scale-in ${dropState !== 'idle' ? 'ring-4 ring-blue-500/20 ring-offset-0' : ''
         }`}
       style={dragStyle}
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
     >
-      {/* Header Bar */}
+      {/* Header Bar - Gemini Style (Clean, Minimal) */}
       <div
-        className={`h-16 flex items-center justify-between px-8 select-none bg-white ${!isMaximized ? 'cursor-grab active:cursor-grabbing' : ''}`}
+        className={`h-14 flex items-center justify-between px-6 select-none border-b border-slate-100/50 ${!isMaximized ? 'cursor-grab active:cursor-grabbing' : ''}`}
         onMouseDown={handleMouseDown}
       >
-        <div className="flex items-center gap-4 text-slate-800">
-          <div className="flex gap-1.5">
-            <div className="w-1.5 h-1.5 rounded-full bg-blue-500" />
-            <div className="w-1.5 h-1.5 rounded-full bg-red-500" />
-            <div className="w-1.5 h-1.5 rounded-full bg-yellow-400" />
-            <div className="w-1.5 h-1.5 rounded-full bg-green-500" />
-          </div>
-          <span className="font-medium text-sm text-slate-500">{title}</span>
+        <div className="flex items-center gap-3 text-slate-800">
+          <div className="w-1 h-4 bg-gradient-to-b from-blue-500 to-purple-500 rounded-full opacity-80" />
+          <span className="font-semibold text-sm tracking-tight text-slate-700 font-sans">{title}</span>
         </div>
 
         {/* Window Controls */}
