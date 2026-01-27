@@ -18,7 +18,7 @@ import { CircuitBreakerOverlay } from '@/components/ui/CircuitBreaker';
 // Dynamic import for heavy client-only components (WASM/WebGL)
 const GraphCanvas = dynamic(() => import('@/components/graph/GraphCanvas'), {
     ssr: false,
-    loading: () => <div className="w-full h-full bg-slate-950 flex items-center justify-center text-slate-500 text-xs">Initializing Graph Engine...</div>
+    loading: () => <div className="w-full h-full bg-white flex items-center justify-center text-slate-400 text-xs">Initializing Graph Engine...</div>
 });
 
 export default function ProjectWorkspace() {
@@ -55,7 +55,7 @@ export default function ProjectWorkspace() {
         setHasBooted(true);
     };
 
-    if (loading) return <div className="bg-black text-white flex items-center justify-center h-screen">Loading Interface...</div>;
+    if (loading) return <div className="bg-white text-slate-400 flex items-center justify-center h-screen">Loading Workspace...</div>;
 
     if (!hasBooted) {
         return <BootSequence onComplete={handleBootComplete} />;

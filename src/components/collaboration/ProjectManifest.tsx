@@ -50,17 +50,42 @@ export const ProjectManifest: React.FC<{ onClose: () => void }> = ({ onClose }) 
         setMembers(members.filter(m => m.id !== id));
     };
 
+    const [isCreating, setIsCreating] = useState(false);
+
     const handleGenerate = async () => {
         if (!name || !description) return;
+        setIsCreating(true); // Start loading animation
         const roleMap = members.reduce((acc, m) => ({ ...acc, [m.id]: m.role }), {});
 
-        // This now calls syncService.createProject internally and returns the real ID
-        const newProjectId = await initProjectSwarm(name, description, roleMap);
-
-        onClose();
-        // Redirect to new project workspace using REAL ID
-        window.location.href = `/project/${newProjectId}`;
+        try {
+            // This now calls syncService.createProject internally and returns the real ID
+            const newProjectId = await initProjectSwarm(name, description, roleMap);
+            // Redirect to new project workspace using REAL ID
+            window.location.href = `/project/${newProjectId}`;
+        } catch (error) {
+            console.error("Failed to create project:", error);
+            setIsCreating(false);
+        }
     };
+
+    if (isCreating) {
+        return (
+            <div className="fixed inset-0 z-[200] bg-white flex flex-col items-center justify-center animate-in fade-in duration-500">
+                <video
+                    autoPlay
+                    muted
+                    loop
+                    playsInline
+                    className="w-64 md:w-80 lg:w-[450px] h-auto object-contain"
+                >
+                    <source src="/axiom_animation.mp4" type="video/mp4" />
+                </video>
+                <div className="mt-8 text-slate-400 text-[10px] font-bold uppercase tracking-[0.4em] animate-pulse">
+                    Materializando Espacio...
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div

@@ -47,25 +47,25 @@ export class AppErrorBoundary extends Component<Props, State> {
     public render() {
         if (this.state.hasError) {
             return (
-                <div className="fixed inset-0 bg-slate-950 flex flex-col items-center justify-center p-6 text-white z-[99999]">
-                    <div className="max-w-md w-full bg-slate-900 border border-red-500/20 rounded-2xl p-8 shadow-2xl flex flex-col items-center text-center space-y-6">
+                <div className="fixed inset-0 bg-white flex flex-col items-center justify-center p-6 text-slate-900 z-[99999]">
+                    <div className="max-w-md w-full bg-white border border-slate-200 rounded-3xl p-8 shadow-2xl shadow-slate-200/50 flex flex-col items-center text-center space-y-6">
 
                         {/* Icon */}
-                        <div className="w-16 h-16 bg-red-500/10 rounded-full flex items-center justify-center animate-pulse">
+                        <div className="w-16 h-16 bg-red-50 rounded-full flex items-center justify-center animate-pulse">
                             <AlertTriangle className="w-8 h-8 text-red-500" />
                         </div>
 
                         {/* Text */}
                         <div className="space-y-2">
-                            <h2 className="text-2xl font-bold font-mono tracking-tight text-red-400">
-                                SYSTEM MALFUNCTION
+                            <h2 className="text-2xl font-bold tracking-tight text-slate-800">
+                                Interrupción de Sistema
                             </h2>
-                            <p className="text-slate-400 text-sm">
-                                A critical error caused the neural interface to disconnect.
+                            <p className="text-slate-500 text-sm font-medium">
+                                Se ha detectado una anomalía crítica en la interfaz.
                             </p>
                             {this.state.error && (
-                                <div className="mt-4 p-3 bg-black/40 rounded border border-red-900/30 text-left w-full overflow-hidden">
-                                    <code className="text-[10px] text-red-300 font-mono break-words block">
+                                <div className="mt-4 p-3 bg-slate-50 rounded-xl border border-slate-100 text-left w-full overflow-hidden">
+                                    <code className="text-[10px] text-red-600 font-mono break-words block">
                                         {this.state.error.toString()}
                                     </code>
                                 </div>
@@ -76,23 +76,23 @@ export class AppErrorBoundary extends Component<Props, State> {
                         <div className="grid grid-cols-2 gap-3 w-full pt-4">
                             <button
                                 onClick={this.handleReload}
-                                className="flex items-center justify-center gap-2 px-4 py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-xl transition-all font-medium text-sm"
+                                className="flex items-center justify-center gap-2 px-4 py-3 bg-slate-900 hover:bg-slate-800 text-white rounded-xl transition-all font-bold text-sm shadow-lg shadow-slate-900/10"
                             >
                                 <RefreshCw className="w-4 h-4" />
-                                Reboot System
+                                Reiniciar
                             </button>
 
                             <button
                                 onClick={this.handleHardReset}
-                                className="flex items-center justify-center gap-2 px-4 py-3 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl transition-all font-medium text-sm border border-slate-700"
+                                className="flex items-center justify-center gap-2 px-4 py-3 bg-white hover:bg-slate-50 text-slate-600 rounded-xl transition-all font-bold text-sm border border-slate-200 shadow-sm"
                             >
                                 <Trash2 className="w-4 h-4" />
-                                Hard Reset
+                                Limpiar Cache
                             </button>
                         </div>
 
-                        <div className="text-[10px] text-slate-600 pt-4">
-                            Error Code: NEURAL_DESYNC_V1
+                        <div className="text-[10px] text-slate-300 font-bold uppercase tracking-widest pt-4">
+                            Status: NEURAL_DESYNC_V1
                         </div>
                     </div>
                 </div>
