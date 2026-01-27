@@ -77,12 +77,48 @@ export class EmbeddingService {
             }
         }
 
+        // [OPENROUTER DIRECT] Client-Side Fallback for Production
+        // User explicitly requested to use OpenRouter "with the Ollama model" logic (meaning: remote embeddings).
+        if (isProduction && modelConfig.openRouterApiKey) {
+            try {
+                // Use OpenAI's small embedding model via OpenRouter as it's the most reliable fallback
+                // CRITICAL: Force dimensions: 768 to match existing DB schema (nomic-embed-text size)
+                const orResponse = await fetch('https://openrouter.ai/api/v1/embeddings', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${modelConfig.openRouterApiKey}`,
+                        'HTTP-Referer': 'https://workgraph-os.onrender.com', // OpenRouter requirement
+                        'X-Title': 'WorkGraph OS'
+                    },
+                    body: JSON.stringify({
+                        model: 'openai/text-embedding-3-small', // Default high-quality fallback
+                        input: text,
+                        dimensions: 768 // <--- CRITICAL for compatibility
+                    })
+                });
+
+                if (!orResponse.ok) {
+                    const errText = await orResponse.text();
+                    console.warn(`[EmbeddingService] OpenRouter failed: ${orResponse.status} - ${errText}`);
+                } else {
+                    const orData = await orResponse.json();
+                    if (orData.data && orData.data[0]) {
+                        console.log('[EmbeddingService] Generated via OpenRouter (768d)');
+                        return orData.data[0].embedding;
+                    }
+                }
+            } catch (orError) {
+                console.error('[EmbeddingService] OpenRouter Error:', orError);
+            }
+        }
+
         // [LOCAL FALLBACK] Direct Ollama
         const baseUrl = modelConfig.ollamaBaseUrl || 'http://localhost:11434';
 
         // Prevent production from trying to hit localhost blindly
         if (process.env.NODE_ENV === 'production' && baseUrl.includes('localhost')) {
-            console.warn('[EmbeddingService] Skipped: Cannot reach localhost in production.');
+            console.warn('[EmbeddingService] Skipped: Cannot reach localhost in production (and OpenRouter failed or not configured).');
             return null; // Graceful skip
         }
 
